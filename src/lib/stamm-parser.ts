@@ -191,7 +191,7 @@ function extractSpousePairs(grid: Grid, people: ParsedPerson[]): ParsedRelations
         personAKey: keyForPerson(left),
         personBKey: keyForPerson(right),
         marriage: marriageYear ? { year: marriageYear, precision: 'year' } : null,
-        confidence: 'imported',
+        confidence: 'manual',
         row,
         col,
         note: 'spouse pair from chart row',
@@ -240,7 +240,7 @@ function extractParentChild(grid: Grid, people: ParsedPerson[]): ParsedRelations
           personAKey: parent.importKey,
           personBKey: child.importKey,
           marriage: null,
-          confidence: activeParents.length > 0 ? 'imported' : 'low',
+          confidence: activeParents.length > 0 ? 'manual' : 'low',
           row,
           col,
           note: activeParents.length > 0 ? 'child branch under active couple' : 'inferred ancestor link',
@@ -260,7 +260,7 @@ function extractParentChild(grid: Grid, people: ParsedPerson[]): ParsedRelations
           personAKey: parent.importKey,
           personBKey: inlineChild.importKey,
           marriage: null,
-          confidence: 'imported',
+          confidence: 'manual',
           row,
           note: 'inline child under couple',
         })
@@ -322,7 +322,7 @@ export function toRelationshipDrafts(
       marriagePlace: null,
       endDate: null,
       endReason: null,
-      confidence: rel.confidence,
+      confidence: rel.confidence === 'low' ? 'low' : 'manual',
       importMeta: { row: rel.row, col: rel.col, note: rel.note },
     })
   }

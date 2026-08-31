@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Family, Person, Relationship } from '../types'
 import {
   claimInvite,
+  fixFamilyIdMismatch,
   getFamilyBySlug,
-  getPeopleForFamily,
-  getRelationshipsForFamily,
+  getPeopleForFamilyResolved,
+  getRelationshipsForFamilyResolved,
 } from '../lib/firestore'
 
 export function useFamily(slug: string, userEmail?: string | null, userId?: string | null) {
@@ -30,9 +31,11 @@ export function useFamily(slug: string, userEmail?: string | null, userId?: stri
         await claimInvite(fam, userId, userEmail)
       }
 
+      await fixFamilyIdMismatch(fam.id, fam.slug)
+
       const [p, r] = await Promise.all([
-        getPeopleForFamily(fam.id),
-        getRelationshipsForFamily(fam.id),
+        getPeopleForFamilyResolved(fam.id, fam.slug),
+        getRelationshipsForFamilyResolved(fam.id, fam.slug),
       ])
       setPeople(p)
       setRelationships(r)

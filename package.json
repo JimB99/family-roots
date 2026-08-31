@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "import:stamm": "tsx scripts/import-stamm.ts",
+    "confirm:relationships": "tsx scripts/confirm-relationships.ts",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes",
     "deploy": "npm run build && firebase deploy"
   },

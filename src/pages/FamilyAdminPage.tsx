@@ -6,6 +6,7 @@ import { Layout } from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import {
+  confirmAllRelationships,
   confirmRelationship,
   deleteRelationship,
   listLowConfidenceRelationships,
@@ -25,6 +26,8 @@ export function FamilyAdminPage() {
   )
   const [showPersonForm, setShowPersonForm] = useState(false)
   const [review, setReview] = useState<Relationship[]>([])
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [confirmingAll, setConfirmingAll] = useState(false)
   const [relForm, setRelForm] = useState({
     type: 'parent_child' as 'parent_child' | 'spouse',
     personAId: '',
@@ -193,41 +196,73 @@ export function FamilyAdminPage() {
         </section>
 
         <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <h2 className="font-medium">Uncertain relationships</h2>
-          <p className="text-sm text-stone-600 mt-1">
-            Review links that need confirmation. Confirm correct ones or delete mistakes.
-          </p>
-          <ul className="mt-4 space-y-3">
-            {review.map((rel) => {
-              const a = people.find((p) => p.id === rel.personAId)
-              const b = people.find((p) => p.id === rel.personBId)
-              return (
-                <li key={rel.id} className="border border-stone-200 rounded-lg p-3 text-sm">
-                  <p>
-                    <strong>{rel.type}</strong>: {a ? displayName(a) : rel.personAId} ↔{' '}
-                    {b ? displayName(b) : rel.personBId}
-                  </p>
-                  <div className="mt-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void confirmRelationship(rel.id).then(reload)}
-                      className="text-amber-800 hover:underline"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteRelationship(rel.id).then(reload)}
-                      className="text-red-700 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
-            {review.length === 0 && <li className="text-stone-500">Nothing to review.</li>}
-          </ul>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-medium">Data cleanup</h2>
+              <p className="text-sm text-stone-600 mt-1">
+                Optional review for imported links. Accept all to clear the queue.
+              </p>
+            </div>
+            {review.length > 0 && (
+              <button
+                type="button"
+                disabled={confirmingAll}
+                onClick={() => {
+                  setConfirmingAll(true)
+                  void confirmAllRelationships(family.id)
+                    .then(() => reload())
+                    .then(() => listLowConfidenceRelationships(family.id))
+                    .then(setReview)
+                    .finally(() => setConfirmingAll(false))
+                }}
+                className="rounded-lg bg-amber-800 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+              >
+                {confirmingAll ? 'Accepting…' : `Accept all ${review.length} links`}
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setReviewOpen((v) => !v)}
+            className="mt-3 text-sm text-amber-800 hover:underline"
+          >
+            {reviewOpen ? 'Hide' : 'Show'} uncertain relationships ({review.length})
+          </button>
+
+          {reviewOpen && (
+            <ul className="mt-4 space-y-3">
+              {review.map((rel) => {
+                const a = people.find((p) => p.id === rel.personAId)
+                const b = people.find((p) => p.id === rel.personBId)
+                return (
+                  <li key={rel.id} className="border border-stone-200 rounded-lg p-3 text-sm">
+                    <p>
+                      <strong>{rel.type}</strong>: {a ? displayName(a) : rel.personAId} ↔{' '}
+                      {b ? displayName(b) : rel.personBId}
+                    </p>
+                    <div className="mt-2 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void confirmRelationship(rel.id).then(reload)}
+                        className="text-amber-800 hover:underline"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteRelationship(rel.id).then(reload)}
+                        className="text-red-700 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+              {review.length === 0 && <li className="text-stone-500">Nothing to review.</li>}
+            </ul>
+          )}
         </section>
       </div>
     </Layout>

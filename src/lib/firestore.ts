@@ -8,6 +8,7 @@ import {
   updateDoc,
   deleteDoc,
   where,
+  writeBatch,
   serverTimestamp,
   type DocumentData,
 } from 'firebase/firestore'
@@ -141,6 +142,69 @@ export async function getPeopleForFamily(familyId: string): Promise<Person[]> {
   return snap.docs.map((d) => personFromDoc(d.id, d.data()))
 }
 
+/** Load people by family doc id or slug (handles legacy import mismatches). */
+export async function getPeopleForFamilyResolved(
+  familyId: string,
+  slug: string,
+): Promise<Person[]> {
+  const byId = await getPeopleForFamily(familyId)
+  if (byId.length > 0) return byId
+  if (slug !== familyId) {
+    const bySlug = await getPeopleForFamily(slug)
+    if (bySlug.length > 0) return bySlug
+  }
+  return byId
+}
+
+export async function getRelationshipsForFamilyResolved(
+  familyId: string,
+  slug: string,
+): Promise<Relationship[]> {
+  const byId = await getRelationshipsForFamily(familyId)
+  if (byId.length > 0) return byId
+  if (slug !== familyId) {
+    const bySlug = await getRelationshipsForFamily(slug)
+    if (bySlug.length > 0) return bySlug
+  }
+  return byId
+}
+
+export async function fixFamilyIdMismatch(familyId: string, slug: string): Promise<number> {
+  const wrong = await getPeopleForFamily(slug)
+  if (slug === familyId || wrong.length === 0) return 0
+
+  let batch = writeBatch(db)
+  let ops = 0
+  let fixed = 0
+
+  for (const person of wrong) {
+    if (person.familyId === familyId) continue
+    if (ops >= 450) {
+      await batch.commit()
+      batch = writeBatch(db)
+      ops = 0
+    }
+    batch.update(doc(db, 'people', person.id), { familyId, updatedAt: serverTimestamp() })
+    ops++
+    fixed++
+  }
+
+  const wrongRels = await getRelationshipsForFamily(slug)
+  for (const rel of wrongRels) {
+    if (rel.familyId === familyId) continue
+    if (ops >= 450) {
+      await batch.commit()
+      batch = writeBatch(db)
+      ops = 0
+    }
+    batch.update(doc(db, 'relationships', rel.id), { familyId, updatedAt: serverTimestamp() })
+    ops++
+  }
+
+  if (ops > 0) await batch.commit()
+  return fixed
+}
+
 export async function getRelationshipsForFamily(familyId: string): Promise<Relationship[]> {
   const q = query(collection(db, 'relationships'), where('familyId', '==', familyId))
   const snap = await getDocs(q)
@@ -195,6 +259,35 @@ export async function confirmRelationship(id: string): Promise<void> {
     confidence: 'manual',
     updatedAt: serverTimestamp(),
   })
+}
+
+export async function confirmAllRelationships(familyId: string): Promise<number> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'relationships'),
+      where('familyId', '==', familyId),
+      where('confidence', 'in', ['imported', 'low']),
+    ),
+  )
+  if (snap.empty) return 0
+
+  let batch = writeBatch(db)
+  let ops = 0
+  let count = 0
+
+  for (const d of snap.docs) {
+    if (ops >= 450) {
+      await batch.commit()
+      batch = writeBatch(db)
+      ops = 0
+    }
+    batch.update(d.ref, { confidence: 'manual', updatedAt: serverTimestamp() })
+    ops++
+    count++
+  }
+
+  if (ops > 0) await batch.commit()
+  return count
 }
 
 export async function listLowConfidenceRelationships(familyId: string): Promise<Relationship[]> {
