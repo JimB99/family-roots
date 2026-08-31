@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AdminInvites } from '../components/AdminInvites'
 import { PersonForm } from '../components/PersonForm'
@@ -13,7 +13,7 @@ import {
   savePerson,
   saveRelationship,
 } from '../lib/firestore'
-import { displayName } from '../lib/tree'
+import { displayName, getConnectedComponents, getTreeStats } from '../lib/tree'
 import type { PersonInput, Relationship } from '../types'
 
 export function FamilyAdminPage() {
@@ -38,6 +38,13 @@ export function FamilyAdminPage() {
     if (!family) return
     void listLowConfidenceRelationships(family.id).then(setReview)
   }, [family, relationships])
+
+  const components = useMemo(
+    () => getConnectedComponents(people, relationships),
+    [people, relationships],
+  )
+  const treeStats = useMemo(() => getTreeStats(people, relationships), [people, relationships])
+  const largestBranch = components[0]?.size ?? 0
 
   if (authLoading || loading) {
     return (
@@ -125,6 +132,34 @@ export function FamilyAdminPage() {
             All family trees
           </Link>
         </div>
+
+        <section className="bg-white border border-stone-200 rounded-xl p-5">
+          <h2 className="font-medium">Data health</h2>
+          <dl className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-stone-500">Connected branches</dt>
+              <dd className="font-medium">{components.length}</dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Largest branch</dt>
+              <dd className="font-medium">{largestBranch} people</dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Outside main branch</dt>
+              <dd className="font-medium">{treeStats.orphanCount} people</dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Uncertain links</dt>
+              <dd className="font-medium">{review.length}</dd>
+            </div>
+          </dl>
+          <Link
+            to={`/families/${slug}?branches=1`}
+            className="inline-block mt-4 text-sm text-amber-800 hover:underline"
+          >
+            View branches on tree
+          </Link>
+        </section>
 
         <AdminInvites family={family} onUpdated={() => void reload()} />
 

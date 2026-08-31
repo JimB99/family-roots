@@ -31,12 +31,22 @@ npm run dev
 
 ## Deploy hosting
 
+Deploy manually from a machine that has `.env.local` (or equivalent env vars) with your Firebase web app config — those values are baked into the production bundle at build time.
+
 ```bash
 npm run build
 npx firebase deploy
 ```
 
+Or use the combined script:
+
+```bash
+npm run deploy
+```
+
 Site URL: `https://roots-atlas.web.app`
+
+There is no GitHub Actions auto-deploy; pushes to `main` do not update the live site.
 
 ## Invite a contributor
 

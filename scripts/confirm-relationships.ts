@@ -26,8 +26,6 @@ function loadEnvLocal() {
 }
 
 loadEnvLocal()
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
-import { confirmAllRelationships, getFamilyBySlug } from '../src/lib/firestore'
 
 const slug = process.argv.find((a) => a.startsWith('--slug='))?.split('=')[1]
 if (!slug) {

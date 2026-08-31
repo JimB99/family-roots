@@ -121,6 +121,161 @@ export function getTreeStats(people: Person[], relationships: Relationship[]) {
   }
 }
 
+export interface ConnectedComponent {
+  memberIds: Set<string>
+  representativeId: string
+  size: number
+}
+
+function pickComponentRepresentative(memberIds: string[], relationships: Relationship[]): string {
+  let bestId = memberIds[0]
+  let bestScore = -1
+  for (const id of memberIds) {
+    const score = personDegree(id, relationships)
+    if (score > bestScore) {
+      bestScore = score
+      bestId = id
+    }
+  }
+  return bestId
+}
+
+export function getConnectedComponents(
+  people: Person[],
+  relationships: Relationship[],
+): ConnectedComponent[] {
+  const ids = new Set(people.map((p) => p.id))
+  const visited = new Set<string>()
+  const adjacency = new Map<string, Set<string>>()
+
+  for (const id of ids) adjacency.set(id, new Set())
+  for (const rel of relationships) {
+    if (!ids.has(rel.personAId) || !ids.has(rel.personBId)) continue
+    adjacency.get(rel.personAId)!.add(rel.personBId)
+    adjacency.get(rel.personBId)!.add(rel.personAId)
+  }
+
+  const components: ConnectedComponent[] = []
+
+  for (const person of people) {
+    if (visited.has(person.id)) continue
+
+    const queue = [person.id]
+    const members: string[] = []
+
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      if (visited.has(current)) continue
+      visited.add(current)
+      members.push(current)
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!visited.has(neighbor)) queue.push(neighbor)
+      }
+    }
+
+    components.push({
+      memberIds: new Set(members),
+      representativeId: pickComponentRepresentative(members, relationships),
+      size: members.length,
+    })
+  }
+
+  return components.sort((a, b) => b.size - a.size)
+}
+
+export function getBirthYear(person: Person): number | null {
+  if (!person.birth?.year) return null
+  return person.birth.year
+}
+
+export type PeopleSortKey = 'birth-year-asc' | 'birth-year-desc' | 'name-asc'
+
+export function sortPeople(people: Person[], sortKey: PeopleSortKey): Person[] {
+  const copy = [...people]
+
+  if (sortKey === 'name-asc') {
+    return copy.sort((a, b) => displayName(a).localeCompare(displayName(b)))
+  }
+
+  if (sortKey === 'birth-year-asc') {
+    return copy.sort((a, b) => {
+      const ay = getBirthYear(a) ?? Number.POSITIVE_INFINITY
+      const by = getBirthYear(b) ?? Number.POSITIVE_INFINITY
+      return ay - by
+    })
+  }
+
+  return copy.sort((a, b) => {
+    const ay = getBirthYear(a) ?? Number.NEGATIVE_INFINITY
+    const by = getBirthYear(b) ?? Number.NEGATIVE_INFINITY
+    return by - ay
+  })
+}
+
+export function computeGenerations(
+  rootId: string,
+  people: Person[],
+  relationships: Relationship[],
+): Map<string, number> {
+  const ids = new Set(people.map((p) => p.id))
+  const generations = new Map<string, number>()
+  if (!ids.has(rootId)) return generations
+
+  const relsByPerson = buildRelsMap(people, relationships)
+  generations.set(rootId, 0)
+  const queue = [rootId]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    const gen = generations.get(current)!
+    const rels = relsByPerson.get(current)
+    if (!rels) continue
+
+    for (const parentId of rels.parents) {
+      if (!generations.has(parentId)) {
+        generations.set(parentId, gen - 1)
+        queue.push(parentId)
+      }
+    }
+    for (const childId of rels.children) {
+      if (!generations.has(childId)) {
+        generations.set(childId, gen + 1)
+        queue.push(childId)
+      }
+    }
+    for (const spouseId of rels.spouses) {
+      if (!generations.has(spouseId)) {
+        generations.set(spouseId, gen)
+        queue.push(spouseId)
+      }
+    }
+  }
+
+  return generations
+}
+
+export function pickDefaultProgenitor(people: Person[], relationships: Relationship[]): string | null {
+  if (people.length === 0) return null
+
+  const withChildren = people.filter((p) =>
+    relationships.some((r) => r.type === 'parent_child' && r.personAId === p.id),
+  )
+  const candidates = withChildren.length > 0 ? withChildren : people
+
+  let best: Person | null = null
+  let bestYear = Number.POSITIVE_INFINITY
+
+  for (const person of candidates) {
+    const year = getBirthYear(person) ?? Number.POSITIVE_INFINITY
+    if (year < bestYear) {
+      bestYear = year
+      best = person
+    }
+  }
+
+  return best?.id ?? people[0].id
+}
+
 export function datumToPersonInput(
   datum: Datum,
   familyId: string,
