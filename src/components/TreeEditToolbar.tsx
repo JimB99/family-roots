@@ -31,8 +31,8 @@ export function TreeEditToolbar({ editMode, onToggle, canEdit, chartApi }: TreeE
       {editMode ? (
         <div className="flex flex-wrap items-center gap-3 text-sm text-stone-600">
           <p>
-            Click a card to edit details. Use <strong>+</strong> on cards to add relatives. Click
-            branch markers on cards to fold sub-branches.
+            Click a person to add relatives. Drag cards to reposition. Click lines to convert to
+            marriage. Use the pencil on a card to edit details.
           </p>
           <button
             type="button"

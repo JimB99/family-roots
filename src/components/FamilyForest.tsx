@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Chart } from 'family-chart'
 import { useNavigate } from 'react-router-dom'
-import { displayName, type ConnectedComponent } from '../lib/tree'
+import { displayName, filterBranchData, type ConnectedComponent } from '../lib/tree'
 import {
+  applyLinkStyles,
   fitChart,
   prepareChartContainer,
   setupFamilyChart,
@@ -62,12 +63,12 @@ function BranchChart({
 
     const mount = () => {
       if (cancelled) return
-      const height = 420
-      prepareChartContainer(el, height)
-      const chart = setupFamilyChart({
+      const branchData = filterBranchData(rootPersonId, people, relationships)
+      prepareChartContainer(el)
+      const { chart } = setupFamilyChart({
         el,
-        people,
-        relationships,
+        people: branchData.people,
+        relationships: branchData.relationships,
         rootPersonId,
         slug,
         familyId,
@@ -78,8 +79,9 @@ function BranchChart({
         onReload,
       })
       chartRef.current = chart
-      fitChart(chart, 50)
-      fitChart(chart, 250)
+      fitChart(chart, true)
+      chart.setAfterUpdate(() => applyLinkStyles(el, false))
+      applyLinkStyles(el, false)
     }
 
     requestAnimationFrame(mount)

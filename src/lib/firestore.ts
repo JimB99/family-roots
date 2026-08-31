@@ -43,6 +43,8 @@ function personFromDoc(id: string, data: DocumentData): Person {
     photoBase64: data.photoBase64 ?? null,
     notes: data.notes ?? null,
     importKey: data.importKey ?? null,
+    treeOffsetX: data.treeOffsetX ?? null,
+    treeOffsetY: data.treeOffsetY ?? null,
     createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? undefined,
     updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() ?? undefined,
     createdBy: data.createdBy ?? null,

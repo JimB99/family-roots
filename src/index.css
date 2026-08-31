@@ -47,13 +47,59 @@ body {
 }
 
 .family-tree-canvas.f3 .link {
-  stroke: #78716c !important;
-  stroke-width: 2px;
+  fill: none !important;
 }
 
-.family-tree-canvas.f3 .link.f3-path-to-main {
+.family-tree-canvas.f3 .link-parent {
+  stroke: #57534e !important;
+  stroke-width: 2.5px !important;
+}
+
+.family-tree-canvas.f3 .link-spouse {
   stroke: #b45309 !important;
-  stroke-width: 3px;
+  stroke-width: 2px !important;
+  stroke-dasharray: 8 5;
+}
+
+.family-tree-canvas.f3 .link-editable {
+  stroke-width: 10px !important;
+  stroke-opacity: 0.001;
+  cursor: pointer;
+}
+
+.family-tree-canvas.f3 .link-editable.link-parent {
+  stroke: #57534e !important;
+}
+
+.family-tree-canvas.f3 [data-rel-type='son'] .card-inner,
+.family-tree-canvas.f3 [data-rel-type='daughter'] .card-inner {
+  background: #fef9c3 !important;
+  border: 2px dashed #ca8a04 !important;
+  color: #713f12 !important;
+  font-weight: 600;
+  min-width: 5rem;
+}
+
+.family-tree-canvas.f3 [data-rel-type='spouse'] .card-inner {
+  background: #ffedd5 !important;
+  border: 2px dashed #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 600;
+}
+
+.family-tree-canvas.f3 [data-rel-type='father'] .card-inner,
+.family-tree-canvas.f3 [data-rel-type='mother'] .card-inner {
+  background: #f5f5f4 !important;
+  border: 2px dashed #78716c !important;
+  color: #44403c !important;
+  font-weight: 600;
+}
+
+.family-tree-canvas.f3 .card_add_relative {
+  opacity: 1 !important;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #b45309 !important;
 }
 
 .family-tree-canvas.f3 #htmlSvg {
@@ -66,9 +112,23 @@ body {
   pointer-events: auto;
 }
 
+.family-tree-canvas.f3 .card_cont[data-ghost='1'] .card {
+  cursor: pointer;
+}
+
+.family-tree-canvas.f3 .card_cont:not([data-ghost='1']) .card {
+  cursor: grab;
+}
+
+.family-tree-canvas.f3 .card_cont.card-dragging .card {
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
 .family-tree-canvas.f3 .card-inner {
   color: #1c1917;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  max-width: 180px;
 }
 
 .family-tree-canvas.f3 .f3-nav-cont {
@@ -78,6 +138,7 @@ body {
 .family-tree-canvas.f3 .f3-form-cont {
   background-color: #fff;
   color: #1c1917;
+  z-index: 20;
 }
 
 .family-tree-canvas.f3 .card_add_relative {
@@ -87,4 +148,8 @@ body {
 
 .family-tree-canvas.f3 .card_edit.pencil_icon {
   color: #b45309;
+}
+
+.family-tree-canvas.f3 #marriage-symbols circle {
+  pointer-events: none;
 }

@@ -36,6 +36,8 @@ export interface Person {
   photoBase64: string | null
   notes: string | null
   importKey: string | null
+  treeOffsetX?: number | null
+  treeOffsetY?: number | null
   createdAt?: string
   updatedAt?: string
   createdBy?: string | null

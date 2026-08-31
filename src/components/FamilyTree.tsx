@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Chart } from 'family-chart'
 import { useNavigate } from 'react-router-dom'
 import {
+  configureEditMode,
   fitChart,
   prepareChartContainer,
   setupFamilyChart,
+  startConnectModeForPerson,
+  updateChartData,
 } from '../lib/family-chart-setup'
+import { filterBranchData } from '../lib/tree'
 import { TreeControls } from './TreeControls'
 import type { Person, Relationship } from '../types'
 
@@ -23,8 +27,16 @@ interface FamilyTreeProps {
   editMode: boolean
   isEditor: boolean
   userId: string | null
+  selectedPersonId: string | null
+  onSelectPerson: (personId: string | null) => void
   onReload: () => void
   onChartApi?: (api: FamilyChartApi | null) => void
+}
+
+function buildBranchKey(rootPersonId: string, people: Person[], relationships: Relationship[]): string {
+  const memberIds = [...people.map((p) => p.id)].sort().join(',')
+  const relIds = [...relationships.map((r) => r.id)].sort().join(',')
+  return `${rootPersonId}|${memberIds}|${relIds}`
 }
 
 export function FamilyTree({
@@ -36,90 +48,102 @@ export function FamilyTree({
   editMode,
   isEditor,
   userId,
+  selectedPersonId,
+  onSelectPerson,
   onReload,
   onChartApi,
 }: FamilyTreeProps) {
   const shellRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<Chart | null>(null)
-  const rootPersonIdRef = useRef(rootPersonId)
+  const cardRef = useRef<ReturnType<Chart['setCardHtml']> | null>(null)
+  const mountedKeyRef = useRef<string | null>(null)
+  const skipDataSyncRef = useRef(true)
   const [chartReady, setChartReady] = useState<Chart | null>(null)
   const navigate = useNavigate()
 
+  const onSelectPersonRef = useRef(onSelectPerson)
+  const onReloadRef = useRef(onReload)
+  const onChartApiRef = useRef(onChartApi)
+
   useEffect(() => {
-    rootPersonIdRef.current = rootPersonId
-  }, [rootPersonId])
+    onSelectPersonRef.current = onSelectPerson
+    onReloadRef.current = onReload
+    onChartApiRef.current = onChartApi
+  })
+
+  const branchData = useMemo(() => {
+    if (!rootPersonId) return { people: [], relationships: [] }
+    return filterBranchData(rootPersonId, people, relationships)
+  }, [rootPersonId, people, relationships])
+
+  const branchKey = useMemo(() => {
+    if (!rootPersonId || branchData.people.length === 0) return null
+    return buildBranchKey(rootPersonId, branchData.people, branchData.relationships)
+  }, [rootPersonId, branchData])
+
+  useEffect(() => {
+    skipDataSyncRef.current = true
+  }, [branchKey])
 
   useEffect(() => {
     const shell = shellRef.current
     const el = containerRef.current
-    if (!shell || !el || people.length === 0) return
+    if (!shell || !el || !branchKey || !rootPersonId) return
 
     let cancelled = false
     let resizeTimer: ReturnType<typeof setTimeout> | null = null
-    let lastWidth = 0
-    let lastHeight = 0
+    let hasMounted = false
 
     const mountChart = () => {
-      if (cancelled || people.length === 0) return
-      const { width, height } = shell.getBoundingClientRect()
+      if (cancelled || hasMounted) return
+      const width = shell.clientWidth
+      const height = shell.clientHeight
       if (width < 1 || height < 1) return
 
-      const sizeChanged =
-        Math.abs(width - lastWidth) > 8 || Math.abs(height - lastHeight) > 8
-      if (chartRef.current && !sizeChanged) return
+      hasMounted = true
+      mountedKeyRef.current = branchKey
+      prepareChartContainer(el)
 
-      lastWidth = width
-      lastHeight = height
-
-      prepareChartContainer(el, height)
-      const chart = setupFamilyChart({
+      const { chart, card } = setupFamilyChart({
         el,
-        people,
-        relationships,
-        rootPersonId: rootPersonIdRef.current,
+        people: branchData.people,
+        relationships: branchData.relationships,
+        rootPersonId,
         slug,
         familyId,
         editMode,
         isEditor,
         userId,
         navigate,
-        onReload,
+        onReload: () => onReloadRef.current(),
+        onSelectPerson: (id) => onSelectPersonRef.current(id),
       })
+
+      cardRef.current = card
       chartRef.current = chart
       setChartReady(chart)
-      fitChart(chart, 50)
-      fitChart(chart, 200)
+      requestAnimationFrame(() => fitChart(chart, true))
 
-      const editTree = chart.editTreeInstance
-      onChartApi?.({
+      onChartApiRef.current?.({
         chart,
-        addPerson: () => {
-          if (editTree) editTree.addRelative(undefined)
-        },
+        addPerson: () => chart.editTreeInstance?.addRelative(undefined),
       })
     }
 
     const observer = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer)
       resizeTimer = setTimeout(() => {
-        const { width, height } = shell.getBoundingClientRect()
-        if (width < 1 || height < 1) return
-
-        const sizeChanged =
-          Math.abs(width - lastWidth) > 8 || Math.abs(height - lastHeight) > 8
-
-        if (chartRef.current && sizeChanged) {
-          chartRef.current = null
-          setChartReady(null)
-          onChartApi?.(null)
-          el.innerHTML = ''
-          lastWidth = 0
-          lastHeight = 0
+        if (!chartRef.current) {
+          mountChart()
+          return
         }
-
-        mountChart()
-      }, 120)
+        chartRef.current.updateTree({
+          initial: false,
+          tree_position: 'inherit',
+          transition_time: 0,
+        })
+      }, 200)
     })
 
     observer.observe(shell)
@@ -130,29 +154,72 @@ export function FamilyTree({
       if (resizeTimer) clearTimeout(resizeTimer)
       observer.disconnect()
       chartRef.current = null
+      cardRef.current = null
+      mountedKeyRef.current = null
       setChartReady(null)
-      onChartApi?.(null)
+      onChartApiRef.current?.(null)
       el.innerHTML = ''
     }
-  }, [people, relationships, slug, familyId, editMode, isEditor, userId, navigate, onReload, onChartApi])
+  }, [branchKey, rootPersonId, slug, familyId, navigate])
 
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart || !rootPersonId) return
-    chart.updateMainId(rootPersonId)
-    fitChart(chart, 80)
-  }, [rootPersonId])
+    if (!chart || !branchKey || mountedKeyRef.current !== branchKey) return
+    if (skipDataSyncRef.current) {
+      skipDataSyncRef.current = false
+      return
+    }
+    updateChartData(chart, branchData.people, branchData.relationships)
+    if (rootPersonId) chart.updateMainId(rootPersonId)
+    fitChart(chart, false)
+  }, [branchKey, branchData, rootPersonId])
 
-  if (people.length === 0) {
+  useEffect(() => {
+    const chart = chartRef.current
+    const card = cardRef.current
+    const el = containerRef.current
+    if (!chart || !card || !el) return
+
+    configureEditMode(chart, card, {
+      el,
+      people: branchData.people,
+      relationships: branchData.relationships,
+      rootPersonId,
+      slug,
+      familyId,
+      editMode,
+      isEditor,
+      userId,
+      navigate,
+      onReload: () => onReloadRef.current(),
+      onSelectPerson: (id) => onSelectPersonRef.current(id),
+    })
+  }, [branchData, rootPersonId, slug, familyId, navigate, editMode, isEditor, userId])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || !selectedPersonId || !editMode) return
+    startConnectModeForPerson(chart, selectedPersonId)
+  }, [selectedPersonId, editMode])
+
+  if (!rootPersonId) {
     return (
       <div className="flex items-center justify-center h-full text-stone-500">
-        No people in this family yet. Sign in and add someone from Manage.
+        Choose a root person to display this branch.
+      </div>
+    )
+  }
+
+  if (branchData.people.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-stone-500">
+        No connected people in this branch.
       </div>
     )
   }
 
   return (
-    <div ref={shellRef} className="family-tree-shell relative h-full w-full min-h-0">
+    <div ref={shellRef} className="family-tree-shell absolute inset-0">
       <div className="absolute top-3 left-3 z-10 max-w-[calc(100%-1.5rem)]">
         <TreeControls
           chart={chartReady}
@@ -160,7 +227,7 @@ export function FamilyTree({
           onAddPerson={() => chartRef.current?.editTreeInstance?.addRelative(undefined)}
         />
       </div>
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="absolute inset-0" />
     </div>
   )
 }

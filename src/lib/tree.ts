@@ -254,6 +254,20 @@ export function computeGenerations(
   return generations
 }
 
+export function filterBranchData(
+  rootId: string,
+  people: Person[],
+  relationships: Relationship[],
+): { people: Person[]; relationships: Relationship[] } {
+  const memberIds = getReachablePersonIds(rootId, people, relationships)
+  return {
+    people: people.filter((p) => memberIds.has(p.id)),
+    relationships: relationships.filter(
+      (r) => memberIds.has(r.personAId) && memberIds.has(r.personBId),
+    ),
+  }
+}
+
 export function pickDefaultProgenitor(people: Person[], relationships: Relationship[]): string | null {
   if (people.length === 0) return null
 
