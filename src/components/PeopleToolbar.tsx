@@ -18,6 +18,17 @@ interface PeopleToolbarProps {
   generationOptions: number[]
 }
 
+const selectClass =
+  'rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm text-[var(--text-primary)] transition focus:border-[var(--accent)] focus:outline-none'
+
+function chipClass(active: boolean): string {
+  return `rounded-full border px-3 py-1 text-sm transition ${
+    active
+      ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]'
+      : 'border-[var(--border-strong)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]'
+  }`
+}
+
 export function PeopleToolbar({
   query,
   onQueryChange,
@@ -34,18 +45,33 @@ export function PeopleToolbar({
   generationOptions,
 }: PeopleToolbarProps) {
   return (
-    <div className="space-y-4 border-b border-stone-200 bg-white px-4 py-4">
-      <div className="flex flex-wrap gap-3">
-        <input
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search names…"
-          className="flex-1 min-w-[200px] rounded-xl border border-stone-300 px-4 py-2.5"
-        />
+    <div className="space-y-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-3">
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <input
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="Search names…"
+            aria-label="Search names"
+            className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition focus:border-[var(--accent)] focus:outline-none"
+          />
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-muted)]"
+          >
+            <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </div>
         <select
           value={sortKey}
           onChange={(e) => onSortChange(e.target.value as PeopleSortKey)}
-          className="rounded-xl border border-stone-300 px-3 py-2.5 text-sm"
+          aria-label="Sort people"
+          className={selectClass}
         >
           <option value="name-asc">Name A–Z</option>
           <option value="birth-year-asc">Birth year (oldest first)</option>
@@ -54,20 +80,22 @@ export function PeopleToolbar({
         <select
           value={branchFilter}
           onChange={(e) => onBranchFilterChange(e.target.value)}
-          className="rounded-xl border border-stone-300 px-3 py-2.5 text-sm max-w-xs"
+          aria-label="Filter by connected group"
+          className={`${selectClass} max-w-xs`}
         >
-          <option value="all">All branches</option>
+          <option value="all">All groups</option>
           {components.map((component, index) => (
             <option key={component.representativeId} value={component.representativeId}>
-              Branch {index + 1} ({component.size})
+              Group {index + 1} ({component.size})
             </option>
           ))}
         </select>
         <select
           value={progenitorId}
           onChange={(e) => onProgenitorChange(e.target.value)}
-          className="rounded-xl border border-stone-300 px-3 py-2.5 text-sm max-w-xs"
-          title="Ancestor for generation tabs"
+          className={`${selectClass} max-w-xs`}
+          aria-label="Ancestor used for generation numbering"
+          title="Ancestor used for generation numbering"
         >
           {people.map((person) => (
             <option key={person.id} value={person.id}>
@@ -82,11 +110,8 @@ export function PeopleToolbar({
           <button
             type="button"
             onClick={() => onGenerationChange('all')}
-            className={`rounded-full px-3 py-1 text-sm border ${
-              generation === 'all'
-                ? 'bg-amber-800 text-white border-amber-800'
-                : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
-            }`}
+            aria-pressed={generation === 'all'}
+            className={chipClass(generation === 'all')}
           >
             All generations
           </button>
@@ -95,11 +120,8 @@ export function PeopleToolbar({
               key={gen}
               type="button"
               onClick={() => onGenerationChange(gen)}
-              className={`rounded-full px-3 py-1 text-sm border ${
-                generation === gen
-                  ? 'bg-amber-800 text-white border-amber-800'
-                  : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
-              }`}
+              aria-pressed={generation === gen}
+              className={chipClass(generation === gen)}
             >
               Gen {gen + 1}
             </button>

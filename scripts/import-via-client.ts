@@ -86,6 +86,12 @@ export async function commitViaClientAuth(
   peopleWithFamily.forEach((person, i) => keyToId.set(person.importKey, peopleRefs[i].id))
 
   const relDrafts = toRelationshipDrafts(parsedRelationships, familyId, keyToId)
+  const existingPeople = await getDocs(
+    query(collection(db, 'people'), where('familyId', '==', familyId)),
+  )
+  const existingRelationships = await getDocs(
+    query(collection(db, 'relationships'), where('familyId', '==', familyId)),
+  )
 
   let batch = writeBatch(db)
   let ops = 0
@@ -95,6 +101,20 @@ export async function commitViaClientAuth(
     batch = writeBatch(db)
     ops = 0
   }
+
+  for (const existing of existingRelationships.docs) {
+    if (ops >= 450) await flush()
+    batch.delete(existing.ref)
+    ops++
+  }
+
+  for (const existing of existingPeople.docs) {
+    if (ops >= 450) await flush()
+    batch.delete(existing.ref)
+    ops++
+  }
+
+  await flush()
 
   for (let i = 0; i < peopleWithFamily.length; i++) {
     if (ops >= 450) await flush()

@@ -8,13 +8,26 @@ interface PersonTileProps {
   slug: string
 }
 
+const genderRing: Record<Person['gender'], string> = {
+  male: 'var(--gender-male)',
+  female: 'var(--gender-female)',
+  unknown: 'var(--gender-unknown)',
+}
+
+function initials(person: Person): string {
+  const given = person.givenNames?.trim().charAt(0) ?? ''
+  const family = person.familyName?.trim().charAt(0) ?? ''
+  return `${given}${family}`.toUpperCase() || '?'
+}
+
 export function PersonTile({ person, slug }: PersonTileProps) {
   const lifespan = formatLifeSpan(person.birth, person.death, person.isLiving)
+  const ring = genderRing[person.gender]
 
   return (
     <Link
       to={`/families/${slug}/person/${person.id}`}
-      className="block rounded-xl border border-stone-200 bg-white p-4 hover:border-amber-300 hover:shadow-sm transition"
+      className="block rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-md"
     >
       <div className="flex gap-3">
         <div className="shrink-0">
@@ -22,20 +35,31 @@ export function PersonTile({ person, slug }: PersonTileProps) {
             <img
               src={person.photoBase64}
               alt=""
-              className="w-14 h-14 rounded-lg object-cover bg-stone-100"
+              className="h-14 w-14 rounded-xl object-cover"
+              style={{ boxShadow: `0 0 0 2px ${ring}` }}
             />
           ) : (
-            <div className="w-14 h-14 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 text-xs">
-              No photo
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-xl text-base font-semibold"
+              style={{
+                background: `color-mix(in srgb, ${ring} 20%, transparent)`,
+                color: 'var(--text-secondary)',
+                boxShadow: `0 0 0 1.5px color-mix(in srgb, ${ring} 55%, transparent)`,
+              }}
+              aria-hidden="true"
+            >
+              {initials(person)}
             </div>
           )}
         </div>
-        <div className="min-w-0">
-          <p className="font-medium text-amber-900 truncate">{displayName(person)}</p>
+        <div className="min-w-0 self-center">
+          <p className="truncate font-medium text-[var(--text-primary)]">{displayName(person)}</p>
           {person.maidenName && (
-            <p className="text-xs text-stone-500 truncate">née {person.maidenName}</p>
+            <p className="truncate text-xs text-[var(--text-muted)]">née {person.maidenName}</p>
           )}
-          <p className="text-sm text-stone-600 mt-1 truncate">{lifespan || 'Dates unknown'}</p>
+          <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">
+            {lifespan || 'Dates unknown'}
+          </p>
         </div>
       </div>
     </Link>

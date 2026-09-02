@@ -1,4 +1,5 @@
 import type { PartialDate } from '../types'
+import { parseDateInput } from '../domain/date-validation'
 
 const MONTHS = [
   'Jan',
@@ -49,23 +50,13 @@ export function formatLifeSpan(
 }
 
 export function parsePartialDateInput(value: string): PartialDate | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
+  const parsed = parseDateInput(value)
+  if (parsed.error) return null
+  return parsed.date
+}
 
-  const iso = trimmed.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/)
-  if (iso) {
-    const year = Number(iso[1])
-    const month = iso[2] ? Number(iso[2]) : undefined
-    const day = iso[3] ? Number(iso[3]) : undefined
-    if (day && month) return { year, month, day, precision: 'day' }
-    if (month) return { year, month, precision: 'month' }
-    return { year, precision: 'year' }
-  }
-
-  const yearOnly = trimmed.match(/^(\d{4})$/)
-  if (yearOnly) return { year: Number(yearOnly[1]), precision: 'year' }
-
-  return { precision: 'unknown' }
+export function parsePartialDateInputResult(value: string) {
+  return parseDateInput(value)
 }
 
 export function partialDateToInput(date: PartialDate | null): string {

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 import-report.json
+shots
+test-results
+playwright-report
 
 # Editor directories and files
 .vscode/*

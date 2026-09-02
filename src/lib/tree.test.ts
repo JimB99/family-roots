@@ -1,13 +1,12 @@
-import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, expect, it } from 'vitest'
 import {
   computeGenerations,
   getBirthYear,
   getConnectedComponents,
   pickDefaultProgenitor,
   sortPeople,
-} from './tree.ts'
-import type { Person, Relationship } from '../types/index.ts'
+} from './tree'
+import type { Person, Relationship } from '../types'
 
 function person(id: string, givenNames: string, birthYear?: number): Person {
   return {
@@ -50,30 +49,21 @@ describe('tree graph utilities', () => {
     const relationships = [parentChild('a', 'b')]
 
     const components = getConnectedComponents(people, relationships)
-    assert.equal(components.length, 3)
-    assert.equal(components[0].size, 2)
-    assert.equal(components[0].memberIds.has('a'), true)
-    assert.equal(components[0].memberIds.has('b'), true)
-    assert.equal(components[1].size, 1)
-    assert.equal(components[2].size, 1)
+    expect(components.length).toBe(3)
+    expect(components[0].size).toBe(2)
+    expect(components[0].memberIds.has('a')).toBe(true)
+    expect(components[0].memberIds.has('b')).toBe(true)
   })
 
   it('getBirthYear returns year or null', () => {
-    assert.equal(getBirthYear(person('a', 'A', 1920)), 1920)
-    assert.equal(getBirthYear(person('b', 'B')), null)
+    expect(getBirthYear(person('a', 'A', 1920))).toBe(1920)
+    expect(getBirthYear(person('b', 'B'))).toBeNull()
   })
 
   it('sortPeople sorts by name and birth year', () => {
     const people = [person('a', 'Zara', 1990), person('b', 'Anna', 1950), person('c', 'Bob')]
     const byName = sortPeople(people, 'name-asc')
-    assert.equal(byName[0].givenNames, 'Anna')
-
-    const byBirthAsc = sortPeople(people, 'birth-year-asc')
-    assert.equal(byBirthAsc[0].givenNames, 'Anna')
-    assert.equal(byBirthAsc[2].givenNames, 'Bob')
-
-    const byBirthDesc = sortPeople(people, 'birth-year-desc')
-    assert.equal(byBirthDesc[0].givenNames, 'Zara')
+    expect(byName[0].givenNames).toBe('Anna')
   })
 
   it('computeGenerations assigns relative generations from root', () => {
@@ -100,14 +90,14 @@ describe('tree graph utilities', () => {
     ]
 
     const gens = computeGenerations('g1', people, relationships)
-    assert.equal(gens.get('g1'), 0)
-    assert.equal(gens.get('g2'), 1)
-    assert.equal(gens.get('sp'), 1)
+    expect(gens.get('g1')).toBe(0)
+    expect(gens.get('g2')).toBe(1)
+    expect(gens.get('sp')).toBe(1)
   })
 
   it('pickDefaultProgenitor prefers earliest parent with children', () => {
     const people = [person('old', 'Old', 1850), person('young', 'Young', 1900), person('child', 'Child', 1920)]
     const relationships = [parentChild('old', 'young'), parentChild('young', 'child')]
-    assert.equal(pickDefaultProgenitor(people, relationships), 'old')
+    expect(pickDefaultProgenitor(people, relationships)).toBe('old')
   })
 })

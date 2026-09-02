@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
+import { DataHealthPage } from './pages/DataHealthPage'
 import { TreePage } from './pages/TreePage'
 
 function SearchRedirect() {
@@ -17,6 +18,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/families/:slug/health" element={<DataHealthPage />} />
         <Route path="/families/:slug" element={<TreePage />} />
         <Route path="/families/:slug/people" element={<PeoplePage />} />
         <Route path="/families/:slug/search" element={<SearchRedirect />} />

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Layout } from '../components/Layout'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Field, inputClass } from '../components/ui/Field'
 import { useAuth } from '../hooks/useAuth'
 import { createFamily, listFamilies } from '../lib/firestore'
 import { slugify } from '../lib/slug'
@@ -48,7 +51,7 @@ export function AdminHomePage() {
   if (authLoading || loading) {
     return (
       <Layout>
-        <p className="p-8 text-center text-stone-500">Loading…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">Loading…</p>
       </Layout>
     )
   }
@@ -56,9 +59,12 @@ export function AdminHomePage() {
   if (!user) {
     return (
       <Layout>
-        <div className="max-w-md mx-auto p-8 text-center">
+        <div className="mx-auto max-w-md p-10 text-center">
           <p>Sign in to manage family trees.</p>
-          <Link to="/login" className="text-amber-800 hover:underline mt-4 inline-block">
+          <Link
+            to="/login"
+            className="mt-4 inline-block text-[var(--accent-strong)] hover:underline"
+          >
             Sign in
           </Link>
         </div>
@@ -70,83 +76,88 @@ export function AdminHomePage() {
 
   return (
     <Layout isEditor={editableFamilies.length > 0}>
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
         <div>
-          <h1 className="text-2xl font-semibold">Manage family trees</h1>
-          <p className="text-stone-600 mt-1">Signed in as {user.email}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Manage family trees</h1>
+          <p className="mt-1 text-[var(--text-secondary)]">Signed in as {user.email}</p>
         </div>
 
         {editableFamilies.length > 0 && (
-          <section className="bg-white border border-stone-200 rounded-xl p-5">
-            <h2 className="font-medium">Your trees</h2>
-            <ul className="mt-4 space-y-2">
+          <Card title="Your trees">
+            <ul className="divide-y divide-[var(--border-subtle)]">
               {editableFamilies.map((family) => (
-                <li key={family.id} className="flex flex-wrap items-center justify-between gap-2">
+                <li
+                  key={family.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                >
                   <span className="font-medium">{family.name}</span>
-                  <div className="flex gap-3 text-sm">
-                    <Link to={`/families/${family.slug}`} className="text-stone-600 hover:underline">
-                      View
+                  <div className="flex gap-1">
+                    <Link to={`/families/${family.slug}`}>
+                      <Button variant="ghost" size="sm">
+                        View
+                      </Button>
                     </Link>
-                    <Link to={`/families/${family.slug}/admin`} className="text-amber-800 hover:underline">
-                      Manage
+                    <Link to={`/families/${family.slug}/admin`}>
+                      <Button variant="secondary" size="sm">
+                        Manage
+                      </Button>
                     </Link>
                   </div>
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
         )}
 
-        <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <h2 className="font-medium">Create a new family tree</h2>
-          <p className="text-sm text-stone-600 mt-1">
-            Choose a display name and URL slug. You will be the owner and can invite editors later.
-          </p>
-          <form onSubmit={(e) => void createTree(e)} className="mt-4 space-y-4">
-            {error && <p className="text-sm text-red-700">{error}</p>}
-            <label className="block text-sm">
-              <span className="text-stone-600">Display name</span>
+        <Card
+          title="Create a new family tree"
+          description="Choose a display name and a URL. You become the owner and can invite editors later."
+        >
+          <form onSubmit={(e) => void createTree(e)} className="space-y-4">
+            {error && (
+              <p className="text-sm text-[var(--color-bloom-600)] dark:text-[var(--color-bloom-400)]" role="alert">
+                {error}
+              </p>
+            )}
+            <Field label="Display name">
               <input
                 required
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g. The Miller family"
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+                className={inputClass}
               />
-            </label>
-            <label className="block text-sm">
-              <span className="text-stone-600">URL slug</span>
+            </Field>
+            <Field label="URL" hint={slug ? `/families/${slug}` : undefined}>
               <input
                 required
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
                 placeholder="miller-family"
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+                className={inputClass}
               />
-            </label>
-            <button
-              type="submit"
-              disabled={creating}
-              className="rounded-lg bg-amber-800 text-white px-4 py-2 text-sm hover:bg-amber-900 disabled:opacity-60"
-            >
+            </Field>
+            <Button type="submit" disabled={creating}>
               {creating ? 'Creating…' : 'Create family tree'}
-            </button>
+            </Button>
           </form>
-        </section>
+        </Card>
 
         {families.length > editableFamilies.length && (
-          <section className="text-sm text-stone-600">
-            <h2 className="font-medium text-stone-900">All published trees</h2>
-            <ul className="mt-2 space-y-1">
+          <Card title="All published trees">
+            <ul className="space-y-1 text-sm">
               {families.map((family) => (
                 <li key={family.id}>
-                  <Link to={`/families/${family.slug}`} className="text-amber-800 hover:underline">
+                  <Link
+                    to={`/families/${family.slug}`}
+                    className="text-[var(--accent-strong)] hover:underline"
+                  >
                     {family.name}
                   </Link>
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
         )}
       </div>
     </Layout>

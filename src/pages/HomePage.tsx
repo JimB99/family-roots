@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Layout } from '../components/Layout'
+import { EmptyState } from '../components/ui/EmptyState'
+import { Skeleton } from '../components/ui/Skeleton'
+import { TreeMark } from '../components/ui/TreeMark'
 import { listFamilies } from '../lib/firestore'
 import type { Family } from '../types'
 
@@ -16,31 +19,53 @@ export function HomePage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-semibold text-center">Family trees</h1>
-        <p className="text-stone-600 text-center mt-2">
-          Browse a family tree or sign in to edit.
-        </p>
+      <div className="mx-auto w-full max-w-3xl px-4 py-14">
+        <div className="text-center">
+          <TreeMark className="mx-auto h-14 w-14 text-[var(--accent)]" />
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">Family trees</h1>
+          <p className="mt-2 text-[var(--text-secondary)]">
+            Browse a family tree, or sign in to build your own.
+          </p>
+        </div>
 
         {loading ? (
-          <p className="text-center text-stone-500 mt-10">Loading…</p>
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <li key={i}>
+                <Skeleton className="h-24 w-full" />
+              </li>
+            ))}
+          </ul>
         ) : families.length === 0 ? (
-          <div className="mt-10 text-center">
-            <p className="text-stone-600">No family trees published yet.</p>
-            <Link to="/admin" className="inline-block mt-4 text-amber-800 hover:underline">
-              Sign in to create one
-            </Link>
-          </div>
+          <EmptyState
+            title="No family trees yet"
+            description="Sign in to create the first family tree and start adding people."
+            action={
+              <Link
+                to="/admin"
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-contrast)] transition hover:bg-[var(--accent-strong)]"
+              >
+                Sign in to create one
+              </Link>
+            }
+          />
         ) : (
           <ul className="mt-10 grid gap-4 sm:grid-cols-2">
             {families.map((family) => (
               <li key={family.id}>
                 <Link
                   to={`/families/${family.slug}`}
-                  className="block rounded-xl border border-stone-200 bg-white p-5 hover:border-amber-300 hover:shadow-sm transition"
+                  className="group block rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-lg"
                 >
-                  <h2 className="font-medium text-lg text-amber-900">{family.name}</h2>
-                  <p className="text-sm text-stone-500 mt-1">View tree</p>
+                  <div className="flex items-center gap-3">
+                    <TreeMark className="h-9 w-9 shrink-0 text-[var(--accent)] opacity-80 transition group-hover:opacity-100" />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-medium text-[var(--text-primary)]">
+                        {family.name}
+                      </h2>
+                      <p className="mt-0.5 text-sm text-[var(--text-muted)]">View tree</p>
+                    </div>
+                  </div>
                 </Link>
               </li>
             ))}

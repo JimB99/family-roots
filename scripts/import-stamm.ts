@@ -10,7 +10,7 @@ import { commitViaClientAuth } from './import-via-client.ts'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const defaultXls = 'C:/Users/Jim/Downloads/STAMM.xls'
 
-function loadGrid(xlsPath: string): string[][] {
+function loadGrid(xlsPath: string): Array<Array<string | number>> {
   const workbook = XLSX.readFile(xlsPath, { cellDates: false })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, {
@@ -18,7 +18,9 @@ function loadGrid(xlsPath: string): string[][] {
     defval: '',
     raw: true,
   })
-  return rows.map((row) => row.map((cell) => String(cell ?? '').trim()))
+  return rows.map((row) =>
+    row.map((cell) => (typeof cell === 'string' ? cell.replace(/\s+$/, '') : cell ?? '')),
+  )
 }
 
 function initAdmin() {
@@ -104,6 +106,8 @@ async function main() {
       lowConfidence: relationships.filter((r) => r.confidence === 'low').length,
     },
     warnings: report.warnings,
+    controlTotals: report.controlTotals,
+    expectedPeople: report.expectedPeople,
     people: report.people,
     relationships: report.relationships,
   }
@@ -112,6 +116,21 @@ async function main() {
   writeFileSync(reportPath, JSON.stringify(output, null, 2), 'utf8')
   console.log(`Wrote ${reportPath}`)
   console.log(`People: ${people.length}, relationships: ${relationships.length}`)
+  console.log(
+    `Generation totals: ${report.controlTotals.join(' / ')}; expected total: ${report.expectedPeople ?? 'not provided'}`,
+  )
+
+  if (report.expectedPeople !== null && people.length !== report.expectedPeople) {
+    throw new Error(
+      `Workbook control total is ${report.expectedPeople}, but parser found ${people.length}.`,
+    )
+  }
+  if (
+    report.controlTotals.length > 0 &&
+    report.controlTotals.reduce((sum, count) => sum + count, 0) !== people.length
+  ) {
+    throw new Error('Workbook generation totals do not add up to the parsed people count.')
+  }
 
   if (!commit) {
     console.log('Dry run only. Re-run with --commit --slug=your-slug [--name=Display Name].')

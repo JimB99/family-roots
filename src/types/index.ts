@@ -17,6 +17,7 @@ export interface Family {
   slug: string
   editorUids: string[]
   pendingInviteEmails: string[]
+  ownerUid?: string
   createdAt?: string
   updatedAt?: string
 }

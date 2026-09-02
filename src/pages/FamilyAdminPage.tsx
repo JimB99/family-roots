@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { AdminInvites } from '../components/AdminInvites'
 import { PersonForm } from '../components/PersonForm'
 import { Layout } from '../components/Layout'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import {
@@ -16,6 +18,9 @@ import {
 import { displayName, getConnectedComponents, getTreeStats } from '../lib/tree'
 import type { PersonInput, Relationship } from '../types'
 
+const selectClass =
+  'rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm text-[var(--text-primary)] transition focus:border-[var(--accent)] focus:outline-none'
+
 export function FamilyAdminPage() {
   const { slug = '' } = useParams()
   const { user, loading: authLoading } = useAuth()
@@ -28,6 +33,7 @@ export function FamilyAdminPage() {
   const [review, setReview] = useState<Relationship[]>([])
   const [reviewOpen, setReviewOpen] = useState(false)
   const [confirmingAll, setConfirmingAll] = useState(false)
+  const [relError, setRelError] = useState<string | null>(null)
   const [relForm, setRelForm] = useState({
     type: 'parent_child' as 'parent_child' | 'spouse',
     personAId: '',
@@ -49,7 +55,7 @@ export function FamilyAdminPage() {
   if (authLoading || loading) {
     return (
       <Layout>
-        <p className="p-8 text-center text-stone-500">Loading…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">Loading…</p>
       </Layout>
     )
   }
@@ -57,9 +63,9 @@ export function FamilyAdminPage() {
   if (!user) {
     return (
       <Layout>
-        <div className="max-w-md mx-auto p-8 text-center">
+        <div className="mx-auto max-w-md p-10 text-center">
           <p>Sign in to manage this family tree.</p>
-          <Link to="/login" className="text-amber-800 hover:underline">
+          <Link to="/login" className="mt-3 inline-block text-[var(--accent-strong)] hover:underline">
             Sign in
           </Link>
         </div>
@@ -70,9 +76,9 @@ export function FamilyAdminPage() {
   if (!family) {
     return (
       <Layout>
-        <div className="max-w-xl mx-auto p-8 text-center">
+        <div className="mx-auto max-w-xl p-10 text-center">
           <h1 className="text-2xl font-semibold">Family tree not found</h1>
-          <Link to="/admin" className="text-amber-800 hover:underline mt-4 inline-block">
+          <Link to="/admin" className="mt-4 inline-block text-[var(--accent-strong)] hover:underline">
             Back to manage
           </Link>
         </div>
@@ -83,9 +89,9 @@ export function FamilyAdminPage() {
   if (!isEditor) {
     return (
       <Layout familyName={family.name} slug={slug}>
-        <div className="max-w-xl mx-auto p-8 text-center">
+        <div className="mx-auto max-w-xl p-10 text-center">
           <p>You are signed in but not an editor for this family tree.</p>
-          <p className="mt-2 text-sm text-stone-600">
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
             Ask the owner to invite <strong>{user.email}</strong>.
           </p>
         </div>
@@ -102,109 +108,121 @@ export function FamilyAdminPage() {
   const addRelationship = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!relForm.personAId || !relForm.personBId) return
-    await saveRelationship(null, {
-      familyId: family.id,
-      type: relForm.type,
-      personAId: relForm.personAId,
-      personBId: relForm.personBId,
-      marriage: null,
-      marriagePlace: null,
-      endDate: null,
-      endReason: null,
-      confidence: 'manual',
-      importMeta: null,
-    })
-    setRelForm({ type: relForm.type, personAId: '', personBId: '' })
-    await reload()
+    setRelError(null)
+    try {
+      await saveRelationship(null, {
+        familyId: family.id,
+        type: relForm.type,
+        personAId: relForm.personAId,
+        personBId: relForm.personBId,
+        marriage: null,
+        marriagePlace: null,
+        endDate: null,
+        endReason: null,
+        confidence: 'manual',
+        importMeta: null,
+      })
+      setRelForm({ type: relForm.type, personAId: '', personBId: '' })
+      await reload()
+    } catch (err) {
+      setRelError(err instanceof Error ? err.message : 'Could not add relationship')
+    }
   }
+
+  const stats = [
+    { label: 'People', value: `${people.length}` },
+    { label: 'Connections', value: `${relationships.length}` },
+    { label: 'Connected groups', value: `${components.length}` },
+    { label: 'Largest group', value: `${largestBranch} people` },
+    { label: 'Outside main group', value: `${treeStats.orphanCount} people` },
+    { label: 'Uncertain links', value: `${review.length}` },
+  ]
 
   return (
     <Layout familyName={family.name} slug={slug} isEditor adminHref={`/families/${slug}/admin`}>
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">{family.name}</h1>
-            <p className="text-stone-600 mt-1">
-              {people.length} people · {relationships.length} relationships
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">{family.name}</h1>
+            <p className="mt-1 text-[var(--text-secondary)]">Manage people, links and access.</p>
           </div>
-          <Link to="/admin" className="text-sm text-stone-600 hover:underline">
-            All family trees
+          <Link to="/admin">
+            <Button variant="ghost" size="sm">
+              All family trees
+            </Button>
           </Link>
         </div>
 
-        <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <h2 className="font-medium">Data health</h2>
-          <dl className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-stone-500">Connected branches</dt>
-              <dd className="font-medium">{components.length}</dd>
-            </div>
-            <div>
-              <dt className="text-stone-500">Largest branch</dt>
-              <dd className="font-medium">{largestBranch} people</dd>
-            </div>
-            <div>
-              <dt className="text-stone-500">Outside main branch</dt>
-              <dd className="font-medium">{treeStats.orphanCount} people</dd>
-            </div>
-            <div>
-              <dt className="text-stone-500">Uncertain links</dt>
-              <dd className="font-medium">{review.length}</dd>
-            </div>
+        <Card
+          title="Overview"
+          actions={
+            <Link to={`/families/${slug}/health`}>
+              <Button variant="secondary" size="sm">
+                View data health
+              </Button>
+            </Link>
+          }
+        >
+          <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+            {stats.map((stat) => (
+              <div key={stat.label}>
+                <dt className="text-[var(--text-muted)]">{stat.label}</dt>
+                <dd className="mt-0.5 text-lg font-medium text-[var(--text-primary)]">
+                  {stat.value}
+                </dd>
+              </div>
+            ))}
           </dl>
-          <Link
-            to={`/families/${slug}?branches=1`}
-            className="inline-block mt-4 text-sm text-amber-800 hover:underline"
-          >
-            View branches on tree
-          </Link>
-        </section>
+        </Card>
 
         <AdminInvites family={family} onUpdated={() => void reload()} />
 
-        <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="font-medium">People</h2>
-            <button
-              type="button"
+        <Card
+          title="People"
+          description="Add someone new to this family."
+          actions={
+            <Button
+              variant={showPersonForm ? 'secondary' : 'primary'}
+              size="sm"
               onClick={() => setShowPersonForm((v) => !v)}
-              className="rounded-lg bg-amber-800 text-white px-3 py-1.5 text-sm"
             >
               {showPersonForm ? 'Close form' : 'Add person'}
-            </button>
-          </div>
+            </Button>
+          }
+        >
           {showPersonForm && (
-            <div className="mt-4">
-              <PersonForm
-                familyId={family.id}
-                onSubmit={addPerson}
-                onCancel={() => setShowPersonForm(false)}
-              />
-            </div>
+            <PersonForm
+              familyId={family.id}
+              onSubmit={addPerson}
+              onCancel={() => setShowPersonForm(false)}
+            />
           )}
-        </section>
+        </Card>
 
-        <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <h2 className="font-medium">Add relationship</h2>
-          <form onSubmit={(e) => void addRelationship(e)} className="mt-4 grid sm:grid-cols-3 gap-3">
+        <Card
+          title="Add a connection"
+          description="For most edits it is quicker to drag one person onto another in the tree."
+        >
+          <form onSubmit={(e) => void addRelationship(e)} className="grid gap-3 sm:grid-cols-3">
             <select
               value={relForm.type}
               onChange={(e) =>
                 setRelForm((f) => ({ ...f, type: e.target.value as 'parent_child' | 'spouse' }))
               }
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+              aria-label="Connection type"
+              className={selectClass}
             >
               <option value="parent_child">Parent → child</option>
-              <option value="spouse">Spouse</option>
+              <option value="spouse">Marriage</option>
             </select>
             <select
               required
               value={relForm.personAId}
               onChange={(e) => setRelForm((f) => ({ ...f, personAId: e.target.value }))}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+              aria-label="First person"
+              className={selectClass}
             >
-              <option value="">Person A</option>
+              <option value="">{relForm.type === 'spouse' ? 'Partner' : 'Parent'}…</option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {displayName(p)}
@@ -215,32 +233,39 @@ export function FamilyAdminPage() {
               required
               value={relForm.personBId}
               onChange={(e) => setRelForm((f) => ({ ...f, personBId: e.target.value }))}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+              aria-label="Second person"
+              className={selectClass}
             >
-              <option value="">Person B</option>
+              <option value="">{relForm.type === 'spouse' ? 'Partner' : 'Child'}…</option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {displayName(p)}
                 </option>
               ))}
             </select>
-            <button type="submit" className="sm:col-span-3 rounded-lg border border-stone-300 px-4 py-2 text-sm w-fit">
-              Add relationship
-            </button>
-          </form>
-        </section>
-
-        <section className="bg-white border border-stone-200 rounded-xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-medium">Data cleanup</h2>
-              <p className="text-sm text-stone-600 mt-1">
-                Optional review for imported links. Accept all to clear the queue.
+            {relError && (
+              <p
+                className="text-sm text-[var(--color-bloom-600)] sm:col-span-3 dark:text-[var(--color-bloom-400)]"
+                role="alert"
+              >
+                {relError}
               </p>
+            )}
+            <div className="sm:col-span-3">
+              <Button type="submit" variant="secondary" size="sm">
+                Add connection
+              </Button>
             </div>
-            {review.length > 0 && (
-              <button
-                type="button"
+          </form>
+        </Card>
+
+        <Card
+          title="Imported links to review"
+          description="Links that came from an import and have not been confirmed yet."
+          actions={
+            review.length > 0 ? (
+              <Button
+                size="sm"
                 disabled={confirmingAll}
                 onClick={() => {
                   setConfirmingAll(true)
@@ -250,55 +275,60 @@ export function FamilyAdminPage() {
                     .then(setReview)
                     .finally(() => setConfirmingAll(false))
                 }}
-                className="rounded-lg bg-amber-800 text-white px-3 py-1.5 text-sm disabled:opacity-50"
               >
-                {confirmingAll ? 'Accepting…' : `Accept all ${review.length} links`}
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setReviewOpen((v) => !v)}
-            className="mt-3 text-sm text-amber-800 hover:underline"
-          >
-            {reviewOpen ? 'Hide' : 'Show'} uncertain relationships ({review.length})
-          </button>
-
-          {reviewOpen && (
-            <ul className="mt-4 space-y-3">
-              {review.map((rel) => {
-                const a = people.find((p) => p.id === rel.personAId)
-                const b = people.find((p) => p.id === rel.personBId)
-                return (
-                  <li key={rel.id} className="border border-stone-200 rounded-lg p-3 text-sm">
-                    <p>
-                      <strong>{rel.type}</strong>: {a ? displayName(a) : rel.personAId} ↔{' '}
-                      {b ? displayName(b) : rel.personBId}
-                    </p>
-                    <div className="mt-2 flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void confirmRelationship(rel.id).then(reload)}
-                        className="text-amber-800 hover:underline"
+                {confirmingAll ? 'Accepting…' : `Accept all ${review.length}`}
+              </Button>
+            ) : null
+          }
+        >
+          {review.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)]">Nothing to review.</p>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setReviewOpen((v) => !v)}>
+                {reviewOpen ? 'Hide' : 'Show'} {review.length} link{review.length === 1 ? '' : 's'}
+              </Button>
+              {reviewOpen && (
+                <ul className="mt-3 space-y-2">
+                  {review.map((rel) => {
+                    const a = people.find((p) => p.id === rel.personAId)
+                    const b = people.find((p) => p.id === rel.personBId)
+                    return (
+                      <li
+                        key={rel.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] p-3 text-sm"
                       >
-                        Confirm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void deleteRelationship(rel.id).then(reload)}
-                        className="text-red-700 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-              {review.length === 0 && <li className="text-stone-500">Nothing to review.</li>}
-            </ul>
+                        <span>
+                          <strong className="font-medium">
+                            {rel.type === 'spouse' ? 'Marriage' : 'Parent → child'}
+                          </strong>
+                          {': '}
+                          {a ? displayName(a) : rel.personAId} ↔ {b ? displayName(b) : rel.personBId}
+                        </span>
+                        <span className="flex gap-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => void confirmRelationship(rel.id).then(reload)}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void deleteRelationship(rel.id).then(reload)}
+                          >
+                            Delete
+                          </Button>
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
           )}
-        </section>
+        </Card>
       </div>
     </Layout>
   )

@@ -12,20 +12,21 @@ export function PasswordInput({ value, onChange, minLength, required, id }: Pass
   const [visible, setVisible] = useState(false)
 
   return (
-    <div className="relative mt-1">
+    <div className="relative">
       <input
         id={id}
         type={visible ? 'text' : 'password'}
         required={required}
         minLength={minLength}
+        autoComplete="current-password"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-stone-300 px-3 py-2 pr-10"
+        className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 pr-10 text-sm text-[var(--text-primary)] transition focus:border-[var(--accent)] focus:outline-none"
       />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute inset-y-0 right-0 flex items-center px-3 text-stone-500 hover:text-stone-800"
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
         aria-label={visible ? 'Hide password' : 'Show password'}
       >
         {visible ? <EyeOffIcon /> : <EyeIcon />}

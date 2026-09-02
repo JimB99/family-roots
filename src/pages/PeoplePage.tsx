@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { PeopleToolbar } from '../components/PeopleToolbar'
 import { PersonTile } from '../components/PersonTile'
+import { EmptyState } from '../components/ui/EmptyState'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import {
@@ -14,8 +15,14 @@ import {
   type PeopleSortKey,
 } from '../lib/tree'
 
-const COLUMNS = 3
-const ROW_HEIGHT = 108
+const ROW_HEIGHT = 120
+
+function getColumnCount() {
+  if (typeof window === 'undefined') return 1
+  if (window.matchMedia('(min-width: 1024px)').matches) return 3
+  if (window.matchMedia('(min-width: 640px)').matches) return 2
+  return 1
+}
 
 export function PeoplePage() {
   const { slug = '' } = useParams()
@@ -83,7 +90,16 @@ export function PeoplePage() {
   }, [people, branchFilter, components, generation, generations, query, sortKey])
 
   const parentRef = useRef<HTMLDivElement>(null)
-  const rowCount = Math.ceil(filtered.length / COLUMNS) || 1
+  const [columns, setColumns] = useState(1)
+
+  useEffect(() => {
+    const update = () => setColumns(getColumnCount())
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  const rowCount = Math.ceil(filtered.length / columns) || 1
 
   const virtualizer = useVirtualizer({
     count: rowCount,
@@ -95,7 +111,7 @@ export function PeoplePage() {
   if (loading) {
     return (
       <Layout>
-        <p className="p-8 text-center text-stone-500">Loading people…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">Loading people…</p>
       </Layout>
     )
   }
@@ -103,7 +119,7 @@ export function PeoplePage() {
   if (!family) {
     return (
       <Layout>
-        <div className="max-w-xl mx-auto p-8 text-center">
+        <div className="mx-auto max-w-xl p-10 text-center">
           <h1 className="text-2xl font-semibold">Family not found</h1>
         </div>
       </Layout>
@@ -112,7 +128,7 @@ export function PeoplePage() {
 
   return (
     <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
-      <div className="flex flex-col h-[calc(100svh-3.5rem)] min-h-0">
+      <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
         <PeopleToolbar
           query={query}
           onQueryChange={setQuery}
@@ -129,22 +145,25 @@ export function PeoplePage() {
           generationOptions={generationOptions}
         />
 
-        <div className="px-4 py-2 text-sm text-stone-600 bg-stone-50 border-b border-stone-200">
+        <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-2 text-sm text-[var(--text-secondary)]">
           {filtered.length} of {people.length} people
         </div>
 
-        <div ref={parentRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
+        <div ref={parentRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {filtered.length === 0 ? (
-            <p className="text-center text-stone-500 py-12">No people match your filters.</p>
+            <EmptyState
+              title="No people match your filters"
+              description="Try clearing the search or switching back to all groups."
+            />
           ) : (
             <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
               {virtualizer.getVirtualItems().map((virtualRow) => {
-                const start = virtualRow.index * COLUMNS
-                const rowPeople = filtered.slice(start, start + COLUMNS)
+                const start = virtualRow.index * columns
+                const rowPeople = filtered.slice(start, start + columns)
                 return (
                   <div
                     key={virtualRow.key}
-                    className="absolute left-0 right-0 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                    className="absolute left-0 right-0 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                     style={{
                       top: virtualRow.start,
                       height: virtualRow.size,

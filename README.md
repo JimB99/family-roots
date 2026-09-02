@@ -54,7 +54,22 @@ There is no GitHub Actions auto-deploy; pushes to `main` do not update the live 
 2. Add their email under **Invite contributor**
 3. They sign up with that same email and automatically get edit access
 
-## Developer: spreadsheet import (CLI only)
+## Testing
+
+```bash
+npm run check          # lint + typecheck + unit + rules tests
+npm run test:unit
+npm run test:e2e
+```
+
+## Architecture
+
+- Domain graph and validation live in `src/domain/`.
+- Firestore repositories live in `src/data/firestore/`.
+- The complete-family tree renderer lives in `src/features/tree/`.
+- Public read access is intentional; rules enforce editor-only writes and field invariants.
+
+See `docs/architecture/` for domain and layout notes.
 
 One-time data migration from a visual Excel pedigree chart:
 

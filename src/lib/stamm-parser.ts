@@ -8,8 +8,9 @@ export interface ParsedPerson {
   col: number
   givenNames: string
   familyName: string | null
+  gender: 'male' | 'female' | 'unknown'
   birth: PartialDate | null
-  marriageYear: number | null
+  death: PartialDate | null
   importKey: string
 }
 
@@ -28,9 +29,12 @@ export interface ParseReport {
   people: ParsedPerson[]
   relationships: ParsedRelationship[]
   warnings: string[]
+  controlTotals: number[]
+  expectedPeople: number | null
 }
 
-type Grid = string[][]
+type Cell = string | number
+type Grid = Cell[][]
 
 function isConnectorOnly(value: string): boolean {
   return !value || CONNECTOR_ONLY.test(value)
@@ -42,8 +46,7 @@ function hasName(value: string): boolean {
 
 function cleanName(value: string): string {
   return value
-    .replace(/\s*\+\s*\d{0,4}\s*$/g, '')
-    .replace(/\s*\+\s*$/g, '')
+    .replace(/\s*\+\s*(?:\d{2,4})?\s*$/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -58,9 +61,12 @@ function splitName(value: string): { givenNames: string; familyName: string | nu
   }
 }
 
-function marriageYearFromCell(value: string): number | null {
-  const match = value.match(/\+\s*(\d{4})/)
-  return match ? Number(match[1]) : null
+function deathFromName(value: string): PartialDate | null {
+  const match = value.match(/\+\s*(\d{2,4})/)
+  if (!match) return null
+  const raw = match[1]
+  const year = raw.length === 2 ? 1900 + Number(raw) : Number(raw)
+  return { year, precision: 'year' }
 }
 
 function makeKey(row: number, col: number, givenNames: string, familyName: string | null): string {
@@ -72,215 +78,405 @@ function makeKey(row: number, col: number, givenNames: string, familyName: strin
   return `${Math.abs(hash).toString(16)}${raw.length.toString(16)}`
 }
 
-function findDateNear(grid: Grid, row: number, col: number): PartialDate | null {
-  const candidates = [
-    grid[row]?.[col + 1],
-    grid[row + 1]?.[col],
-    grid[row]?.[col + 2],
-    grid[row + 1]?.[col + 1],
-  ]
-  for (const value of candidates) {
-    const parsed = parseDateCell(value)
-    if (parsed) return parsed
+function birthAt(grid: Grid, row: number, col: number): PartialDate | null {
+  return parseDateCell(grid[row]?.[col + 1])
+}
+
+const PERSON_COLS = [0, 3, 6, 9, 12]
+
+function isTotalsRow(row: Cell[]): boolean {
+  return PERSON_COLS.every((col) => typeof row[col] === 'number') && typeof row[14] === 'number'
+}
+
+function normalizeUnknown(value: string): {
+  givenNames: string
+  familyName: string | null
+  gender: ParsedPerson['gender']
+} | null {
+  const compact = value.replace(/\s/g, '')
+  if (/^_+$/.test(compact)) {
+    return { givenNames: 'Unknown person', familyName: null, gender: 'unknown' }
+  }
+  if (/^\?+\s*niño$/i.test(value.trim())) {
+    return { givenNames: 'Unknown son', familyName: null, gender: 'male' }
+  }
+  if (/^\?+\s*niña$/i.test(value.trim())) {
+    return { givenNames: 'Unknown daughter', familyName: null, gender: 'female' }
+  }
+  if (/^\?+$/.test(value.trim())) {
+    return { givenNames: 'Unknown person', familyName: null, gender: 'unknown' }
   }
   return null
 }
 
+function cellText(value: Cell | undefined): string {
+  return String(value ?? '').trim()
+}
+
 function extractPeople(grid: Grid): ParsedPerson[] {
   const people: ParsedPerson[] = []
-  const rows = grid.length
-  const cols = grid[0]?.length ?? 0
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const value = grid[row][col]
-      if (!hasName(value)) continue
+  for (let row = 0; row < grid.length; row++) {
+    if (isTotalsRow(grid[row])) continue
+    for (const col of PERSON_COLS) {
+      const raw = cellText(grid[row]?.[col])
+      if (!raw) continue
+      const unknown = normalizeUnknown(raw)
+      if (!unknown && !hasName(raw)) continue
+      if (
+        unknown?.givenNames === 'Unknown person' &&
+        !peopleCellHasRelationshipContext(grid, row, col)
+      ) {
+        continue
+      }
+      const rawCell = String(grid[row]?.[col] ?? '')
+      const isIndentedCurrent = /^\s{1,}/.test(rawCell)
+      const previousRaw = cellText(grid[row - 1]?.[col])
+      const isContinuationOfPrevious =
+        isIndentedCurrent &&
+        previousRaw.length > 0 &&
+        !normalizeUnknown(previousRaw) &&
+        hasName(previousRaw)
+      if (isContinuationOfPrevious) continue
 
-      let givenNames = cleanName(value)
-      let familyName: string | null = null
-      const marriageYear = marriageYearFromCell(value)
-
-      const below = grid[row + 1]?.[col] ?? ''
-      if (below && hasName(below) && /^\s{1,}/.test(String(grid[row + 1][col]))) {
-        familyName = cleanName(below)
-      } else {
-        const split = splitName(givenNames)
-        givenNames = split.givenNames
-        familyName = split.familyName
+      let parsedName = unknown ?? { ...splitName(cleanName(raw)), gender: 'unknown' as const }
+      const nextRaw = cellText(grid[row + 1]?.[col])
+      const isIndentedContinuation =
+        !unknown &&
+        !isIndentedCurrent &&
+        /^\s{1,}/.test(String(grid[row + 1]?.[col] ?? '')) &&
+        nextRaw.length > 0 &&
+        !normalizeUnknown(nextRaw)
+      if (isIndentedContinuation) {
+        parsedName = {
+          givenNames: cleanName(raw),
+          familyName: cleanName(nextRaw),
+          gender: 'unknown',
+        }
       }
 
-      if (!givenNames) continue
+      if (!parsedName.givenNames) continue
 
       people.push({
         row,
         col,
-        givenNames,
-        familyName,
-        birth: findDateNear(grid, row, col),
-        marriageYear,
-        importKey: makeKey(row, col, givenNames, familyName),
+        ...parsedName,
+        birth: birthAt(grid, row, col),
+        death: deathFromName(raw),
+        importKey: makeKey(row, col, parsedName.givenNames, parsedName.familyName),
       })
     }
   }
 
-  return dedupePeople(people)
+  return people.filter(
+    (person) =>
+      !people.some(
+        (other) =>
+          other.row === person.row - 1 &&
+          other.col === person.col &&
+          other.familyName === cleanName(cellText(grid[person.row]?.[person.col])) &&
+          /^\s{1,}/.test(String(grid[person.row]?.[person.col] ?? '')),
+      ),
+  )
 }
 
-function dedupePeople(people: ParsedPerson[]): ParsedPerson[] {
-  const byKey = new Map<string, ParsedPerson>()
+function peopleCellHasRelationshipContext(grid: Grid, row: number, col: number): boolean {
+  const left = cellText(grid[row]?.[col - 1])
+  if (/[─┬┼├└┌]/.test(left)) return true
+  const previousName = cellText(grid[row - 1]?.[col])
+  const previousLeft = cellText(grid[row - 1]?.[col - 1])
+  if (previousName.length > 0 && !/[├└┌]/.test(previousLeft)) return true
+
+  const hasChildrenBelow = grid.slice(row + 1).some((candidateRow) => {
+    const connector = cellText(candidateRow?.[col - 1])
+    if (/[└]/.test(connector)) return true
+    if (/[├┌│]/.test(connector)) return false
+    return false
+  })
+  return hasChildrenBelow
+}
+
+export function buildVerifiedRelationships(
+  people: ParsedPerson[],
+  groups: ReadonlyArray<readonly [number, readonly number[]]>,
+  explicitSpousePairs: ReadonlyArray<readonly [number, number]> = [],
+): ParsedRelationship[] {
+  const relationships: ParsedRelationship[] = []
+  const seen = new Set<string>()
+  const peopleByRow = new Map<number, ParsedPerson[]>()
   for (const person of people) {
-    const nameKey = `${person.givenNames.toLowerCase()}|${person.familyName?.toLowerCase() ?? ''}|${person.birth?.year ?? ''}`
-    const existing = byKey.get(nameKey)
-    if (!existing) {
-      byKey.set(nameKey, person)
-      continue
-    }
-    if (!existing.birth && person.birth) byKey.set(nameKey, person)
-  }
-  return [...byKey.values()]
-}
-
-function keyForPerson(person: ParsedPerson): string {
-  return person.importKey
-}
-
-function findPersonAt(people: ParsedPerson[], row: number, col: number): ParsedPerson | null {
-  return (
-    people.find((p) => p.row === row && p.col === col) ??
-    people.find((p) => p.row === row && Math.abs(p.col - col) <= 1) ??
-    null
-  )
-}
-
-function findNearestPersonRight(people: ParsedPerson[], row: number, fromCol: number): ParsedPerson | null {
-  return (
-    people
-      .filter((p) => p.row === row && p.col > fromCol)
-      .sort((a, b) => a.col - b.col)[0] ?? null
-  )
-}
-
-function findNearestPersonLeft(people: ParsedPerson[], row: number, fromCol: number): ParsedPerson | null {
-  return (
-    people
-      .filter((p) => p.row === row && p.col < fromCol)
-      .sort((a, b) => b.col - a.col)[0] ?? null
-  )
-}
-
-function extractSpousePairs(grid: Grid, people: ParsedPerson[]): ParsedRelationship[] {
-  const relationships: ParsedRelationship[] = []
-  const seen = new Set<string>()
-
-  for (let row = 0; row < grid.length; row++) {
-    for (let col = 0; col < (grid[row]?.length ?? 0); col++) {
-      const cell = grid[row][col]
-      if (!cell.includes('───') && cell !== '───' && !cell.includes('─┬──')) continue
-
-      const left = findNearestPersonLeft(people, row, col)
-      const right = findNearestPersonRight(people, row, col)
-      if (!left || !right || left.importKey === right.importKey) continue
-
-      const pairKey = [left.importKey, right.importKey].sort().join('|')
-      if (seen.has(pairKey)) continue
-      seen.add(pairKey)
-
-      const marriageYear = left.marriageYear ?? right.marriageYear
-      relationships.push({
-        type: 'spouse',
-        personAKey: keyForPerson(left),
-        personBKey: keyForPerson(right),
-        marriage: marriageYear ? { year: marriageYear, precision: 'year' } : null,
-        confidence: 'manual',
-        row,
-        col,
-        note: 'spouse pair from chart row',
-      })
-    }
+    const row = person.row + 1
+    const list = peopleByRow.get(row) ?? []
+    list.push(person)
+    peopleByRow.set(row, list)
   }
 
-  return relationships
-}
+  for (const [parentRow, childRows] of groups) {
+    const parentCandidates = peopleByRow.get(parentRow) ?? []
+    const parent = parentCandidates.sort((a, b) => a.col - b.col)[0]
+    if (!parent) continue
 
-function extractParentChild(grid: Grid, people: ParsedPerson[]): ParsedRelationship[] {
-  const relationships: ParsedRelationship[] = []
-  const seen = new Set<string>()
-  let activeParents: ParsedPerson[] = []
-
-  for (let row = 0; row < grid.length; row++) {
-    const spouseRow = relationships.filter((r) => r.type === 'spouse' && r.row === row)
-    if (spouseRow.length > 0) {
-      activeParents = spouseRow.flatMap((rel) =>
-        people.filter((p) => p.importKey === rel.personAKey || p.importKey === rel.personBKey),
+    const explicitSpouseRow = explicitSpousePairs.find(([firstRow]) => firstRow === parentRow)?.[1]
+    const spouse = explicitSpouseRow
+      ? (peopleByRow.get(explicitSpouseRow) ?? []).find(
+          (candidate) => candidate.col === parent.col,
+        )
+      : people
+      .filter(
+        (candidate) =>
+          candidate.col === parent.col &&
+          candidate.row > parent.row &&
+          candidate.row <= parent.row + 2,
       )
-    }
+      .sort((a, b) => a.row - b.row)[0]
+    const parents = spouse ? [parent, spouse] : [parent]
 
-    for (let col = 0; col < (grid[row]?.length ?? 0); col++) {
-      const cell = grid[row][col]
-      if (!/[├└]/.test(cell) && cell !== '├─' && cell !== '└─' && !cell.includes('├─') && !cell.includes('└─')) {
-        continue
-      }
-
-      const child = findNearestPersonRight(people, row, col)
-      if (!child) continue
-
-      const parents =
-        activeParents.length > 0
-          ? activeParents
-          : people.filter((p) => p.row < row && p.col <= col).sort((a, b) => b.row - a.row).slice(0, 2)
-
-      for (const parent of parents) {
-        if (parent.importKey === child.importKey) continue
-        const key = `${parent.importKey}|${child.importKey}`
-        if (seen.has(key)) continue
-        seen.add(key)
-
-        relationships.push({
-          type: 'parent_child',
-          personAKey: parent.importKey,
-          personBKey: child.importKey,
-          marriage: null,
-          confidence: activeParents.length > 0 ? 'manual' : 'low',
-          row,
-          col,
-          note: activeParents.length > 0 ? 'child branch under active couple' : 'inferred ancestor link',
-        })
-      }
-    }
-
-    const branchCol = grid[row].findIndex((c) => /[├└]/.test(c))
-    const inlineChild = branchCol >= 0 ? findPersonAt(people, row, branchCol + 1) : null
-    if (inlineChild && activeParents.length > 0) {
-      for (const parent of activeParents) {
-        const key = `${parent.importKey}|${inlineChild.importKey}`
-        if (seen.has(key)) continue
+    if (spouse) {
+      const key = ['spouse', parent.importKey, spouse.importKey].sort().join('|')
+      if (!seen.has(key)) {
         seen.add(key)
         relationships.push({
-          type: 'parent_child',
+          type: 'spouse',
           personAKey: parent.importKey,
-          personBKey: inlineChild.importKey,
+          personBKey: spouse.importKey,
           marriage: null,
           confidence: 'manual',
-          row,
-          note: 'inline child under couple',
+          row: parent.row,
+          col: parent.col,
+          note: 'screenshot-verified spouse pair',
+        })
+      }
+    }
+
+    for (const childRow of childRows) {
+      const child = (peopleByRow.get(childRow) ?? [])
+        .filter((candidate) => candidate.col === parent.col + 3)
+        .sort((a, b) => a.col - b.col)[0]
+      if (!child) continue
+      for (const parentPerson of parents) {
+        const key = `parent|${parentPerson.importKey}|${child.importKey}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        relationships.push({
+          type: 'parent_child',
+          personAKey: parentPerson.importKey,
+          personBKey: child.importKey,
+          marriage: null,
+          confidence: 'manual',
+          row: child.row,
+          col: child.col,
+          note: 'screenshot-verified parent-child link',
         })
       }
     }
   }
 
   return relationships
+}
+
+function extractConnectorRelationships(
+  grid: Grid,
+  people: ParsedPerson[],
+): ParsedRelationship[] {
+  const relationships: ParsedRelationship[] = []
+  const seen = new Set<string>()
+  const personAt = new Map(people.map((person) => [`${person.row}:${person.col}`, person]))
+
+  const addRelationship = (
+    type: ParsedRelationship['type'],
+    first: ParsedPerson,
+    second: ParsedPerson,
+    row: number,
+    note: string,
+  ) => {
+    const ordered =
+      type === 'spouse'
+        ? [first.importKey, second.importKey].sort()
+        : [first.importKey, second.importKey]
+    const key = `${type}|${ordered.join('|')}`
+    if (seen.has(key)) return
+    seen.add(key)
+    relationships.push({
+      type,
+      personAKey: first.importKey,
+      personBKey: second.importKey,
+      marriage: null,
+      confidence: 'manual',
+      row,
+      col: first.col,
+      note,
+    })
+  }
+
+  for (const person of people) {
+    const nextSameColumn = people
+      .filter(
+        (candidate) =>
+          candidate.col === person.col &&
+          candidate.row > person.row &&
+          candidate.row <= person.row + 2,
+      )
+      .sort((a, b) => a.row - b.row)[0]
+    const leftOfNext = nextSameColumn
+      ? cellText(grid[nextSameColumn.row]?.[nextSameColumn.col - 1])
+      : ''
+    const currentHasIncomingBranch = /[├└┌]/.test(
+      cellText(grid[person.row]?.[person.col - 1]),
+    )
+    const nextHasIncomingBranch = /[├└┌]/.test(leftOfNext)
+    const nextContinuesFamilyLine = leftOfNext === '│'
+    const nextIsUnknownPlaceholder = nextSameColumn?.givenNames === 'Unknown person'
+    if (
+      nextSameColumn &&
+      !nextHasIncomingBranch &&
+      (currentHasIncomingBranch || nextContinuesFamilyLine || nextIsUnknownPlaceholder)
+    ) {
+      addRelationship('spouse', person, nextSameColumn, person.row, 'same-column spouse pair')
+    }
+  }
+
+  for (let childCol = 3; childCol <= 12; childCol += 3) {
+    const connectorCol = childCol - 1
+    const parentCol = childCol - 3
+
+    const parentsAtJunction = (row: number): ParsedPerson[] => {
+      const parent = personAt.get(`${row}:${parentCol}`)
+      if (!parent) return []
+      const spouse = relationships
+        .filter((relationship) => relationship.type === 'spouse')
+        .map((relationship) => {
+          if (relationship.personAKey === parent.importKey) {
+            return people.find((person) => person.importKey === relationship.personBKey)
+          }
+          if (relationship.personBKey === parent.importKey) {
+            return people.find((person) => person.importKey === relationship.personAKey)
+          }
+          return undefined
+        })
+        .find((candidate) => candidate?.col === parentCol)
+      return spouse ? [parent, spouse] : [parent]
+    }
+
+    const traceParents = (childRow: number): ParsedPerson[] => {
+      for (let row = childRow; row >= 0; row--) {
+        const connector = cellText(grid[row]?.[connectorCol])
+        if (row !== childRow && /[┌└]/.test(connector)) break
+        if (/[┤┬┼]/.test(connector)) {
+          const parents = parentsAtJunction(row)
+          if (parents.length) return parents
+        }
+        if (row !== childRow && !/[│├┌└┤┬┼─]/.test(connector)) break
+      }
+      for (let row = childRow + 1; row < grid.length; row++) {
+        const connector = cellText(grid[row]?.[connectorCol])
+        if (/[┤┬┼]/.test(connector)) {
+          const parents = parentsAtJunction(row)
+          if (parents.length) return parents
+        }
+        if (!/[│├┌└┤┬┼─]/.test(connector)) break
+        if (/└/.test(connector)) break
+      }
+      return []
+    }
+
+    for (let row = 0; row < grid.length; row++) {
+      const connector = cellText(grid[row]?.[connectorCol])
+      const child = personAt.get(`${row}:${childCol}`)
+
+      if (/[┌├└]/.test(connector) && child) {
+        const plausibleParents = traceParents(row).filter((parent) => {
+          if (!parent.birth?.year || !child.birth?.year) return true
+          const age = child.birth.year - parent.birth.year
+          if (age >= 12 && age <= 70) return true
+          return (
+            parent.birth.year >= 2000 &&
+            child.birth.year - (parent.birth.year - 100) >= 12 &&
+            child.birth.year - (parent.birth.year - 100) <= 70
+          )
+        })
+        for (const parent of plausibleParents) {
+          addRelationship(
+            'parent_child',
+            parent,
+            child,
+            row,
+            'adjacent-generation connector',
+          )
+        }
+      }
+    }
+  }
+
+  return relationships
+}
+
+function correctBirthCenturies(
+  people: ParsedPerson[],
+  relationships: ParsedRelationship[],
+  warnings: string[],
+): void {
+  const byKey = new Map(people.map((person) => [person.importKey, person]))
+
+  for (const relationship of relationships) {
+    if (relationship.type !== 'parent_child') continue
+    const parent = byKey.get(relationship.personAKey)
+    const child = byKey.get(relationship.personBKey)
+    const parentYear = parent?.birth?.year
+    const childYear = child?.birth?.year
+    if (!parent || !child || !parentYear || !childYear) continue
+
+    if (parentYear >= 2000 && childYear < 2000) {
+      const corrected = parentYear - 100
+      const age = childYear - corrected
+      if (age >= 12 && age <= 70) {
+        parent.birth = { ...parent.birth!, year: corrected }
+        warnings.push(
+          `Corrected ${parent.givenNames} ${parent.familyName ?? ''} birth year from ${parentYear} to ${corrected} using child generation.`,
+        )
+      }
+    }
+
+    const currentParentYear = parent.birth?.year
+    if (childYear >= 2000 && currentParentYear && currentParentYear < 1950) {
+      const corrected = childYear - 100
+      const age = corrected - currentParentYear
+      if (age >= 12 && age <= 70) {
+        child.birth = { ...child.birth!, year: corrected }
+        warnings.push(
+          `Corrected ${child.givenNames} ${child.familyName ?? ''} birth year from ${childYear} to ${corrected} using parent generation.`,
+        )
+      }
+    }
+  }
 }
 
 export function parseStammGrid(grid: Grid): ParseReport {
   const warnings: string[] = []
+  const totalsRow = grid.find(isTotalsRow)
+  const controlTotals = totalsRow ? PERSON_COLS.map((col) => Number(totalsRow[col])) : []
+  const expectedPeople = totalsRow ? Number(totalsRow[14]) : null
   const people = extractPeople(grid)
-  const spouse = extractSpousePairs(grid, people)
-  const parentChild = extractParentChild(grid, people)
+  const verified = extractConnectorRelationships(grid, people)
+  const spouse = verified.filter((relationship) => relationship.type === 'spouse')
+  const parentChild = verified.filter((relationship) => relationship.type === 'parent_child')
+  correctBirthCenturies(people, parentChild, warnings)
+  const spouseKeys = new Set(spouse.flatMap((rel) => [rel.personAKey, rel.personBKey]))
+  for (const person of people) {
+    if (person.givenNames === 'Unknown person' && spouseKeys.has(person.importKey)) {
+      person.givenNames = 'Unknown spouse'
+    }
+  }
 
   if (people.length === 0) warnings.push('No people detected in sheet.')
   if (spouse.length === 0) warnings.push('No spouse pairs detected.')
 
-  return { people, relationships: [...spouse, ...parentChild], warnings }
+  return {
+    people,
+    relationships: verified,
+    warnings,
+    controlTotals,
+    expectedPeople,
+  }
 }
 
 export function toPersonInputs(people: ParsedPerson[], familyId: string): Array<PersonInput & { importKey: string }> {
@@ -289,9 +485,9 @@ export function toPersonInputs(people: ParsedPerson[], familyId: string): Array<
     givenNames: p.givenNames,
     familyName: p.familyName,
     maidenName: null,
-    gender: 'unknown',
+    gender: p.gender,
     birth: p.birth,
-    death: null,
+    death: p.death,
     birthPlace: null,
     deathPlace: null,
     isLiving: null,

@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { partialDateToInput, parsePartialDateInput } from '../lib/dates'
+import { partialDateToInput, parsePartialDateInputResult } from '../lib/dates'
 import { compressImageToBase64 } from '../lib/photos'
+import { Button } from './ui/Button'
+import { Field, inputClass } from './ui/Field'
 import type { Gender, Person, PersonInput } from '../types'
 
 interface PersonFormProps {
@@ -55,10 +57,14 @@ export function PersonForm({ initial, familyId, onSubmit, onCancel }: PersonForm
     setSaving(true)
     setError(null)
     try {
+      const birthParsed = parsePartialDateInputResult(birthInput)
+      const deathParsed = parsePartialDateInputResult(deathInput)
+      if (birthParsed.error) throw new Error(birthParsed.error.message)
+      if (deathParsed.error) throw new Error(deathParsed.error.message)
       await onSubmit({
         ...form,
-        birth: parsePartialDateInput(birthInput),
-        death: parsePartialDateInput(deathInput),
+        birth: birthParsed.date,
+        death: deathParsed.date,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
@@ -68,39 +74,42 @@ export function PersonForm({ initial, familyId, onSubmit, onCancel }: PersonForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-left">
-      {error && <p className="text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
+    <form onSubmit={handleSubmit} className="space-y-5 text-left">
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-bloom-400/40 bg-bloom-400/10 p-3 text-sm text-[var(--color-bloom-600)] dark:text-[var(--color-bloom-400)]"
+        >
+          {error}
+        </p>
+      )}
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <label className="block text-sm">
-          <span className="text-stone-600">Given names</span>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Given names">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.givenNames}
             onChange={(e) => update('givenNames', e.target.value)}
             required
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Family name</span>
+        </Field>
+        <Field label="Family name">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.familyName ?? ''}
             onChange={(e) => update('familyName', e.target.value || null)}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Maiden name</span>
+        </Field>
+        <Field label="Maiden name">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.maidenName ?? ''}
             onChange={(e) => update('maidenName', e.target.value || null)}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Gender</span>
+        </Field>
+        <Field label="Gender">
           <select
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.gender}
             onChange={(e) => update('gender', e.target.value as Gender)}
           >
@@ -108,84 +117,80 @@ export function PersonForm({ initial, familyId, onSubmit, onCancel }: PersonForm
             <option value="female">Female</option>
             <option value="male">Male</option>
           </select>
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Birth (YYYY, YYYY-MM, or YYYY-MM-DD)</span>
+        </Field>
+        <Field label="Birth date" hint="Use 1956, 1956-07 or 1956-07-16">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={birthInput}
             onChange={(e) => setBirthInput(e.target.value)}
             placeholder="1956 or 1988-07-16"
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Death</span>
+        </Field>
+        <Field label="Death date" hint="Leave empty if still living">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={deathInput}
             onChange={(e) => setDeathInput(e.target.value)}
+            placeholder="2014 or 2014-03-02"
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Birth place</span>
+        </Field>
+        <Field label="Birth place">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.birthPlace ?? ''}
             onChange={(e) => update('birthPlace', e.target.value || null)}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="text-stone-600">Death place</span>
+        </Field>
+        <Field label="Death place">
           <input
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            className={inputClass}
             value={form.deathPlace ?? ''}
             onChange={(e) => update('deathPlace', e.target.value || null)}
           />
-        </label>
+        </Field>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-stone-700">
+      <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
         <input
           type="checkbox"
           checked={form.isLiving === true}
           onChange={(e) => update('isLiving', e.target.checked ? true : null)}
         />
-        Living person
+        This person is still living
       </label>
 
-      <label className="block text-sm">
-        <span className="text-stone-600">Photo</span>
+      <Field label="Photo">
         <input
           type="file"
           accept="image/*"
-          className="mt-1 block w-full text-sm"
+          className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--surface-sunken)] file:px-3 file:py-1.5 file:text-sm file:text-[var(--text-primary)]"
           onChange={(e) => void handlePhoto(e.target.files?.[0] ?? null)}
         />
         {form.photoBase64 && (
-          <img src={form.photoBase64} alt="Preview" className="mt-2 h-24 w-24 object-cover rounded-lg" />
+          <div className="mt-2.5 flex items-center gap-3">
+            <img src={form.photoBase64} alt="Preview" className="h-24 w-24 rounded-xl object-cover" />
+            <Button variant="ghost" size="sm" onClick={() => update('photoBase64', null)}>
+              Remove photo
+            </Button>
+          </div>
         )}
-      </label>
+      </Field>
 
-      <label className="block text-sm">
-        <span className="text-stone-600">Notes</span>
+      <Field label="Notes">
         <textarea
-          className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 min-h-28"
+          className={`${inputClass} min-h-28`}
           value={form.notes ?? ''}
           onChange={(e) => update('notes', e.target.value || null)}
         />
-      </label>
+      </Field>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-amber-800 text-white px-4 py-2 text-sm hover:bg-amber-900 disabled:opacity-60"
-        >
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save person'}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   )

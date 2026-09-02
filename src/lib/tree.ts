@@ -1,5 +1,3 @@
-import type { Datum } from 'family-chart'
-import { formatLifeSpan, formatPartialDate } from './dates'
 import type { Person, Relationship } from '../types'
 
 export function displayName(person: Person): string {
@@ -8,10 +6,10 @@ export function displayName(person: Person): string {
   return parts.join(' ')
 }
 
-export function personGender(person: Person): 'M' | 'F' {
+export function personGender(person: Person): 'M' | 'F' | 'U' {
   if (person.gender === 'female') return 'F'
   if (person.gender === 'male') return 'M'
-  return 'M'
+  return 'U'
 }
 
 function buildRelsMap(people: Person[], relationships: Relationship[]) {
@@ -35,27 +33,6 @@ function buildRelsMap(people: Person[], relationships: Relationship[]) {
   return relsByPerson
 }
 
-export function toFamilyChartData(people: Person[], relationships: Relationship[]): Datum[] {
-  const relsByPerson = buildRelsMap(people, relationships)
-  return people.map((person) => {
-    const rels = relsByPerson.get(person.id) ?? { parents: [], spouses: [], children: [] }
-    return {
-      id: person.id,
-      data: {
-        gender: personGender(person),
-        'first name': person.givenNames,
-        'last name': person.familyName ?? '',
-        maiden: person.maidenName ?? '',
-        birthday: formatPartialDate(person.birth, ''),
-        death: formatPartialDate(person.death, ''),
-        lifespan: formatLifeSpan(person.birth, person.death, person.isLiving),
-        avatar: person.photoBase64 ?? undefined,
-        private: person.isLiving === true,
-      },
-      rels,
-    }
-  })
-}
 
 export function personDegree(personId: string, relationships: Relationship[]): number {
   return relationships.filter((r) => r.personAId === personId || r.personBId === personId).length
@@ -291,11 +268,14 @@ export function pickDefaultProgenitor(people: Person[], relationships: Relations
 }
 
 export function datumToPersonInput(
-  datum: Datum,
+  datum: {
+    data: Record<string, unknown>
+  },
   familyId: string,
 ): Omit<Person, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> {
+  const genderRaw = datum.data.gender
   const gender =
-    datum.data.gender === 'F' ? 'female' : datum.data.gender === 'M' ? 'male' : 'unknown'
+    genderRaw === 'F' ? 'female' : genderRaw === 'M' ? 'male' : 'unknown'
   return {
     familyId,
     givenNames: String(datum.data['first name'] ?? ''),
