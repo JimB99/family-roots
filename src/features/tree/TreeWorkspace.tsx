@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildFamilyGraph } from '../../domain/family-graph'
+import {
+  descendantIds,
+  hiddenPersonIds,
+  isBranchCollapsed,
+  toggleCollapsedPerson,
+} from '../../domain/collapse-branches'
 import { getConnectionOptions, type ConnectionOption } from '../../domain/valid-connections'
 import type { Person, Relationship } from '../../types'
 import {
@@ -70,6 +76,7 @@ export function TreeWorkspace({
   const [dragTargetId, setDragTargetId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [menu, setMenu] = useState<ConnectMenuState | null>(null)
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
 
   const dragRef = useRef<DragState | null>(null)
   const fittedForRef = useRef<string | null>(null)
@@ -79,7 +86,18 @@ export function TreeWorkspace({
     [familyId, people, relationships],
   )
 
-  const layout = useMemo(() => computeTreeLayout(projectFamilyGraph(graph)), [graph])
+  const hiddenIds = useMemo(() => hiddenPersonIds(graph, collapsedIds), [graph, collapsedIds])
+
+  const layoutGraph = useMemo(() => {
+    if (hiddenIds.size === 0) return graph
+    const visiblePeople = people.filter((person) => !hiddenIds.has(person.id))
+    const visibleRelationships = relationships.filter(
+      (rel) => !hiddenIds.has(rel.personAId) && !hiddenIds.has(rel.personBId),
+    )
+    return buildFamilyGraph(familyId, visiblePeople, visibleRelationships)
+  }, [familyId, graph, hiddenIds, people, relationships])
+
+  const layout = useMemo(() => computeTreeLayout(projectFamilyGraph(layoutGraph)), [layoutGraph])
   const anchors = useMemo(() => buildAnchorMap(layout), [layout])
 
   const personNodes = useMemo(
@@ -113,6 +131,26 @@ export function TreeWorkspace({
 
   useEffect(() => {
     if (!focusPersonId) return
+    setCollapsedIds((previous) => {
+      const hidden = hiddenPersonIds(graph, previous)
+      if (!hidden.has(focusPersonId)) return previous
+      const next = new Set(previous)
+      for (const id of previous) {
+        if (descendantIds(graph, id).has(focusPersonId)) next.delete(id)
+      }
+      return next
+    })
+  }, [focusPersonId, graph])
+
+  const toggleFold = useCallback(
+    (personId: string) => {
+      setCollapsedIds((previous) => toggleCollapsedPerson(graph, previous, personId))
+    },
+    [graph],
+  )
+
+  useEffect(() => {
+    if (!focusPersonId) return
     const container = containerRef.current
     const anchor = anchorsRef.current.get(`person:${focusPersonId}`)
     if (!container || !anchor) return
@@ -122,7 +160,7 @@ export function TreeWorkspace({
       container.clientHeight,
       Math.max(viewportRef.current.scale, 0.75),
     )
-  }, [focusPersonId, focusOn, viewportRef])
+  }, [focusPersonId, focusOn, viewportRef, layout])
 
   const toWorld = useCallback(
     (clientX: number, clientY: number) => {
@@ -240,6 +278,8 @@ export function TreeWorkspace({
       setMenu(null)
 
       if (!editMode) {
+        event.stopPropagation()
+        onSelectionChange({ kind: 'person', personId })
         startPan(event)
         return
       }
@@ -439,7 +479,7 @@ export function TreeWorkspace({
       onKeyDown={onKeyDown}
       tabIndex={0}
       role="application"
-      aria-label="Family tree canvas. Drag to pan, scroll to zoom, arrow keys to move."
+      aria-label="Family tree canvas. Click a person for details, drag empty space to pan, scroll to zoom."
     >
       <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5">
         <div className="pointer-events-auto flex gap-1.5">
@@ -509,6 +549,25 @@ export function TreeWorkspace({
               />
             </svg>
           </button>
+          {collapsedIds.size > 0 && (
+            <button
+              type="button"
+              className={controlClass}
+              onClick={() => setCollapsedIds(new Set())}
+              aria-label="Show all branches"
+              title="Show all branches"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path
+                  d="M5 8l5 5 5-5M5 4l5 5 5-5"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
         </div>
         <span className="pointer-events-none rounded-md bg-[var(--surface-raised)]/70 px-2 py-0.5 text-[11px] text-[var(--text-muted)] backdrop-blur">
           {Math.round(viewport.scale * 100)}%
@@ -588,6 +647,15 @@ export function TreeWorkspace({
                   dragging={draggingId === node.personId}
                   interactive={editMode}
                   compact={compact}
+                  fold={
+                    (graph.childrenOf.get(node.personId)?.size ?? 0) > 0
+                      ? {
+                          collapsed: isBranchCollapsed(graph, hiddenIds, node.personId),
+                          hiddenCount: hiddenPersonIds(graph, new Set([node.personId])).size,
+                          onToggle: () => toggleFold(node.personId!),
+                        }
+                      : null
+                  }
                   onSelect={handleSelectPerson}
                   onOpen={onOpenPerson}
                   onPointerDown={onPersonPointerDown}

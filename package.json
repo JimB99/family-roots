@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:stamm": "tsx --test src/lib/stamm-parser.test.ts src/domain/collapse-branches.test.ts",
     "test:rules": "node scripts/run-rules-tests.mjs",
     "test:e2e": "playwright test",
     "test:a11y": "vitest run src/components/ui",

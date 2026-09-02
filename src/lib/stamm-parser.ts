@@ -5,6 +5,7 @@ const CONNECTOR_ONLY = /^[\s│┌└├─┬┤─+]+$/
 
 export interface ParsedPerson {
   row: number
+  rowEnd: number
   col: number
   givenNames: string
   familyName: string | null
@@ -113,6 +114,55 @@ function cellText(value: Cell | undefined): string {
   return String(value ?? '').trim()
 }
 
+function readWrappedName(
+  grid: Grid,
+  row: number,
+  col: number,
+  raw: string,
+): {
+  givenNames: string
+  familyName: string | null
+  gender: ParsedPerson['gender']
+  birth: PartialDate | null
+  death: PartialDate | null
+  rowEnd: number
+} {
+  const familyParts: string[] = []
+  let rowEnd = row
+  let birth = birthAt(grid, row, col)
+  let death = deathFromName(String(grid[row]?.[col] ?? ''))
+
+  for (let nextRow = row + 1; nextRow < grid.length; nextRow++) {
+    const rawCell = String(grid[nextRow]?.[col] ?? '')
+    if (!/^\s{1,}/.test(rawCell)) break
+    const text = cellText(rawCell)
+    if (!text || normalizeUnknown(text) || !hasName(text)) break
+    familyParts.push(cleanName(text))
+    birth = birth ?? birthAt(grid, nextRow, col)
+    death = death ?? deathFromName(rawCell)
+    rowEnd = nextRow
+  }
+
+  if (familyParts.length > 0) {
+    return {
+      givenNames: cleanName(raw),
+      familyName: familyParts.join(' ') || null,
+      gender: 'unknown',
+      birth,
+      death,
+      rowEnd,
+    }
+  }
+
+  return {
+    ...splitName(cleanName(raw)),
+    gender: 'unknown',
+    birth,
+    death,
+    rowEnd,
+  }
+}
+
 function extractPeople(grid: Grid): ParsedPerson[] {
   const people: ParsedPerson[] = []
 
@@ -139,45 +189,27 @@ function extractPeople(grid: Grid): ParsedPerson[] {
         hasName(previousRaw)
       if (isContinuationOfPrevious) continue
 
-      let parsedName = unknown ?? { ...splitName(cleanName(raw)), gender: 'unknown' as const }
-      const nextRaw = cellText(grid[row + 1]?.[col])
-      const isIndentedContinuation =
-        !unknown &&
-        !isIndentedCurrent &&
-        /^\s{1,}/.test(String(grid[row + 1]?.[col] ?? '')) &&
-        nextRaw.length > 0 &&
-        !normalizeUnknown(nextRaw)
-      if (isIndentedContinuation) {
-        parsedName = {
-          givenNames: cleanName(raw),
-          familyName: cleanName(nextRaw),
-          gender: 'unknown',
-        }
-      }
+      const parsedName = unknown
+        ? { ...unknown, birth: birthAt(grid, row, col), death: deathFromName(rawCell), rowEnd: row }
+        : readWrappedName(grid, row, col, raw)
 
       if (!parsedName.givenNames) continue
 
       people.push({
         row,
         col,
-        ...parsedName,
-        birth: birthAt(grid, row, col),
-        death: deathFromName(raw),
+        givenNames: parsedName.givenNames,
+        familyName: parsedName.familyName,
+        gender: parsedName.gender,
+        birth: parsedName.birth,
+        death: parsedName.death,
+        rowEnd: parsedName.rowEnd,
         importKey: makeKey(row, col, parsedName.givenNames, parsedName.familyName),
       })
     }
   }
 
-  return people.filter(
-    (person) =>
-      !people.some(
-        (other) =>
-          other.row === person.row - 1 &&
-          other.col === person.col &&
-          other.familyName === cleanName(cellText(grid[person.row]?.[person.col])) &&
-          /^\s{1,}/.test(String(grid[person.row]?.[person.col] ?? '')),
-      ),
-  )
+  return people
 }
 
 function peopleCellHasRelationshipContext(grid: Grid, row: number, col: number): boolean {
@@ -274,13 +306,60 @@ export function buildVerifiedRelationships(
   return relationships
 }
 
+function leftConnector(grid: Grid, person: ParsedPerson): string {
+  return cellText(grid[person.row]?.[person.col - 1])
+}
+
+function isSiblingIncoming(connector: string): boolean {
+  return /[┌├└]/.test(connector)
+}
+
+function isOffspringBar(connector: string): boolean {
+  if (/[┬┼]/.test(connector)) return true
+  const compact = connector.replace(/\s/g, '')
+  if (/^[─\-]{2,}$/.test(compact)) return true
+  return /^_+\._+\._+$/.test(compact) || compact === '__._'
+}
+
+function isPlausibleParentAge(parent: ParsedPerson, child: ParsedPerson): boolean {
+  if (!parent.birth?.year || !child.birth?.year) return true
+  const age = child.birth.year - parent.birth.year
+  if (age >= 12 && age <= 70) return true
+  const shiftedParent = child.birth.year - (parent.birth.year - 100)
+  if (shiftedParent >= 12 && shiftedParent <= 70) return true
+  const shiftedChild = child.birth.year - 100 - parent.birth.year
+  if (shiftedChild >= 12 && shiftedChild <= 70) return true
+  return false
+}
+
 function extractConnectorRelationships(
   grid: Grid,
   people: ParsedPerson[],
 ): ParsedRelationship[] {
   const relationships: ParsedRelationship[] = []
   const seen = new Set<string>()
-  const personAt = new Map(people.map((person) => [`${person.row}:${person.col}`, person]))
+
+  const personCovering = (row: number, col: number): ParsedPerson | undefined =>
+    people.find((person) => person.col === col && person.row <= row && person.rowEnd >= row)
+
+  const findJunctionRow = (childRow: number, childCol: number): number | null => {
+    if (childCol < 3) return null
+    const connectorCol = childCol - 1
+    const isJunction = (connector: string) => /[┤┬┼]/.test(connector) || isOffspringBar(connector)
+    for (let row = childRow; row >= 0; row--) {
+      const connector = cellText(grid[row]?.[connectorCol])
+      if (row !== childRow && /[┌└]/.test(connector)) break
+      if (isJunction(connector)) return row
+      if (row !== childRow && !/[│├┌└┤┬┼─]/.test(connector) && !isOffspringBar(connector)) break
+    }
+    for (let row = childRow + 1; row < grid.length; row++) {
+      const connector = cellText(grid[row]?.[connectorCol])
+      if (isJunction(connector)) return row
+      if (!/[│├┌└┤┬┼─]/.test(connector) && !isOffspringBar(connector)) break
+      if (/└/.test(connector)) break
+    }
+    return null
+  }
 
   const addRelationship = (
     type: ParsedRelationship['type'],
@@ -308,31 +387,29 @@ function extractConnectorRelationships(
     })
   }
 
+  const isSpouseOf = (person: ParsedPerson): boolean =>
+    relationships.some(
+      (relationship) =>
+        relationship.type === 'spouse' &&
+        (relationship.personAKey === person.importKey || relationship.personBKey === person.importKey),
+    )
+
   for (const person of people) {
     const nextSameColumn = people
-      .filter(
-        (candidate) =>
-          candidate.col === person.col &&
-          candidate.row > person.row &&
-          candidate.row <= person.row + 2,
-      )
+      .filter((candidate) => candidate.col === person.col && candidate.row > person.rowEnd)
       .sort((a, b) => a.row - b.row)[0]
-    const leftOfNext = nextSameColumn
-      ? cellText(grid[nextSameColumn.row]?.[nextSameColumn.col - 1])
-      : ''
-    const currentHasIncomingBranch = /[├└┌]/.test(
-      cellText(grid[person.row]?.[person.col - 1]),
-    )
-    const nextHasIncomingBranch = /[├└┌]/.test(leftOfNext)
-    const nextContinuesFamilyLine = leftOfNext === '│'
-    const nextIsUnknownPlaceholder = nextSameColumn?.givenNames === 'Unknown person'
-    if (
-      nextSameColumn &&
-      !nextHasIncomingBranch &&
-      (currentHasIncomingBranch || nextContinuesFamilyLine || nextIsUnknownPlaceholder)
-    ) {
-      addRelationship('spouse', person, nextSameColumn, person.row, 'same-column spouse pair')
+    if (!nextSameColumn || nextSameColumn.row > person.rowEnd + 2) continue
+
+    const leftNext = leftConnector(grid, nextSameColumn)
+    if (isOffspringBar(leftNext)) continue
+    if (isSiblingIncoming(leftNext)) {
+      const currentJunction = findJunctionRow(person.row, person.col)
+      const nextJunction = findJunctionRow(nextSameColumn.row, nextSameColumn.col)
+      if (currentJunction !== null && currentJunction === nextJunction) continue
     }
+    if (/┤/.test(leftNext) && !isSiblingIncoming(leftConnector(grid, person))) continue
+
+    addRelationship('spouse', person, nextSameColumn, person.row, 'same-column spouse pair')
   }
 
   for (let childCol = 3; childCol <= 12; childCol += 3) {
@@ -340,7 +417,18 @@ function extractConnectorRelationships(
     const parentCol = childCol - 3
 
     const parentsAtJunction = (row: number): ParsedPerson[] => {
-      const parent = personAt.get(`${row}:${parentCol}`)
+      let parent = personCovering(row, parentCol)
+      if (!parent) {
+        for (let up = row; up >= 0; up--) {
+          parent = personCovering(up, parentCol)
+          if (parent) break
+          const connector = cellText(grid[up]?.[connectorCol])
+          if (up !== row && !/[│├┌└┤┬┼─]/.test(connector) && !cellText(grid[up]?.[parentCol])) {
+            continue
+          }
+          if (up !== row && !/[│├┌└┤┬┼─]/.test(connector) && !personCovering(up, parentCol)) break
+        }
+      }
       if (!parent) return []
       const spouse = relationships
         .filter((relationship) => relationship.type === 'spouse')
@@ -361,48 +449,63 @@ function extractConnectorRelationships(
       for (let row = childRow; row >= 0; row--) {
         const connector = cellText(grid[row]?.[connectorCol])
         if (row !== childRow && /[┌└]/.test(connector)) break
-        if (/[┤┬┼]/.test(connector)) {
+        if (/[┤┬┼]/.test(connector) || isOffspringBar(connector)) {
           const parents = parentsAtJunction(row)
           if (parents.length) return parents
         }
-        if (row !== childRow && !/[│├┌└┤┬┼─]/.test(connector)) break
+        if (row !== childRow && !/[│├┌└┤┬┼─]/.test(connector) && !isOffspringBar(connector)) break
       }
       for (let row = childRow + 1; row < grid.length; row++) {
         const connector = cellText(grid[row]?.[connectorCol])
-        if (/[┤┬┼]/.test(connector)) {
+        if (/[┤┬┼]/.test(connector) || isOffspringBar(connector)) {
           const parents = parentsAtJunction(row)
           if (parents.length) return parents
         }
-        if (!/[│├┌└┤┬┼─]/.test(connector)) break
+        if (!/[│├┌└┤┬┼─]/.test(connector) && !isOffspringBar(connector)) break
         if (/└/.test(connector)) break
       }
       return []
     }
 
+    const linkChildToParents = (
+      child: ParsedPerson,
+      parents: ParsedPerson[],
+      row: number,
+      note: string,
+    ) => {
+      for (const parent of parents.filter((candidate) => isPlausibleParentAge(candidate, child))) {
+        addRelationship('parent_child', parent, child, row, note)
+      }
+    }
+
     for (let row = 0; row < grid.length; row++) {
       const connector = cellText(grid[row]?.[connectorCol])
-      const child = personAt.get(`${row}:${childCol}`)
+      const child = personCovering(row, childCol)
+      if (!child) continue
 
-      if (/[┌├└]/.test(connector) && child) {
-        const plausibleParents = traceParents(row).filter((parent) => {
-          if (!parent.birth?.year || !child.birth?.year) return true
-          const age = child.birth.year - parent.birth.year
-          if (age >= 12 && age <= 70) return true
-          return (
-            parent.birth.year >= 2000 &&
-            child.birth.year - (parent.birth.year - 100) >= 12 &&
-            child.birth.year - (parent.birth.year - 100) <= 70
-          )
-        })
-        for (const parent of plausibleParents) {
-          addRelationship(
-            'parent_child',
-            parent,
-            child,
-            row,
-            'adjacent-generation connector',
-          )
-        }
+      if (isSiblingIncoming(connector)) {
+        linkChildToParents(child, traceParents(row), row, 'adjacent-generation connector')
+        continue
+      }
+
+      if (isOffspringBar(connector)) {
+        const direct = personCovering(row, parentCol)
+        const parents = direct
+          ? parentsAtJunction(row)
+          : traceParents(row).length
+            ? traceParents(row)
+            : parentsAtJunction(row)
+        linkChildToParents(
+          child,
+          parents.length ? parents : direct ? [direct] : [],
+          row,
+          'horizontal generation bar',
+        )
+        continue
+      }
+
+      if (/┤/.test(connector) && !isSpouseOf(child)) {
+        linkChildToParents(child, parentsAtJunction(row), row, 'junction-aligned child')
       }
     }
   }
@@ -425,7 +528,7 @@ function correctBirthCenturies(
     const childYear = child?.birth?.year
     if (!parent || !child || !parentYear || !childYear) continue
 
-    if (parentYear >= 2000 && childYear < 2000) {
+    if (parentYear >= childYear || childYear - parentYear < 12 || childYear - parentYear > 70) {
       const corrected = parentYear - 100
       const age = childYear - corrected
       if (age >= 12 && age <= 70) {

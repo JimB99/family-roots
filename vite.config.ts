@@ -8,6 +8,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'src/lib/stamm-parser.test.ts', 'tests/rules/**'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'src/lib/stamm-parser.test.ts',
+      'src/domain/collapse-branches.test.ts',
+      'tests/rules/**',
+    ],
   },
 })

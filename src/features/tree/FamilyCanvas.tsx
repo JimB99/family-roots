@@ -46,6 +46,7 @@ interface PersonNodeProps {
   dragging: boolean
   interactive: boolean
   compact: boolean
+  fold?: { collapsed: boolean; hiddenCount: number; onToggle: () => void } | null
   onSelect: (personId: string) => void
   onOpen: (personId: string) => void
   onPointerDown: (personId: string, event: React.PointerEvent) => void
@@ -59,6 +60,7 @@ function PersonNodeImpl({
   dragging,
   interactive,
   compact,
+  fold = null,
   onSelect,
   onOpen,
   onPointerDown,
@@ -97,6 +99,18 @@ function PersonNodeImpl({
           stroke={selected || highlighted ? 'var(--accent)' : 'transparent'}
           strokeWidth={selected || highlighted ? 10 : 0}
         />
+        {fold?.collapsed && (
+          <text
+            x={node.width / 2}
+            y={node.height / 2 + 4}
+            textAnchor="middle"
+            fontSize={11}
+            fontWeight={700}
+            fill="var(--node-text)"
+          >
+            +{fold.hiddenCount}
+          </text>
+        )}
       </g>
     )
   }
@@ -198,6 +212,52 @@ function PersonNodeImpl({
       )}
       {node.isDeceased && (
         <circle cx={node.width - 14} cy={14} r={3} fill="var(--node-subtext)" opacity={0.55} />
+      )}
+      {fold && (
+        <g
+          transform={`translate(${node.width - 28}, ${node.height - 26})`}
+          role="button"
+          tabIndex={0}
+          aria-label={
+            fold.collapsed
+              ? `Show ${fold.hiddenCount} hidden relatives`
+              : 'Hide descendants'
+          }
+          style={{ cursor: 'pointer' }}
+          onPointerDown={(event) => {
+            event.stopPropagation()
+            event.preventDefault()
+          }}
+          onClick={(event) => {
+            event.stopPropagation()
+            fold.onToggle()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              fold.onToggle()
+            }
+          }}
+        >
+          <rect
+            width={22}
+            height={18}
+            rx={9}
+            fill="var(--surface-raised)"
+            stroke="var(--node-border)"
+            strokeWidth={1}
+          />
+          <text
+            x={11}
+            y={13}
+            textAnchor="middle"
+            fontSize={12}
+            fontWeight={700}
+            fill="var(--text-secondary)"
+          >
+            {fold.collapsed ? `+${Math.min(fold.hiddenCount, 99)}` : '−'}
+          </text>
+        </g>
       )}
     </g>
   )
@@ -335,6 +395,7 @@ function BondEdgeImpl({ id, from, to, selected, dimmed, onSelect }: BondEdgeProp
         strokeWidth={18}
         pointerEvents="stroke"
         style={{ cursor: 'pointer' }}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation()
           onSelect()

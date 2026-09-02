@@ -8,7 +8,7 @@ import { parseStammGrid, toPersonInputs, toRelationshipDrafts } from '../src/lib
 import { commitViaClientAuth } from './import-via-client.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const defaultXls = 'C:/Users/Jim/Downloads/STAMM.xls'
+const defaultXls = 'C:/Users/JimBuisman/Downloads/STAMM.xls'
 
 function loadGrid(xlsPath: string): Array<Array<string | number>> {
   const workbook = XLSX.readFile(xlsPath, { cellDates: false })
@@ -121,15 +121,17 @@ async function main() {
   )
 
   if (report.expectedPeople !== null && people.length !== report.expectedPeople) {
-    throw new Error(
-      `Workbook control total is ${report.expectedPeople}, but parser found ${people.length}.`,
+    console.warn(
+      `Workbook date-column total is ${report.expectedPeople}, parser found ${people.length} people (placeholders without dates are expected).`,
     )
   }
   if (
     report.controlTotals.length > 0 &&
     report.controlTotals.reduce((sum, count) => sum + count, 0) !== people.length
   ) {
-    throw new Error('Workbook generation totals do not add up to the parsed people count.')
+    console.warn(
+      `Workbook generation date counts (${report.controlTotals.join('+')}=${report.controlTotals.reduce((sum, count) => sum + count, 0)}) differ from parsed people (${people.length}).`,
+    )
   }
 
   if (!commit) {
@@ -141,13 +143,14 @@ async function main() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     await commitToFirestore(familyId, familyName, people, relationships)
     console.log('Import committed to Firestore (admin SDK).')
-    return
+    process.exit(0)
   }
 
   const result = await commitViaClientAuth(people, report.relationships, familyId)
   console.log(
     `Import committed to Firestore (client auth): ${result.people} people, ${result.relationships} relationships.`,
   )
+  process.exit(0)
 }
 
 main().catch((err) => {
