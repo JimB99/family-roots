@@ -9,17 +9,15 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:stamm": "tsx --test src/lib/stamm-parser.test.ts src/domain/collapse-branches.test.ts",
     "test:rules": "node scripts/run-rules-tests.mjs",
     "test:e2e": "playwright test",
     "test:a11y": "vitest run src/components/ui",
     "typecheck": "tsc -b --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run test:rules",
+    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run test:a11y && npm run test:rules",
+    "check:full": "npm run check && npm run test:e2e",
     "preview": "vite preview",
-    "import:stamm": "tsx scripts/import-stamm.ts",
-    "confirm:relationships": "tsx scripts/confirm-relationships.ts",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes",
-    "deploy": "npm run build && firebase deploy"
+    "deploy": "npm run check && npm run build && firebase deploy"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.10",
@@ -33,6 +31,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -53,7 +52,6 @@
     "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11",
-    "xlsx": "^0.18.5"
+    "vitest": "^4.1.11"
   }
 }

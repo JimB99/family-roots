@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { PersonCard } from '../components/PersonCard'
-import { PersonForm } from '../components/PersonForm'
-import { Dialog } from '../components/ui/Dialog'
-import { Button } from '../components/ui/Button'
+import { PersonEditPanel } from '../components/PersonEditPanel'
 import { deletePersonWithRelationships, saveValidatedPerson } from '../data/firestore/family-mutations'
 import { getPersonById } from '../data/firestore/person-repository'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
-import { displayName } from '../lib/tree'
 import type { Person, PersonInput } from '../types'
 
 export function PersonPage() {
@@ -24,8 +21,6 @@ export function PersonPage() {
   const [editing, setEditing] = useState(false)
   const [person, setPerson] = useState<Person | null>(null)
   const [personLoading, setPersonLoading] = useState(true)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -82,13 +77,8 @@ export function PersonPage() {
 
   const handleDelete = async () => {
     if (!person || !family) return
-    setDeleteError(null)
-    try {
-      await deletePersonWithRelationships(family.id, person.id)
-      navigate(`/families/${slug}`)
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Delete failed')
-    }
+    await deletePersonWithRelationships(family.id, person.id)
+    navigate(`/families/${slug}`)
   }
 
   if (loading || personLoading) {
@@ -131,17 +121,15 @@ export function PersonPage() {
       {editing ? (
         <div className="mx-auto w-full max-w-3xl px-4 py-8">
           <h1 className="mb-4 text-xl font-semibold">Edit person</h1>
-          <PersonForm
-            initial={person}
+          <PersonEditPanel
+            person={person}
             familyId={family.id}
+            relationshipCount={incidentCount}
+            allowDelete={isEditor}
             onSubmit={handleSave}
             onCancel={() => setEditing(false)}
+            onDelete={handleDelete}
           />
-          {isEditor && (
-            <Button variant="danger" className="mt-6" onClick={() => setConfirmDelete(true)}>
-              Delete person
-            </Button>
-          )}
         </div>
       ) : (
         <PersonCard
@@ -154,31 +142,6 @@ export function PersonPage() {
           onEdit={() => setEditing(true)}
         />
       )}
-
-      <Dialog
-        open={confirmDelete}
-        title="Delete person"
-        description="This cannot be undone."
-        onClose={() => setConfirmDelete(false)}
-      >
-        <p className="text-sm text-[var(--text-secondary)]">
-          Delete {displayName(person)} and {incidentCount} connected relationship
-          {incidentCount === 1 ? '' : 's'}?
-        </p>
-        {deleteError && (
-          <p className="mt-2 text-sm text-[var(--color-bloom-600)]" role="alert">
-            {deleteError}
-          </p>
-        )}
-        <div className="mt-5 flex gap-2">
-          <Button variant="danger" onClick={() => void handleDelete()}>
-            Delete person
-          </Button>
-          <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
-            Cancel
-          </Button>
-        </div>
-      </Dialog>
     </Layout>
   )
 }

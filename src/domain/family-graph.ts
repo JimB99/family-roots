@@ -1,6 +1,6 @@
 import type { Person, Relationship } from '../types'
 import { relationshipKey } from './relationship-key'
-import type { ConnectedComponent, FamilyGraph, GraphIssue, PersonId } from './types'
+import type { ConnectedComponent, FamilyGraph, GraphIssue, PersonId, RelationshipDraft } from './types'
 
 function addToSetMap(map: Map<PersonId, Set<PersonId>>, key: PersonId, value: PersonId) {
   const set = map.get(key) ?? new Set<PersonId>()
@@ -189,6 +189,52 @@ export function getChildren(graph: FamilyGraph, personId: PersonId): Person[] {
 
 export function getSpouses(graph: FamilyGraph, personId: PersonId): Person[] {
   return [...(graph.spousesOf.get(personId) ?? [])].map((id) => graph.peopleById.get(id)!).filter(Boolean)
+}
+
+export interface PersonRelationshipLink {
+  person: Person
+  relationship: Relationship
+}
+
+export function findRelationship(
+  graph: FamilyGraph,
+  draft: RelationshipDraft,
+): Relationship | undefined {
+  const key = relationshipKey(draft.type, draft.personAId, draft.personBId)
+  for (const rel of graph.relationshipsById.values()) {
+    if (relationshipKey(rel.type, rel.personAId, rel.personBId) === key) return rel
+  }
+  return undefined
+}
+
+export function getParentLinks(graph: FamilyGraph, childId: PersonId): PersonRelationshipLink[] {
+  return linksWhere(graph, (rel) => rel.type === 'parent_child' && rel.personBId === childId, (rel) => rel.personAId)
+}
+
+export function getChildLinks(graph: FamilyGraph, parentId: PersonId): PersonRelationshipLink[] {
+  return linksWhere(graph, (rel) => rel.type === 'parent_child' && rel.personAId === parentId, (rel) => rel.personBId)
+}
+
+export function getSpouseLinks(graph: FamilyGraph, personId: PersonId): PersonRelationshipLink[] {
+  return linksWhere(
+    graph,
+    (rel) => rel.type === 'spouse' && (rel.personAId === personId || rel.personBId === personId),
+    (rel) => (rel.personAId === personId ? rel.personBId : rel.personAId),
+  )
+}
+
+function linksWhere(
+  graph: FamilyGraph,
+  match: (rel: Relationship) => boolean,
+  otherId: (rel: Relationship) => PersonId,
+): PersonRelationshipLink[] {
+  const links: PersonRelationshipLink[] = []
+  for (const rel of graph.relationshipsById.values()) {
+    if (!match(rel)) continue
+    const person = graph.peopleById.get(otherId(rel))
+    if (person) links.push({ person, relationship: rel })
+  }
+  return links
 }
 
 export function wouldCreateAncestryCycle(

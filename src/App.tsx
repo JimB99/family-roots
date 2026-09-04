@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router-dom'
 import { AdminHomePage } from './pages/AdminHomePage'
 import { FamilyAdminPage } from './pages/FamilyAdminPage'
 import { HomePage } from './pages/HomePage'
@@ -13,21 +13,19 @@ function SearchRedirect() {
   return <Navigate to={`/families/${slug}/people`} replace />
 }
 
+const router = createBrowserRouter([
+  { path: '/', element: <HomePage /> },
+  { path: '/families/:slug/health', element: <DataHealthPage /> },
+  { path: '/families/:slug', element: <TreePage /> },
+  { path: '/families/:slug/people', element: <PeoplePage /> },
+  { path: '/families/:slug/search', element: <SearchRedirect /> },
+  { path: '/families/:slug/person/:personId', element: <PersonPage /> },
+  { path: '/families/:slug/admin', element: <FamilyAdminPage /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/admin', element: <AdminHomePage /> },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/families/:slug/health" element={<DataHealthPage />} />
-        <Route path="/families/:slug" element={<TreePage />} />
-        <Route path="/families/:slug/people" element={<PeoplePage />} />
-        <Route path="/families/:slug/search" element={<SearchRedirect />} />
-        <Route path="/families/:slug/person/:personId" element={<PersonPage />} />
-        <Route path="/families/:slug/admin" element={<FamilyAdminPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin" element={<AdminHomePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }

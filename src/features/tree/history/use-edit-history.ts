@@ -54,5 +54,23 @@ export function useEditHistory(userId: string | null, onApplied: () => Promise<v
     syncFlags()
   }, [applyPlan, syncFlags])
 
-  return { canUndo, canRedo, busy, push, undo, redo, clear }
+  const discard = useCallback(async () => {
+    const entries = historyRef.current.drainUndo()
+    if (entries.length === 0) {
+      syncFlags()
+      return
+    }
+    setBusy(true)
+    try {
+      for (const entry of entries) {
+        await executeCommandPlan(entry.undo, userId)
+      }
+      await onApplied()
+    } finally {
+      setBusy(false)
+      syncFlags()
+    }
+  }, [onApplied, syncFlags, userId])
+
+  return { canUndo, canRedo, busy, push, undo, redo, clear, discard }
 }

@@ -37,6 +37,16 @@ export class EditHistory {
     return entry
   }
 
+  drainUndo(): HistoryEntry[] {
+    const entries: HistoryEntry[] = []
+    while (this.undoStack.length > 0) {
+      const entry = this.undoStack.pop()
+      if (entry) entries.push(entry)
+    }
+    this.redoStack = []
+    return entries
+  }
+
   clear() {
     this.undoStack = []
     this.redoStack = []

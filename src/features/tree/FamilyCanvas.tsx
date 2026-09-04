@@ -1,5 +1,18 @@
 import { memo } from 'react'
 import type { PositionedLayout, PositionedNode } from './layout/layout-model'
+import {
+  CARD_FAMILY_SIZE,
+  CARD_GIVEN_SIZE,
+  CARD_SUBTITLE_SIZE,
+  CARD_TEXT_X,
+  COMPACT_FAMILY_SIZE,
+  COMPACT_GIVEN_SIZE,
+  cardNameBaselines,
+  compactNameMaxWidth,
+  fullCardNameMaxWidth,
+  splitPersonName,
+  truncateToWidth,
+} from './person-card-label'
 
 /** Level of detail: full cards when zoomed in, simple pills when zoomed out. */
 export const COMPACT_SCALE_THRESHOLD = 0.34
@@ -32,9 +45,12 @@ export function buildAnchorMap(layout: PositionedLayout): Map<string, NodeAnchor
   return map
 }
 
-const genderAccent: Record<'male' | 'female' | 'unknown', string> = {
+import type { Person } from '../../types'
+
+const genderAccent: Record<Person['gender'], string> = {
   male: 'var(--gender-male)',
   female: 'var(--gender-female)',
+  inter: 'var(--gender-inter)',
   unknown: 'var(--gender-unknown)',
 }
 
@@ -46,7 +62,6 @@ interface PersonNodeProps {
   dragging: boolean
   interactive: boolean
   compact: boolean
-  fold?: { collapsed: boolean; hiddenCount: number; onToggle: () => void } | null
   onSelect: (personId: string) => void
   onOpen: (personId: string) => void
   onPointerDown: (personId: string, event: React.PointerEvent) => void
@@ -60,14 +75,13 @@ function PersonNodeImpl({
   dragging,
   interactive,
   compact,
-  fold = null,
   onSelect,
   onOpen,
   onPointerDown,
 }: PersonNodeProps) {
   const personId = node.personId!
   const accent = genderAccent[node.gender]
-  const label = node.label.length > 24 ? `${node.label.slice(0, 23)}…` : node.label
+  const { given, family } = splitPersonName(node.givenNames, node.familyName)
 
   const strokeColor = highlighted
     ? 'var(--accent)'
@@ -76,12 +90,17 @@ function PersonNodeImpl({
       : 'var(--node-border)'
   const strokeWidth = highlighted ? 3 : selected ? 2.5 : 1.25
 
-  // Zoomed far out, individual cards are illegible, so draw a simple pill.
-  // This also keeps hundreds of nodes cheap to paint.
+  // Zoomed far out, drop card chrome so hundreds of nodes stay cheap to paint.
+  // Keep the name — unlabeled pills made the tree unreadable.
   if (compact) {
+    const maxWidth = compactNameMaxWidth(node.width)
+    const givenText = truncateToWidth(given, COMPACT_GIVEN_SIZE, maxWidth)
+    const familyText = family ? truncateToWidth(family, COMPACT_FAMILY_SIZE, maxWidth) : null
+    const givenY = familyText ? node.height / 2 - 2 : node.height / 2 + 6
     return (
       <g
         transform={`translate(${node.x}, ${node.y})`}
+        data-person-id={personId}
         opacity={dimmed ? 0.25 : 1}
         style={{ cursor: 'pointer' }}
         onPointerDown={(e) => onPointerDown(personId, e)}
@@ -93,31 +112,49 @@ function PersonNodeImpl({
         <rect
           width={node.width}
           height={node.height}
-          rx={node.height / 2}
-          fill={accent}
-          opacity={0.9}
-          stroke={selected || highlighted ? 'var(--accent)' : 'transparent'}
-          strokeWidth={selected || highlighted ? 10 : 0}
+          rx={16}
+          fill="var(--node-surface)"
+          stroke={selected || highlighted ? 'var(--accent)' : accent}
+          strokeWidth={selected || highlighted ? 3 : 1.5}
         />
-        {fold?.collapsed && (
+        <rect width={8} height={node.height} rx={4} fill={accent} opacity={0.9} />
+        <svg x={0} y={0} width={node.width} height={node.height} overflow="hidden">
           <text
             x={node.width / 2}
-            y={node.height / 2 + 4}
+            y={givenY}
             textAnchor="middle"
-            fontSize={11}
+            fontSize={COMPACT_GIVEN_SIZE}
             fontWeight={700}
             fill="var(--node-text)"
           >
-            +{fold.hiddenCount}
+            {givenText}
           </text>
-        )}
+          {familyText && (
+            <text
+              x={node.width / 2}
+              y={node.height / 2 + 18}
+              textAnchor="middle"
+              fontSize={COMPACT_FAMILY_SIZE}
+              fontWeight={500}
+              fill="var(--node-subtext)"
+            >
+              {familyText}
+            </text>
+          )}
+        </svg>
       </g>
     )
   }
 
+  const maxWidth = fullCardNameMaxWidth(node.width)
+  const givenText = truncateToWidth(given, CARD_GIVEN_SIZE, maxWidth)
+  const familyText = family ? truncateToWidth(family, CARD_FAMILY_SIZE, maxWidth) : null
+  const baselines = cardNameBaselines(Boolean(familyText), Boolean(node.subtitle))
+
   return (
     <g
       transform={`translate(${node.x}, ${node.y})`}
+      data-person-id={personId}
       opacity={dimmed ? 0.28 : dragging ? 0.45 : 1}
       style={{ cursor: interactive ? 'grab' : 'pointer' }}
       role="button"
@@ -202,62 +239,40 @@ function PersonNodeImpl({
         {node.initials}
       </text>
 
-      <text x={68} y={node.height / 2 - 4} fontSize={15} fontWeight={600} fill="var(--node-text)">
-        {label}
-      </text>
-      {node.subtitle && (
-        <text x={68} y={node.height / 2 + 16} fontSize={12.5} fill="var(--node-subtext)">
-          {node.subtitle}
+      <svg x={CARD_TEXT_X} y={0} width={maxWidth} height={node.height} overflow="hidden">
+        <text
+          x={0}
+          y={baselines.given}
+          fontSize={CARD_GIVEN_SIZE}
+          fontWeight={700}
+          fill="var(--node-text)"
+        >
+          {givenText}
         </text>
-      )}
+        {familyText && (
+          <text
+            x={0}
+            y={baselines.family}
+            fontSize={CARD_FAMILY_SIZE}
+            fontWeight={500}
+            fill="var(--node-subtext)"
+          >
+            {familyText}
+          </text>
+        )}
+        {node.subtitle && (
+          <text
+            x={0}
+            y={baselines.subtitle}
+            fontSize={CARD_SUBTITLE_SIZE}
+            fill="var(--node-subtext)"
+          >
+            {node.subtitle}
+          </text>
+        )}
+      </svg>
       {node.isDeceased && (
         <circle cx={node.width - 14} cy={14} r={3} fill="var(--node-subtext)" opacity={0.55} />
-      )}
-      {fold && (
-        <g
-          transform={`translate(${node.width - 28}, ${node.height - 26})`}
-          role="button"
-          tabIndex={0}
-          aria-label={
-            fold.collapsed
-              ? `Show ${fold.hiddenCount} hidden relatives`
-              : 'Hide descendants'
-          }
-          style={{ cursor: 'pointer' }}
-          onPointerDown={(event) => {
-            event.stopPropagation()
-            event.preventDefault()
-          }}
-          onClick={(event) => {
-            event.stopPropagation()
-            fold.onToggle()
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              fold.onToggle()
-            }
-          }}
-        >
-          <rect
-            width={22}
-            height={18}
-            rx={9}
-            fill="var(--surface-raised)"
-            stroke="var(--node-border)"
-            strokeWidth={1}
-          />
-          <text
-            x={11}
-            y={13}
-            textAnchor="middle"
-            fontSize={12}
-            fontWeight={700}
-            fill="var(--text-secondary)"
-          >
-            {fold.collapsed ? `+${Math.min(fold.hiddenCount, 99)}` : '−'}
-          </text>
-        </g>
       )}
     </g>
   )
@@ -407,32 +422,158 @@ function BondEdgeImpl({ id, from, to, selected, dimmed, onSelect }: BondEdgeProp
 
 export const BondEdge = memo(BondEdgeImpl)
 
-function UnionNodeImpl({ node, dimmed }: { node: PositionedNode; dimmed: boolean }) {
+export interface UnionFold {
+  collapsed: boolean
+  hiddenCount: number
+  onToggle: () => void
+}
+
+function unionFoldLabel(fold: UnionFold): string {
+  return fold.collapsed ? `Show ${fold.hiddenCount} hidden relatives` : 'Hide descendants'
+}
+
+function UnionNodeImpl({
+  node,
+  dimmed,
+  fold = null,
+}: {
+  node: PositionedNode
+  dimmed: boolean
+  fold?: UnionFold | null
+}) {
   const cx = node.x + node.width / 2
   const cy = node.y + node.height / 2
+  const interactive = Boolean(fold)
+  const label = fold ? unionFoldLabel(fold) : undefined
+
   return (
-    <g opacity={dimmed ? 0.2 : 1} aria-hidden="true">
-      <circle cx={cx} cy={cy} r={7} fill="var(--surface-page)" />
-      <circle cx={cx} cy={cy} r={7} fill="none" stroke="var(--branch-strong)" strokeWidth={2.5} />
-      <circle cx={cx} cy={cy} r={2.5} fill="var(--branch-strong)" />
+    <g
+      opacity={dimmed ? 0.2 : 1}
+      aria-hidden={interactive ? undefined : true}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={label}
+      aria-expanded={fold ? !fold.collapsed : undefined}
+      style={interactive ? { cursor: 'pointer' } : undefined}
+      onPointerDown={
+        interactive
+          ? (event) => {
+              event.stopPropagation()
+              event.preventDefault()
+            }
+          : undefined
+      }
+      onClick={
+        interactive
+          ? (event) => {
+              event.stopPropagation()
+              fold!.onToggle()
+            }
+          : undefined
+      }
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                fold!.onToggle()
+              }
+            }
+          : undefined
+      }
+    >
+      {label && <title>{label}</title>}
+      <circle cx={cx} cy={cy} r={fold?.collapsed ? 16 : 12} fill="transparent" />
+      <circle cx={cx} cy={cy} r={fold?.collapsed ? 11 : 7} fill="var(--surface-page)" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={fold?.collapsed ? 11 : 7}
+        fill="none"
+        stroke="var(--branch-strong)"
+        strokeWidth={2.5}
+      />
+      {fold?.collapsed ? (
+        <text
+          x={cx}
+          y={cy + 4}
+          textAnchor="middle"
+          fontSize={10}
+          fontWeight={700}
+          fill="var(--branch-strong)"
+        >
+          +{Math.min(fold.hiddenCount, 99)}
+        </text>
+      ) : (
+        <circle cx={cx} cy={cy} r={2.5} fill="var(--branch-strong)" />
+      )}
     </g>
   )
 }
 
 export const UnionNode = memo(UnionNodeImpl)
 
-function UnionDotImpl({ node, dimmed }: { node: PositionedNode; dimmed: boolean }) {
+function UnionDotImpl({
+  node,
+  dimmed,
+  fold = null,
+}: {
+  node: PositionedNode
+  dimmed: boolean
+  fold?: UnionFold | null
+}) {
   const cx = node.x + node.width / 2
   const cy = node.y + node.height / 2
+  const interactive = Boolean(fold)
+  const label = fold ? unionFoldLabel(fold) : undefined
+
   return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={5}
-      fill="var(--branch-strong)"
-      opacity={dimmed ? 0.2 : 0.6}
-      aria-hidden="true"
-    />
+    <g
+      opacity={dimmed ? 0.2 : 1}
+      aria-hidden={interactive ? undefined : true}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={label}
+      style={interactive ? { cursor: 'pointer' } : undefined}
+      onPointerDown={
+        interactive
+          ? (event) => {
+              event.stopPropagation()
+              event.preventDefault()
+            }
+          : undefined
+      }
+      onClick={
+        interactive
+          ? (event) => {
+              event.stopPropagation()
+              fold!.onToggle()
+            }
+          : undefined
+      }
+    >
+      {label && <title>{label}</title>}
+      <circle cx={cx} cy={cy} r={fold?.collapsed ? 14 : 8} fill="transparent" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={fold?.collapsed ? 10 : 5}
+        fill="var(--branch-strong)"
+        opacity={fold?.collapsed ? 0.95 : 0.6}
+      />
+      {fold?.collapsed && (
+        <text
+          x={cx}
+          y={cy + 4}
+          textAnchor="middle"
+          fontSize={9}
+          fontWeight={700}
+          fill="var(--surface-page)"
+        >
+          +{Math.min(fold.hiddenCount, 99)}
+        </text>
+      )}
+    </g>
   )
 }
 

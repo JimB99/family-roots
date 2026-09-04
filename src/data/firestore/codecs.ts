@@ -1,5 +1,5 @@
 import type { DocumentData } from 'firebase/firestore'
-import type { Family, Person, Relationship } from '../../types'
+import type { Family, Person, PersonInput, Relationship } from '../../types'
 
 export function familyFromDoc(id: string, data: DocumentData): Family {
   return {
@@ -58,8 +58,45 @@ export function relationshipFromDoc(id: string, data: DocumentData): Relationshi
   }
 }
 
-export function personToFirestore(input: Omit<Person, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) {
-  return { ...input }
+export function personToFirestore(input: PersonInput): Record<string, unknown> {
+  const data: Record<string, unknown> = {
+    familyId: input.familyId,
+    givenNames: input.givenNames,
+    familyName: input.familyName,
+    maidenName: input.maidenName,
+    gender: input.gender,
+    birth: input.birth,
+    death: input.death,
+    birthPlace: input.birthPlace,
+    deathPlace: input.deathPlace,
+    isLiving: input.isLiving,
+    photoBase64: input.photoBase64,
+    notes: input.notes,
+    importKey: input.importKey,
+  }
+  if (input.treeOffsetX != null) data.treeOffsetX = input.treeOffsetX
+  if (input.treeOffsetY != null) data.treeOffsetY = input.treeOffsetY
+  return data
+}
+
+/** Strip Firestore metadata so edits do not write undefined timestamps back. */
+export function personInputFromPerson(person: Person): PersonInput {
+  const {
+    id: _id,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    createdBy: _createdBy,
+    isLiving,
+    death,
+    ...input
+  } = person
+  const deceased =
+    isLiving === false || (isLiving !== true && death != null)
+  return {
+    ...input,
+    death,
+    isLiving: deceased ? false : null,
+  }
 }
 
 export function relationshipToFirestore(

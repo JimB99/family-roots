@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildFamilyGraph } from '../../domain/family-graph'
 import {
-  descendantIds,
+  childIdsOfUnion,
   hiddenPersonIds,
-  isBranchCollapsed,
-  toggleCollapsedPerson,
+  toggleCollapsedUnion,
+  unionsHidingPerson,
 } from '../../domain/collapse-branches'
-import { getConnectionOptions, type ConnectionOption } from '../../domain/valid-connections'
+import { directLinePersonIds, directLineUnionIds } from '../../domain/direct-line'
+import { getConnectionOptions, type ConnectionOption, type OverwriteChoice } from '../../domain/valid-connections'
 import type { Person, Relationship } from '../../types'
 import {
   BondEdge,
@@ -17,9 +18,13 @@ import {
   StemEdge,
   UnionDot,
   UnionNode,
+  type UnionFold,
 } from './FamilyCanvas'
 import { ConnectMenu, type ConnectMenuState } from './connect/ConnectMenu'
-import { computeTreeLayout } from './layout/compute-tree-layout'
+import { applyDisplayPatches } from './layout/apply-display-patches'
+import { computeTreeLayoutAsync } from './layout/compute-layout-async'
+import { EMPTY_LAYOUT } from './layout/compute-tree-layout'
+import { layoutModelStructureKey } from './layout/layout-structure-key'
 import { projectFamilyGraph } from './layout/project-family-graph'
 import type { PositionedNode } from './layout/layout-model'
 import { useTreeViewport } from './viewport/use-tree-viewport'
@@ -30,10 +35,14 @@ export type TreeSelection =
   | null
 
 const DRAG_THRESHOLD = 5
+const DROP_HIT_PAD = 10
 
 interface TreeWorkspaceProps {
   familyId: string
-  people: Person[]
+  /** Committed people — drives layout topology only. */
+  layoutPeople: Person[]
+  /** Draft-aware people — drives card labels and search highlighting. */
+  displayPeople: Person[]
   relationships: Relationship[]
   editMode: boolean
   selection: TreeSelection
@@ -42,7 +51,13 @@ interface TreeWorkspaceProps {
   connectBusy: boolean
   onSelectionChange: (selection: TreeSelection) => void
   onOpenPerson: (personId: string) => void
-  onConnect: (sourceId: string, targetId: string, option: ConnectionOption) => Promise<void>
+  onConnect: (
+    sourceId: string,
+    targetId: string,
+    option: ConnectionOption,
+    overwriteChoice?: OverwriteChoice,
+  ) => Promise<void>
+  onConnectDropMiss?: () => void
 }
 
 interface DragState {
@@ -51,11 +66,13 @@ interface DragState {
   pointerId: number
   startScreen: { x: number; y: number }
   moved: boolean
+  captureTarget: Element
 }
 
-export function TreeWorkspace({
+export const TreeWorkspace = memo(function TreeWorkspace({
   familyId,
-  people,
+  layoutPeople,
+  displayPeople,
   relationships,
   editMode,
   selection,
@@ -65,6 +82,7 @@ export function TreeWorkspace({
   onSelectionChange,
   onOpenPerson,
   onConnect,
+  onConnectDropMiss,
 }: TreeWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<SVGGElement>(null)
@@ -76,28 +94,76 @@ export function TreeWorkspace({
   const [dragTargetId, setDragTargetId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [menu, setMenu] = useState<ConnectMenuState | null>(null)
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
+  const [collapsedUnionIds, setCollapsedUnionIds] = useState<Set<string>>(() => new Set())
 
   const dragRef = useRef<DragState | null>(null)
   const fittedForRef = useRef<string | null>(null)
 
   const graph = useMemo(
-    () => buildFamilyGraph(familyId, people, relationships),
-    [familyId, people, relationships],
+    () => buildFamilyGraph(familyId, layoutPeople, relationships),
+    [familyId, layoutPeople, relationships],
   )
 
-  const hiddenIds = useMemo(() => hiddenPersonIds(graph, collapsedIds), [graph, collapsedIds])
+  const displayPeopleById = useMemo(
+    () => new Map(displayPeople.map((person) => [person.id, person])),
+    [displayPeople],
+  )
+
+  const hiddenIds = useMemo(
+    () => hiddenPersonIds(graph, collapsedUnionIds),
+    [graph, collapsedUnionIds],
+  )
 
   const layoutGraph = useMemo(() => {
     if (hiddenIds.size === 0) return graph
-    const visiblePeople = people.filter((person) => !hiddenIds.has(person.id))
+    const visiblePeople = layoutPeople.filter((person) => !hiddenIds.has(person.id))
     const visibleRelationships = relationships.filter(
       (rel) => !hiddenIds.has(rel.personAId) && !hiddenIds.has(rel.personBId),
     )
     return buildFamilyGraph(familyId, visiblePeople, visibleRelationships)
-  }, [familyId, graph, hiddenIds, people, relationships])
+  }, [familyId, graph, hiddenIds, layoutPeople, relationships])
 
-  const layout = useMemo(() => computeTreeLayout(projectFamilyGraph(layoutGraph)), [layoutGraph])
+  const structureModel = useMemo(
+    () => projectFamilyGraph(layoutGraph, { retainUnionIds: collapsedUnionIds }),
+    [layoutGraph, collapsedUnionIds],
+  )
+  const structureKey = useMemo(() => layoutModelStructureKey(structureModel), [structureModel])
+  const structureModelRef = useRef(structureModel)
+  structureModelRef.current = structureModel
+
+  const [structuralLayout, setStructuralLayout] = useState(EMPTY_LAYOUT)
+  const [layoutError, setLayoutError] = useState<string | null>(null)
+  const layoutRequestRef = useRef(0)
+
+  useEffect(() => {
+    const requestId = ++layoutRequestRef.current
+    setLayoutError(null)
+    void computeTreeLayoutAsync(structureModelRef.current, { quality: 'interactive' })
+      .then((next) => {
+        if (requestId !== layoutRequestRef.current) return
+        setStructuralLayout(next)
+      })
+      .catch((err: unknown) => {
+        if (requestId !== layoutRequestRef.current) return
+        setLayoutError(err instanceof Error ? err.message : 'Tree layout failed')
+      })
+  }, [structureKey])
+
+  const layout = useMemo(
+    () => applyDisplayPatches(structuralLayout, displayPeopleById),
+    [structuralLayout, displayPeopleById],
+  )
+  const unionMeta = useMemo(() => {
+    const childCountByUnion = new Map<string, number>()
+    const hiddenCountByUnion = new Map<string, number>()
+    for (const node of structuralLayout.nodes) {
+      if (node.kind !== 'union') continue
+      childCountByUnion.set(node.id, childIdsOfUnion(graph, node.id).length)
+      hiddenCountByUnion.set(node.id, hiddenPersonIds(graph, new Set([node.id])).size)
+    }
+    return { childCountByUnion, hiddenCountByUnion }
+  }, [graph, structuralLayout.nodes])
+
   const anchors = useMemo(() => buildAnchorMap(layout), [layout])
 
   const personNodes = useMemo(
@@ -131,20 +197,18 @@ export function TreeWorkspace({
 
   useEffect(() => {
     if (!focusPersonId) return
-    setCollapsedIds((previous) => {
-      const hidden = hiddenPersonIds(graph, previous)
-      if (!hidden.has(focusPersonId)) return previous
+    setCollapsedUnionIds((previous) => {
+      const hiding = unionsHidingPerson(graph, previous, focusPersonId)
+      if (hiding.length === 0) return previous
       const next = new Set(previous)
-      for (const id of previous) {
-        if (descendantIds(graph, id).has(focusPersonId)) next.delete(id)
-      }
+      for (const unionId of hiding) next.delete(unionId)
       return next
     })
   }, [focusPersonId, graph])
 
   const toggleFold = useCallback(
-    (personId: string) => {
-      setCollapsedIds((previous) => toggleCollapsedPerson(graph, previous, personId))
+    (unionId: string) => {
+      setCollapsedUnionIds((previous) => toggleCollapsedUnion(graph, previous, unionId))
     },
     [graph],
   )
@@ -176,15 +240,31 @@ export function TreeWorkspace({
     [viewportRef],
   )
 
+  const personAtClientPoint = useCallback(
+    (clientX: number, clientY: number, excludePersonId: string): PositionedNode | null => {
+      const elements = document.elementsFromPoint(clientX, clientY)
+      for (const element of elements) {
+        const hit = element.closest('[data-person-id]')
+        const personId = hit?.getAttribute('data-person-id')
+        if (!personId || personId === excludePersonId) continue
+        const node = personNodes.find((n) => n.personId === personId)
+        if (node) return node
+      }
+      return null
+    },
+    [personNodes],
+  )
+
   const nodeAt = useCallback(
     (worldX: number, worldY: number, excludeNodeId: string): PositionedNode | null => {
-      for (const node of personNodes) {
+      for (let i = personNodes.length - 1; i >= 0; i--) {
+        const node = personNodes[i]
         if (node.id === excludeNodeId) continue
         if (
-          worldX >= node.x &&
-          worldX <= node.x + node.width &&
-          worldY >= node.y &&
-          worldY <= node.y + node.height
+          worldX >= node.x - DROP_HIT_PAD &&
+          worldX <= node.x + node.width + DROP_HIT_PAD &&
+          worldY >= node.y - DROP_HIT_PAD &&
+          worldY <= node.y + node.height + DROP_HIT_PAD
         ) {
           return node
         }
@@ -194,10 +274,23 @@ export function TreeWorkspace({
     [personNodes],
   )
 
+  const dropTargetAt = useCallback(
+    (clientX: number, clientY: number, excludePersonId: string): PositionedNode | null => {
+      return (
+        personAtClientPoint(clientX, clientY, excludePersonId) ??
+        (() => {
+          const { world } = toWorld(clientX, clientY)
+          return nodeAt(world.x, world.y, `person:${excludePersonId}`)
+        })()
+      )
+    },
+    [personAtClientPoint, nodeAt, toWorld],
+  )
+
   // Wheel zoom needs a non-passive listener so preventDefault stops page scroll.
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container || layout.nodes.length === 0) return
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
@@ -205,17 +298,19 @@ export function TreeWorkspace({
       const px = event.clientX - rect.left
       const py = event.clientY - rect.top
 
-      if (event.ctrlKey || event.metaKey || !event.shiftKey) {
-        const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.0016))
-        zoomAtPoint(factor, px, py)
-      } else {
+      if (event.shiftKey && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
         pan(-event.deltaY, 0)
+        return
       }
+
+      const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX
+      const factor = Math.exp(-delta * (event.ctrlKey || event.metaKey ? 0.01 : 0.0016))
+      zoomAtPoint(factor, px, py)
     }
 
     container.addEventListener('wheel', onWheel, { passive: false })
     return () => container.removeEventListener('wheel', onWheel)
-  }, [pan, zoomAtPoint])
+  }, [layout.nodes.length, pan, zoomAtPoint])
 
   useEffect(() => {
     const container = containerRef.current
@@ -286,12 +381,15 @@ export function TreeWorkspace({
 
       event.stopPropagation()
       const nodeId = `person:${personId}`
+      const captureTarget = event.currentTarget as Element
+      captureTarget.setPointerCapture(event.pointerId)
       dragRef.current = {
         sourceId: personId,
         sourceNodeId: nodeId,
         pointerId: event.pointerId,
         startScreen: { x: event.clientX, y: event.clientY },
         moved: false,
+        captureTarget,
       }
 
       const onMove = (moveEvent: PointerEvent) => {
@@ -309,7 +407,7 @@ export function TreeWorkspace({
 
         const { world } = toWorld(moveEvent.clientX, moveEvent.clientY)
         moveGhost(world.x, world.y)
-        const hit = nodeAt(world.x, world.y, drag.sourceNodeId)
+        const hit = dropTargetAt(moveEvent.clientX, moveEvent.clientY, drag.sourceId)
         setDragTargetId(hit?.personId ?? null)
       }
 
@@ -323,17 +421,27 @@ export function TreeWorkspace({
         setDragTargetId(null)
 
         if (!drag) return
+
+        try {
+          drag.captureTarget.releasePointerCapture(upEvent.pointerId)
+        } catch {
+          // capture may already be released
+        }
+
         if (!drag.moved) {
           onSelectionChange({ kind: 'person', personId: drag.sourceId })
           return
         }
 
-        const { world, local } = toWorld(upEvent.clientX, upEvent.clientY)
-        const hit = nodeAt(world.x, world.y, drag.sourceNodeId)
-        if (!hit?.personId) return
+        const { local } = toWorld(upEvent.clientX, upEvent.clientY)
+        const hit = dropTargetAt(upEvent.clientX, upEvent.clientY, drag.sourceId)
+        if (!hit?.personId) {
+          onConnectDropMiss?.()
+          return
+        }
 
-        const source = graph.peopleById.get(drag.sourceId)
-        const target = graph.peopleById.get(hit.personId)
+        const source = displayPeopleById.get(drag.sourceId) ?? graph.peopleById.get(drag.sourceId)
+        const target = displayPeopleById.get(hit.personId) ?? graph.peopleById.get(hit.personId)
         if (!source || !target) return
 
         const options = getConnectionOptions(graph, drag.sourceId, hit.personId, hit.label)
@@ -361,7 +469,7 @@ export function TreeWorkspace({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onCancel)
     },
-    [editMode, graph, moveGhost, nodeAt, onSelectionChange, startPan, toWorld],
+    [editMode, graph, displayPeopleById, moveGhost, dropTargetAt, onConnectDropMiss, onSelectionChange, toWorld],
   )
 
   const onKeyDown = useCallback(
@@ -413,12 +521,24 @@ export function TreeWorkspace({
   )
 
   const handleChoose = useCallback(
-    async (option: ConnectionOption) => {
-      if (!menu) return
-      await onConnect(menu.sourceId, menu.targetId, option)
+    async (sourceId: string, targetId: string, option: ConnectionOption) => {
+      await onConnect(sourceId, targetId, option)
       setMenu(null)
     },
-    [menu, onConnect],
+    [onConnect],
+  )
+
+  const handleOverwrite = useCallback(
+    async (
+      sourceId: string,
+      targetId: string,
+      option: ConnectionOption,
+      choice: OverwriteChoice,
+    ) => {
+      await onConnect(sourceId, targetId, option, choice)
+      setMenu(null)
+    },
+    [onConnect],
   )
 
   const personIdByNodeId = useMemo(() => {
@@ -427,16 +547,37 @@ export function TreeWorkspace({
     return map
   }, [personNodes])
 
+  const lineagePeople = useMemo(() => {
+    if (selection?.kind !== 'person') return null
+    return directLinePersonIds(graph, selection.personId)
+  }, [graph, selection])
+
+  const lineageUnions = useMemo(() => {
+    if (!lineagePeople) return null
+    return directLineUnionIds(graph, lineagePeople)
+  }, [graph, lineagePeople])
+
   const dimmedFor = useCallback(
     (personId: string | undefined) => {
-      if (!matchedPersonIds || !personId) return false
+      if (!personId) return false
+      if (lineagePeople) return !lineagePeople.has(personId)
+      if (!matchedPersonIds) return false
       return !matchedPersonIds.has(personId)
     },
-    [matchedPersonIds],
+    [lineagePeople, matchedPersonIds],
   )
 
   const edgeIsDimmed = useCallback(
-    (sourceId: string, targetId: string) => {
+    (sourceId: string, targetId: string, bond: boolean) => {
+      if (lineagePeople) {
+        if (bond) return true
+        const sourcePerson = personIdByNodeId.get(sourceId)
+        const targetPerson = personIdByNodeId.get(targetId)
+        if (sourcePerson && !lineagePeople.has(sourcePerson)) return true
+        if (targetPerson && !lineagePeople.has(targetPerson)) return true
+        if (!sourcePerson && !targetPerson) return true
+        return false
+      }
       if (!matchedPersonIds) return false
       const ids = [personIdByNodeId.get(sourceId), personIdByNodeId.get(targetId)].filter(
         (id): id is string => Boolean(id),
@@ -444,7 +585,7 @@ export function TreeWorkspace({
       if (ids.length === 0) return false
       return !ids.some((id) => matchedPersonIds.has(id))
     },
-    [matchedPersonIds, personIdByNodeId],
+    [lineagePeople, matchedPersonIds, personIdByNodeId],
   )
 
   const handleSelectPerson = useCallback(
@@ -462,10 +603,19 @@ export function TreeWorkspace({
   const controlClass =
     'flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)]/90 text-[var(--text-secondary)] shadow-sm backdrop-blur transition hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]'
 
-  if (layout.nodes.length === 0) {
+  if (layoutPeople.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-6 text-center text-[var(--text-secondary)]">
         No people in this family yet.
+      </div>
+    )
+  }
+
+  if (layout.nodes.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-[var(--text-secondary)]">
+        <p>{layoutError ? 'Could not lay out tree.' : 'Laying out tree…'}</p>
+        {layoutError && <p className="text-sm text-[var(--color-bloom-600)]">{layoutError}</p>}
       </div>
     )
   }
@@ -482,7 +632,10 @@ export function TreeWorkspace({
       aria-label="Family tree canvas. Click a person for details, drag empty space to pan, scroll to zoom."
     >
       <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5">
-        <div className="pointer-events-auto flex gap-1.5">
+        <div
+          className="pointer-events-auto flex gap-1.5"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
             className={controlClass}
@@ -494,6 +647,7 @@ export function TreeWorkspace({
               )
             }
             aria-label="Zoom in"
+            title="Zoom in"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -510,6 +664,7 @@ export function TreeWorkspace({
               )
             }
             aria-label="Zoom out"
+            title="Zoom out"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M4 10h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -538,7 +693,7 @@ export function TreeWorkspace({
               />
             </svg>
           </button>
-          <button type="button" className={controlClass} onClick={reset} aria-label="Reset view">
+          <button type="button" className={controlClass} onClick={reset} aria-label="Reset view" title="Reset view">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
                 d="M4 10a6 6 0 106-6M4 4v3.5h3.5"
@@ -549,11 +704,11 @@ export function TreeWorkspace({
               />
             </svg>
           </button>
-          {collapsedIds.size > 0 && (
+          {collapsedUnionIds.size > 0 && (
             <button
               type="button"
               className={controlClass}
-              onClick={() => setCollapsedIds(new Set())}
+              onClick={() => setCollapsedUnionIds(new Set())}
               aria-label="Show all branches"
               title="Show all branches"
             >
@@ -581,14 +736,17 @@ export function TreeWorkspace({
       )}
 
       <svg className="h-full w-full">
-        <g ref={sceneRef}>
+        <g
+          ref={sceneRef}
+          transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.scale})`}
+        >
           <g>
             {layout.edges.map((edge) => {
               const from = anchors.get(edge.sourceId)
               const to = anchors.get(edge.targetId)
               if (!from || !to) return null
 
-              const dimmed = edgeIsDimmed(edge.sourceId, edge.targetId)
+              const dimmed = edgeIsDimmed(edge.sourceId, edge.targetId, Boolean(edge.relationshipId))
               const selected =
                 selection?.kind === 'edge' && selection.edgeId === edge.id
 
@@ -630,38 +788,60 @@ export function TreeWorkspace({
           </g>
 
           <g>
-            {layout.nodes.map((node) =>
-              node.kind === 'union' ? (
-                compact ? (
-                  <UnionDot key={node.id} node={node} dimmed={false} />
+            {layout.nodes.map((node) => {
+              if (node.kind === 'union') {
+                const childCount = unionMeta.childCountByUnion.get(node.id) ?? 0
+                const fold: UnionFold | null =
+                  childCount > 0
+                    ? {
+                        collapsed: collapsedUnionIds.has(node.id),
+                        hiddenCount: unionMeta.hiddenCountByUnion.get(node.id) ?? 0,
+                        onToggle: () => toggleFold(node.id),
+                      }
+                    : null
+                return compact ? (
+                  <UnionDot
+                    key={node.id}
+                    node={node}
+                    dimmed={Boolean(lineageUnions && !lineageUnions.has(node.id))}
+                    fold={fold}
+                  />
                 ) : (
-                  <UnionNode key={node.id} node={node} dimmed={false} />
+                  <UnionNode
+                    key={node.id}
+                    node={node}
+                    dimmed={Boolean(lineageUnions && !lineageUnions.has(node.id))}
+                    fold={fold}
+                  />
                 )
-              ) : (
+              }
+
+              const personId = node.personId
+              if (!personId) return null
+
+              return (
                 <PersonNode
                   key={node.id}
                   node={node}
-                  selected={selection?.kind === 'person' && selection.personId === node.personId}
-                  dimmed={dimmedFor(node.personId)}
-                  highlighted={dragTargetId === node.personId}
-                  dragging={draggingId === node.personId}
+                  selected={selection?.kind === 'person' && selection.personId === personId}
+                  dimmed={dimmedFor(personId)}
+                  highlighted={
+                    dragTargetId === personId ||
+                    Boolean(
+                      lineagePeople &&
+                        lineagePeople.has(personId) &&
+                        !(selection?.kind === 'person' && selection.personId === personId),
+                    )
+                  }
+                  dragging={draggingId === personId}
                   interactive={editMode}
                   compact={compact}
-                  fold={
-                    (graph.childrenOf.get(node.personId)?.size ?? 0) > 0
-                      ? {
-                          collapsed: isBranchCollapsed(graph, hiddenIds, node.personId),
-                          hiddenCount: hiddenPersonIds(graph, new Set([node.personId])).size,
-                          onToggle: () => toggleFold(node.personId!),
-                        }
-                      : null
-                  }
                   onSelect={handleSelectPerson}
                   onOpen={onOpenPerson}
                   onPointerDown={onPersonPointerDown}
                 />
-              ),
-            )}
+              )
+            })}
           </g>
 
           <g ref={ghostRef} pointerEvents="none" opacity={draggingId ? 1 : 0}>
@@ -695,11 +875,15 @@ export function TreeWorkspace({
       {menu && (
         <ConnectMenu
           state={menu}
+          graph={graph}
           busy={connectBusy}
-          onChoose={(option) => void handleChoose(option)}
+          onChoose={(option) => void handleChoose(menu.sourceId, menu.targetId, option)}
+          onOverwrite={(option, choice) =>
+            void handleOverwrite(menu.sourceId, menu.targetId, option, choice)
+          }
           onClose={() => setMenu(null)}
         />
       )}
     </div>
   )
-}
+})

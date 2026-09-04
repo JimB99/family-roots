@@ -21,7 +21,21 @@ describe('date validation', () => {
     expect(badDay.ok).toBe(false)
   })
 
-  it('parses ISO date inputs and rejects invalid text', () => {
+  it('parses European and ISO date inputs and rejects invalid text', () => {
+    expect(parseDateInput('16-07-1988').date).toEqual({
+      year: 1988,
+      month: 7,
+      day: 16,
+      precision: 'day',
+    })
+    expect(parseDateInput('16.07.1988').date).toEqual({
+      year: 1988,
+      month: 7,
+      day: 16,
+      precision: 'day',
+    })
+    expect(parseDateInput('07-1988').date?.precision).toBe('month')
+    expect(parseDateInput('07.1988').date?.precision).toBe('month')
     expect(parseDateInput('1988-07-16').date?.precision).toBe('day')
     expect(parseDateInput('not-a-date').error?.code).toBe('INVALID_DATE')
   })

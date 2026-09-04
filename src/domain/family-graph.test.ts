@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildFamilyGraph } from './family-graph'
+import {
+  buildFamilyGraph,
+  findRelationship,
+  getChildLinks,
+  getParentLinks,
+  getSpouseLinks,
+} from './family-graph'
 import { person, parentChild, spouse, TEST_FAMILY_ID } from '../test/fixtures/family'
 
 describe('family graph', () => {
@@ -41,5 +47,69 @@ describe('family graph', () => {
     const relationships = [spouse('a', 'b'), spouse('b', 'a', 'dup')]
     const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
     expect(graph.issues.some((i) => i.code === 'DUPLICATE_RELATIONSHIP')).toBe(true)
+  })
+})
+
+describe('relationship link helpers', () => {
+  const father = person('father', 'Father')
+  const mother = person('mother', 'Mother')
+  const child = person('child', 'Child')
+  const people = [father, mother, child]
+  const relationships = [
+    parentChild('father', 'child', 'pc-father'),
+    parentChild('mother', 'child', 'pc-mother'),
+    spouse('father', 'mother', 'sp-parents'),
+  ]
+
+  it('finds a relationship by draft endpoints and type', () => {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
+
+    const found = findRelationship(graph, {
+      type: 'parent_child',
+      personAId: 'father',
+      personBId: 'child',
+      familyId: TEST_FAMILY_ID,
+    })
+
+    expect(found?.id).toBe('pc-father')
+  })
+
+  it('finds a spouse relationship regardless of person order', () => {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
+
+    const found = findRelationship(graph, {
+      type: 'spouse',
+      personAId: 'mother',
+      personBId: 'father',
+      familyId: TEST_FAMILY_ID,
+    })
+
+    expect(found?.id).toBe('sp-parents')
+  })
+
+  it('returns parent links with the parent person and relationship row', () => {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
+    const links = getParentLinks(graph, 'child')
+
+    expect(links.map((link) => link.person.id).sort()).toEqual(['father', 'mother'])
+    expect(links.map((link) => link.relationship.id).sort()).toEqual(['pc-father', 'pc-mother'])
+  })
+
+  it('returns child links from a parent', () => {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
+    const links = getChildLinks(graph, 'father')
+
+    expect(links).toHaveLength(1)
+    expect(links[0].person.id).toBe('child')
+    expect(links[0].relationship.id).toBe('pc-father')
+  })
+
+  it('returns spouse links', () => {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
+    const links = getSpouseLinks(graph, 'father')
+
+    expect(links).toHaveLength(1)
+    expect(links[0].person.id).toBe('mother')
+    expect(links[0].relationship.id).toBe('sp-parents')
   })
 })

@@ -6,9 +6,10 @@ export function displayName(person: Person): string {
   return parts.join(' ')
 }
 
-export function personGender(person: Person): 'M' | 'F' | 'U' {
+export function personGender(person: Person): 'M' | 'F' | 'I' | 'U' {
   if (person.gender === 'female') return 'F'
   if (person.gender === 'male') return 'M'
+  if (person.gender === 'inter') return 'I'
   return 'U'
 }
 

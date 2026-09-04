@@ -1,6 +1,16 @@
 import { relationshipKey } from './relationship-key'
 import type { CommandPlan, FamilyGraph, PersonId, RelationshipDraft } from './types'
 import { validateRelationshipDraft } from './validate-relationship'
+import { findRelationship } from './family-graph'
+import {
+  findConflictingRelationship,
+  parentCapOverwrite,
+  type OverwriteChoice,
+  type OverwriteOffer,
+} from './connection-overwrite'
+
+export type { OverwriteChoice, OverwriteOffer } from './connection-overwrite'
+export { MAX_PARENTS_PER_CHILD } from './connection-overwrite'
 
 export type ConnectionKind = 'child' | 'parent' | 'spouse' | 'sibling'
 
@@ -10,6 +20,7 @@ export interface ConnectionOption {
   available: boolean
   reason: string | null
   drafts: RelationshipDraft[]
+  overwrite?: OverwriteOffer
 }
 
 const KIND_ORDER: ConnectionKind[] = ['child', 'parent', 'spouse', 'sibling']
@@ -53,6 +64,58 @@ function labelFor(kind: ConnectionKind, targetName: string): string {
   }
 }
 
+function uniqueDrafts(drafts: RelationshipDraft[]): RelationshipDraft[] {
+  const seen = new Set<string>()
+  const unique: RelationshipDraft[] = []
+  for (const draft of drafts) {
+    const key = relationshipKey(draft.type, draft.personAId, draft.personBId)
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(draft)
+  }
+  return unique
+}
+
+function overwriteForValidationError(
+  graph: FamilyGraph,
+  draft: RelationshipDraft,
+  code: string,
+): OverwriteOffer | undefined {
+  if (code !== 'CONFLICTING_DIRECTION') return undefined
+  const reverse = findConflictingRelationship(graph, draft)
+  if (!reverse) return undefined
+  return {
+    kind: 'remove_conflicting_link',
+    relationshipId: reverse.id,
+    description: 'The opposite parent-child direction already exists',
+  }
+}
+
+function evaluateDrafts(
+  graph: FamilyGraph,
+  drafts: RelationshipDraft[],
+): { reason: string; overwrite?: OverwriteOffer } | null {
+  for (const draft of drafts) {
+    const result = validateRelationshipDraft(graph, draft)
+    if (!result.ok) {
+      return {
+        reason: result.error.message,
+        overwrite: overwriteForValidationError(graph, draft, result.error.code),
+      }
+    }
+  }
+
+  const parentCap = parentCapOverwrite(graph, drafts)
+  if (parentCap) {
+    return {
+      reason: 'This person already has two parents',
+      overwrite: parentCap,
+    }
+  }
+
+  return null
+}
+
 /**
  * Builds every relationship a dragged person could form with a drop target and
  * marks each one available or blocked using the same validation the write path
@@ -69,7 +132,7 @@ export function getConnectionOptions(
   if (sourceId === targetId) return []
 
   return KIND_ORDER.map((kind) => {
-    const drafts = draftsFor(kind, graph, sourceId, targetId, familyId)
+    const drafts = uniqueDrafts(draftsFor(kind, graph, sourceId, targetId, familyId))
     const label = labelFor(kind, targetName)
 
     if (drafts.length === 0) {
@@ -85,22 +148,57 @@ export function getConnectionOptions(
       }
     }
 
-    const seen = new Set<string>()
-    for (const draft of drafts) {
-      const key = relationshipKey(draft.type, draft.personAId, draft.personBId)
-      if (seen.has(key)) continue
-      seen.add(key)
-      const result = validateRelationshipDraft(graph, draft)
-      if (!result.ok) {
-        return { kind, label, available: false, reason: result.error.message, drafts }
+    if (kind === 'sibling') {
+      const missing: RelationshipDraft[] = []
+      const skipRelationshipIds: string[] = []
+      for (const draft of drafts) {
+        const existing = findRelationship(graph, draft)
+        if (existing) skipRelationshipIds.push(existing.id)
+        else missing.push(draft)
       }
+
+      if (missing.length === 0) {
+        return {
+          kind,
+          label,
+          available: false,
+          reason: 'An equivalent relationship already exists',
+          drafts,
+        }
+      }
+
+      const blocked = evaluateDrafts(graph, missing)
+      if (blocked) {
+        return { kind, label, available: false, reason: blocked.reason, drafts: missing, overwrite: blocked.overwrite }
+      }
+
+      if (skipRelationshipIds.length > 0) {
+        return {
+          kind,
+          label,
+          available: false,
+          reason: 'Some sibling parent links already exist',
+          drafts: missing,
+          overwrite: { kind: 'complete_partial_sibling', skipRelationshipIds },
+        }
+      }
+
+      return { kind, label, available: true, reason: null, drafts: missing }
+    }
+
+    const blocked = evaluateDrafts(graph, drafts)
+    if (blocked) {
+      return { kind, label, available: false, reason: blocked.reason, drafts, overwrite: blocked.overwrite }
     }
 
     return { kind, label, available: true, reason: null, drafts }
   })
 }
 
-export function buildConnectionPlan(option: ConnectionOption): CommandPlan {
+export function buildConnectionPlan(
+  option: ConnectionOption,
+  extras: { deleteRelationshipIds?: string[] } = {},
+): CommandPlan {
   const plan: CommandPlan = { writes: [], deletes: [], warnings: [], errors: [] }
 
   if (!option.available) {
@@ -109,6 +207,10 @@ export function buildConnectionPlan(option: ConnectionOption): CommandPlan {
       message: option.reason ?? 'This connection is not allowed',
     })
     return plan
+  }
+
+  for (const id of extras.deleteRelationshipIds ?? []) {
+    plan.deletes.push({ collection: 'relationships', id })
   }
 
   for (const draft of option.drafts) {
@@ -125,6 +227,61 @@ export function buildConnectionPlan(option: ConnectionOption): CommandPlan {
   }
 
   return plan
+}
+
+export function resolveOverwritePlan(
+  _graph: FamilyGraph,
+  option: ConnectionOption,
+  choice: OverwriteChoice,
+): CommandPlan {
+  const offer = option.overwrite
+  if (!offer || offer.kind !== choice.kind) {
+    return {
+      writes: [],
+      deletes: [],
+      warnings: [],
+      errors: [{ code: 'INVALID_RELATIONSHIP_TYPE', message: 'This connection cannot be overwritten' }],
+    }
+  }
+
+  if (choice.kind === 'replace_parent_link') {
+    if (offer.kind !== 'replace_parent_link') {
+      return {
+        writes: [],
+        deletes: [],
+        warnings: [],
+        errors: [{ code: 'INVALID_RELATIONSHIP_TYPE', message: 'This connection cannot be overwritten' }],
+      }
+    }
+    const allowed = offer.candidates.some((c) => c.relationshipId === choice.relationshipIdToRemove)
+    if (!allowed) {
+      return {
+        writes: [],
+        deletes: [],
+        warnings: [],
+        errors: [{ code: 'INVALID_RELATIONSHIP_TYPE', message: 'Choose an existing parent link to replace' }],
+      }
+    }
+    return buildConnectionPlan({ ...option, available: true }, {
+      deleteRelationshipIds: [choice.relationshipIdToRemove],
+    })
+  }
+
+  if (choice.kind === 'remove_conflicting_link') {
+    if (offer.kind !== 'remove_conflicting_link') {
+      return {
+        writes: [],
+        deletes: [],
+        warnings: [],
+        errors: [{ code: 'INVALID_RELATIONSHIP_TYPE', message: 'This connection cannot be overwritten' }],
+      }
+    }
+    return buildConnectionPlan({ ...option, available: true }, {
+      deleteRelationshipIds: [offer.relationshipId],
+    })
+  }
+
+  return buildConnectionPlan({ ...option, available: true })
 }
 
 export function planDeleteRelationships(relationshipIds: string[]): CommandPlan {

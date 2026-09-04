@@ -1,0 +1,91 @@
+---
+description: Family Roots domain and layout test scenarios (edge cases and invariants)
+globs: family-roots/src/domain/**,family-roots/src/features/tree/**
+alwaysApply: false
+---
+
+# Family Roots domain & layout test scenarios
+
+Use this as a checklist when adding or changing family-graph, layout, or tree behavior.
+
+## Graph & relationships
+
+- Single person (disconnected)
+- Couple + children (two-parent union)
+- Single parent + child (`union:single:parentId`)
+- Remarriage: child linked to one parent of a couple only
+- Child with extra bogus third parent
+- Sibling via shared parents vs via marriage only
+- Spouse edges vs parent-child direction (parent A → child B)
+
+## Collapse / branch fold
+
+- Fold couple hides descendants + in-laws, keeps parents visible
+- Fold one union does not hide sibling partnership children
+- Toggle collapse on/off
+- `unionsHidingPerson` lists active folds
+- Child of other marriage of one parent stays visible when folding unrelated union
+
+## Direct line & search
+
+- Direct line includes ancestors + descendants, excludes siblings and spouses
+- Union highlighting on blood line only
+- Search: empty query, case insensitivity, maiden name, birth place, no matches, limit
+
+## Commands & audit
+
+- `planAddRelative`: child, parent, spouse, sibling; missing anchor; sibling without parents
+- `auditFamily`: disconnected, unknown gender, uncertain links, clean tree
+
+## Layout invariants (see `layout-invariants.test.ts`)
+
+| Scenario | Intent |
+|----------|--------|
+| S1 | Couple + two children baseline |
+| S2a–c | Wide vs narrow cousin branches |
+| S3 | Widest generation not youngest |
+| S4 | Couple between natal sibling runs |
+| S5 | Only-child marriage near in-laws |
+| S6 | Remove marriage → return to natal sibling |
+| S7 | Two spouses, separate child sets |
+| S8 | Collapsed union between parents |
+| S9 | Disconnected components don't overlap |
+| S10 | Aguilar pedigree compact + centered |
+
+## Display vs structure (performance)
+
+- Draft rename → `applyDisplayPatches` updates labels, not x/y
+- `layoutModelStructureKey` unchanged on rename, changed on birth year
+- `computeTreeLayoutAsync` completes; worker failure falls back to main thread
+
+## Dates
+
+- `16.07.1956`, `1956`, month precision via `parsePartialDateInput`
+- Living vs deceased life span strings
+
+## Commands (see `commands.test.ts`)
+
+| Kind | Expect |
+|------|--------|
+| child | parent_child edge anchor → new |
+| parent | parent_child edge new → anchor |
+| spouse | spouse edge |
+| sibling | one parent_child per known parent |
+| missing anchor | error |
+| sibling w/o parents | error |
+
+## Layout structure key (see `apply-display-patches.test.ts`)
+
+- Unchanged: rename, maiden name, death year, notes
+- Changed: birth year, new relationship, collapse toggle
+
+## Worker / async layout (see `compute-layout-async.test.ts`)
+
+- Main-thread success for small tree
+- Worker timeout → main-thread fallback (fake timers)
+- postMessage throw → main-thread fallback
+
+## Performance guards (`layout-performance.test.ts`)
+
+- Aguilar interactive layout &lt; 20s
+- Structure key stable across rename-only edits

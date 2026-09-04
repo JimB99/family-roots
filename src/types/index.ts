@@ -7,7 +7,7 @@ export interface PartialDate {
   precision: DatePrecision
 }
 
-export type Gender = 'male' | 'female' | 'unknown'
+export type Gender = 'male' | 'female' | 'inter' | 'unknown'
 export type RelationshipType = 'spouse' | 'parent_child'
 export type RelationshipConfidence = 'imported' | 'manual' | 'low'
 

@@ -1,4 +1,5 @@
 import type { FamilyGraph, PersonId } from './types'
+import { parentIdsFromUnionId, parentIdsOfChild, unionIdForChild } from './union-id'
 
 export function descendantIds(graph: FamilyGraph, personId: PersonId): Set<PersonId> {
   const found = new Set<PersonId>()
@@ -14,62 +15,87 @@ export function descendantIds(graph: FamilyGraph, personId: PersonId): Set<Perso
   return found
 }
 
+function otherSpousesOfUnion(graph: FamilyGraph, unionParents: ReadonlySet<PersonId>): Set<PersonId> {
+  const other = new Set<PersonId>()
+  for (const parent of unionParents) {
+    for (const spouse of graph.spousesOf.get(parent) ?? []) {
+      if (!unionParents.has(spouse)) other.add(spouse)
+    }
+  }
+  return other
+}
+
+/** True when this person is offspring of the folded couple, not of another marriage. */
+export function isOffspringOfUnion(graph: FamilyGraph, personId: PersonId, unionId: string): boolean {
+  const unionParents = new Set(parentIdsFromUnionId(unionId))
+  if (unionParents.size === 0) return unionIdForChild(graph, personId) === unionId
+
+  const parents = parentIdsOfChild(graph, personId)
+  if (parents.length === 0) return false
+  if (!parents.some((parent) => unionParents.has(parent))) return false
+
+  const otherSpouses = otherSpousesOfUnion(graph, unionParents)
+  return !parents.some((parent) => otherSpouses.has(parent))
+}
+
 /**
- * People hidden when the given persons' descendant branches are folded.
- * The folded person and their spouses stay visible.
+ * People hidden when the given unions' child branches are folded.
+ * The union's parents stay visible.
  */
 export function hiddenPersonIds(
   graph: FamilyGraph,
-  collapsedIds: ReadonlySet<PersonId>,
+  collapsedUnionIds: ReadonlySet<string>,
 ): Set<PersonId> {
   const hidden = new Set<PersonId>()
-  const collapsedSpouses = new Set<PersonId>()
-  for (const id of collapsedIds) {
-    for (const spouse of graph.spousesOf.get(id) ?? []) collapsedSpouses.add(spouse)
-    collapsedSpouses.add(id)
+  const keep = new Set<PersonId>()
+  for (const unionId of collapsedUnionIds) {
+    for (const parent of parentIdsFromUnionId(unionId)) keep.add(parent)
   }
 
-  for (const collapsed of collapsedIds) {
-    for (const descendant of descendantIds(graph, collapsed)) {
-      hidden.add(descendant)
-      for (const spouse of graph.spousesOf.get(descendant) ?? []) {
-        if (!collapsedSpouses.has(spouse)) hidden.add(spouse)
-      }
+  for (const person of graph.peopleById.values()) {
+    const isOffspring = [...collapsedUnionIds].some((unionId) =>
+      isOffspringOfUnion(graph, person.id, unionId),
+    )
+    if (!isOffspring) continue
+    hidden.add(person.id)
+    for (const descendant of descendantIds(graph, person.id)) hidden.add(descendant)
+  }
+
+  for (const id of [...hidden]) {
+    for (const spouse of graph.spousesOf.get(id) ?? []) {
+      if (!keep.has(spouse)) hidden.add(spouse)
     }
   }
 
-  for (const id of collapsedSpouses) hidden.delete(id)
+  for (const id of keep) hidden.delete(id)
   return hidden
 }
 
-export function isBranchCollapsed(
-  graph: FamilyGraph,
-  hidden: ReadonlySet<PersonId>,
-  personId: PersonId,
-): boolean {
-  const children = graph.childrenOf.get(personId)
-  if (!children || children.size === 0) return false
-  return [...children].every((child) => hidden.has(child))
+export function toggleCollapsedUnion(
+  _graph: FamilyGraph,
+  collapsedUnionIds: ReadonlySet<string>,
+  unionId: string,
+): Set<string> {
+  const next = new Set(collapsedUnionIds)
+  if (next.has(unionId)) next.delete(unionId)
+  else next.add(unionId)
+  return next
 }
 
-export function toggleCollapsedPerson(
+export function unionsHidingPerson(
   graph: FamilyGraph,
-  collapsedIds: ReadonlySet<PersonId>,
+  collapsedUnionIds: ReadonlySet<string>,
   personId: PersonId,
-): Set<PersonId> {
-  const next = new Set(collapsedIds)
-  const hidden = hiddenPersonIds(graph, next)
-  if (isBranchCollapsed(graph, hidden, personId)) {
-    const children = graph.childrenOf.get(personId) ?? new Set()
-    for (const id of [...next]) {
-      const wouldHide = descendantIds(graph, id)
-      if (id === personId || [...children].some((child) => wouldHide.has(child))) {
-        next.delete(id)
-      }
-    }
-    for (const spouse of graph.spousesOf.get(personId) ?? []) next.delete(spouse)
-    return next
+): string[] {
+  return [...collapsedUnionIds].filter((unionId) =>
+    hiddenPersonIds(graph, new Set([unionId])).has(personId),
+  )
+}
+
+export function childIdsOfUnion(graph: FamilyGraph, unionId: string): PersonId[] {
+  const children: PersonId[] = []
+  for (const person of graph.peopleById.values()) {
+    if (isOffspringOfUnion(graph, person.id, unionId)) children.push(person.id)
   }
-  next.add(personId)
-  return next
+  return children
 }

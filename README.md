@@ -70,12 +70,3 @@ npm run test:e2e
 - Public read access is intentional; rules enforce editor-only writes and field invariants.
 
 See `docs/architecture/` for domain and layout notes.
-
-One-time data migration from a visual Excel pedigree chart:
-
-```bash
-npm run import:stamm -- "path/to/file.xls"
-npm run import:stamm -- "path/to/file.xls" --commit --slug=miller-family --name="Miller Family"
-```
-
-Requires `FIREBASE_SERVICE_ACCOUNT` pointing to a service-account JSON for `--commit`.

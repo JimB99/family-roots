@@ -1,4 +1,14 @@
 import type { PositionedLayout, PositionedNode } from '../tree/layout/layout-model'
+import {
+  CARD_FAMILY_SIZE,
+  CARD_GIVEN_SIZE,
+  CARD_SUBTITLE_SIZE,
+  CARD_TEXT_X,
+  cardNameBaselines,
+  fullCardNameMaxWidth,
+  splitPersonName,
+  truncateToWidth,
+} from '../tree/person-card-label'
 
 const PALETTE = {
   background: '#f4f0e6',
@@ -11,12 +21,14 @@ const PALETTE = {
   nodeSubtext: '#857a68',
   male: '#6d94b5',
   female: '#c07f96',
+  inter: '#8f7eb5',
   unknown: '#a89d8b',
 }
 
 function accentFor(node: PositionedNode): string {
   if (node.gender === 'male') return PALETTE.male
   if (node.gender === 'female') return PALETTE.female
+  if (node.gender === 'inter') return PALETTE.inter
   return PALETTE.unknown
 }
 
@@ -71,17 +83,30 @@ export function buildTreeSvg(layout: PositionedLayout, title: string): string {
       }
 
       const accent = accentFor(node)
+      const { given, family } = splitPersonName(node.givenNames, node.familyName)
+      const maxWidth = fullCardNameMaxWidth(node.width)
+      const givenText = truncateToWidth(given, CARD_GIVEN_SIZE, maxWidth)
+      const familyText = family ? truncateToWidth(family, CARD_FAMILY_SIZE, maxWidth) : null
+      const baselines = cardNameBaselines(Boolean(familyText), Boolean(node.subtitle))
+      const clipId = `name-clip-${node.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+      const familyLine = familyText
+        ? `<text x="${x + CARD_TEXT_X}" y="${y + baselines.family}" font-size="${CARD_FAMILY_SIZE}" font-weight="500" fill="${PALETTE.nodeSubtext}">${escapeXml(familyText)}</text>`
+        : ''
       const subtitle = node.subtitle
-        ? `<text x="${x + 68}" y="${y + node.height / 2 + 16}" font-size="12.5" fill="${PALETTE.nodeSubtext}">${escapeXml(node.subtitle)}</text>`
+        ? `<text x="${x + CARD_TEXT_X}" y="${y + baselines.subtitle}" font-size="${CARD_SUBTITLE_SIZE}" fill="${PALETTE.nodeSubtext}">${escapeXml(node.subtitle)}</text>`
         : ''
 
       return `<g>
+        <defs><clipPath id="${clipId}"><rect x="${x + CARD_TEXT_X - 2}" y="${y}" width="${maxWidth + 6}" height="${node.height}" /></clipPath></defs>
         <rect x="${x}" y="${y}" width="${node.width}" height="${node.height}" rx="16" fill="${PALETTE.nodeSurface}" stroke="${PALETTE.nodeBorder}" stroke-width="1.25" />
         <path d="M${x} ${y + 16} A16 16 0 0 1 ${x + 16} ${y} L${x + 16} ${y + node.height} A16 16 0 0 1 ${x} ${y + node.height - 16} Z" fill="${accent}" opacity="0.85" />
         <circle cx="${x + 40}" cy="${y + node.height / 2}" r="17" fill="${accent}" opacity="0.2" />
         <text x="${x + 40}" y="${y + node.height / 2 + 5}" text-anchor="middle" font-size="14" font-weight="600" fill="${PALETTE.nodeText}" opacity="0.75">${escapeXml(node.initials)}</text>
-        <text x="${x + 68}" y="${y + node.height / 2 - 4}" font-size="15" font-weight="600" fill="${PALETTE.nodeText}">${escapeXml(node.label)}</text>
-        ${subtitle}
+        <g clip-path="url(#${clipId})">
+          <text x="${x + CARD_TEXT_X}" y="${y + baselines.given}" font-size="${CARD_GIVEN_SIZE}" font-weight="700" fill="${PALETTE.nodeText}">${escapeXml(givenText)}</text>
+          ${familyLine}
+          ${subtitle}
+        </g>
       </g>`
     })
     .join('')

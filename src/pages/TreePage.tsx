@@ -1,16 +1,17 @@
-import { useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Sheet } from '../components/ui/Sheet'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { ToastRegion } from '../components/ui/ToastRegion'
+import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import { useFamilyMutation } from '../data/use-family-mutation'
 import { auditFamily } from '../domain/audit-family'
 import { actionableIssueCount } from '../features/health/issue-presentation'
-import { buildFamilyGraph, getChildren, getParents, getSpouses } from '../domain/family-graph'
+import { buildFamilyGraph } from '../domain/family-graph'
 import {
   planAddRelative,
   planChangeRelationshipType,
@@ -19,21 +20,28 @@ import {
 import {
   buildConnectionPlan,
   planDeleteRelationships,
+  resolveOverwritePlan,
   type ConnectionOption,
+  type OverwriteChoice,
 } from '../domain/valid-connections'
 import {
   executeCommandPlan,
   planReconnectRelationship,
   planUndoChangeRelationshipType,
 } from '../data/firestore/execute-command-plan'
+import { deletePersonWithRelationships, saveValidatedPerson } from '../data/firestore/family-mutations'
 import { buildFamilyBackup, downloadJson } from '../features/backup/family-backup-schema'
 import { RestoreFamilyDialog } from '../features/backup/RestoreFamilyDialog'
 import { exportPng, exportSvg } from '../features/export/export-tree'
 import { computeTreeLayout } from '../features/tree/layout/compute-tree-layout'
 import { projectFamilyGraph } from '../features/tree/layout/project-family-graph'
 import { useEditHistory } from '../features/tree/history/use-edit-history'
-import { PersonInspector, RelationshipInspector } from '../features/tree/TreeInspector'
+import { parsePersonDraft, livingDraftEntries } from '../features/tree/person-drafts'
+import { TreeInspectorPanel } from '../features/tree/TreeInspectorPanel'
+import { ConnectPersonDialog } from '../features/tree/connect/ConnectPersonDialog'
 import { TreeWorkspace, type TreeSelection } from '../features/tree/TreeWorkspace'
+import { usePersonDrafts } from '../features/tree/use-person-drafts'
+import { matchedPersonIdsForQuery, filterPeopleByQuery } from '../lib/person-search'
 import { displayName } from '../lib/tree'
 import type { PersonInput } from '../types'
 
@@ -47,20 +55,33 @@ export function TreePage() {
     user?.uid ?? null,
   )
   const mutation = useFamilyMutation()
+  const personDrafts = usePersonDrafts(people)
+  const { displayPeople, unsavedCount, hasUnsaved, getDraftForPerson, updateDraft, discardOne, discardAll, removePerson, drafts } =
+    personDrafts
+
   const [editMode, setEditMode] = useState(false)
   const [selection, setSelection] = useState<TreeSelection>(null)
   const [search, setSearch] = useState('')
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [focusPersonId, setFocusPersonId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false)
+  const [savingDrafts, setSavingDrafts] = useState(false)
+  const [formRevision, setFormRevision] = useState(0)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [connectHint, setConnectHint] = useState<string | null>(null)
+  const pendingActionRef = useRef<(() => void) | null>(null)
 
   const deferredSearch = useDeferredValue(search)
+  const deferredDisplayPeople = useDeferredValue(displayPeople)
   const history = useEditHistory(user?.uid ?? null, reload)
   const canEdit = editMode && isEditor
 
+  const blocker = useBlocker(hasUnsaved)
+
   const graph = useMemo(
-    () => (family ? buildFamilyGraph(family.id, people, relationships) : null),
-    [family, people, relationships],
+    () => (family ? buildFamilyGraph(family.id, displayPeople, relationships) : null),
+    [family, displayPeople, relationships],
   )
 
   const issueCount = useMemo(
@@ -68,31 +89,147 @@ export function TreePage() {
     [family, people, relationships],
   )
 
-  const matchedPersonIds = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase()
-    if (!query) return null
-    const matches = new Set<string>()
-    for (const person of people) {
-      const haystack = [person.givenNames, person.familyName, person.maidenName, person.birthPlace]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      if (haystack.includes(query)) matches.add(person.id)
-    }
-    return matches
-  }, [people, deferredSearch])
+  const canvasMatchedPersonIds = useMemo(
+    () => matchedPersonIdsForQuery(deferredDisplayPeople, deferredSearch),
+    [deferredDisplayPeople, deferredSearch],
+  )
 
-  const searchResults = useMemo(() => {
-    if (!matchedPersonIds) return []
-    return people.filter((p) => matchedPersonIds.has(p.id)).slice(0, 6)
-  }, [people, matchedPersonIds])
+  const searchResults = useMemo(
+    () => filterPeopleByQuery(displayPeople, deferredSearch, 6),
+    [displayPeople, deferredSearch],
+  )
 
-  const selectedPerson =
-    selection?.kind === 'person' ? people.find((p) => p.id === selection.personId) ?? null : null
+  const selectedPersonId = selection?.kind === 'person' ? selection.personId : null
+  const selectedPerson = selectedPersonId ? people.find((p) => p.id === selectedPersonId) ?? null : null
+  const selectedPersonDisplay = selectedPersonId
+    ? displayPeople.find((p) => p.id === selectedPersonId) ?? null
+    : null
   const selectedRelationship =
     selection?.kind === 'edge' && selection.relationshipId
       ? relationships.find((r) => r.id === selection.relationshipId) ?? null
       : null
+
+  const selectedPersonRelationshipCount = useMemo(() => {
+    if (!selectedPerson) return 0
+    return relationships.filter(
+      (r) => r.personAId === selectedPerson.id || r.personBId === selectedPerson.id,
+    ).length
+  }, [selectedPerson, relationships])
+
+  const saveAllDrafts = useCallback(async (): Promise<void> => {
+    if (!user || drafts.size === 0) return
+
+    const peopleById = new Map(people.map((p) => [p.id, p]))
+    const entries = livingDraftEntries(drafts, people)
+
+    if (entries.length === 0) {
+      discardAll()
+      return
+    }
+
+    const failures: string[] = []
+    const toSave: { personId: string; input: PersonInput; label: string }[] = []
+
+    for (const [personId, draft] of entries) {
+      const person = peopleById.get(personId)
+      if (!person) continue
+      const label = displayName(person)
+      const parsed = parsePersonDraft(draft)
+      if (!parsed.ok) {
+        failures.push(`${label}: ${parsed.message}`)
+        continue
+      }
+      toSave.push({ personId, input: parsed.input, label })
+    }
+
+    if (failures.length > 0) {
+      throw new Error(failures.join(' · '))
+    }
+
+    const savedIds: string[] = []
+    for (const entry of toSave) {
+      try {
+        await saveValidatedPerson(entry.personId, entry.input, user.uid)
+        savedIds.push(entry.personId)
+      } catch (err) {
+        failures.push(`${entry.label}: ${err instanceof Error ? err.message : 'Save failed'}`)
+      }
+    }
+
+    if (failures.length > 0) {
+      for (const id of savedIds) removePerson(id)
+      await reload()
+      throw new Error(failures.join(' · '))
+    }
+
+    discardAll()
+    await reload()
+  }, [user, drafts, people, discardAll, removePerson, reload])
+
+  const handleSaveAllDrafts = useCallback(async () => {
+    setSavingDrafts(true)
+    try {
+      const saved = await mutation.run(
+        unsavedCount === 1 ? '1 person saved' : `${unsavedCount} people saved`,
+        () => saveAllDrafts(),
+      )
+      return saved !== null
+    } finally {
+      setSavingDrafts(false)
+    }
+  }, [mutation, saveAllDrafts, unsavedCount])
+
+  const requestLeave = useCallback(
+    (action: () => void) => {
+      if (!hasUnsaved) {
+        action()
+        return
+      }
+      pendingActionRef.current = action
+      setUnsavedPromptOpen(true)
+    },
+    [hasUnsaved],
+  )
+
+  const handleStayEditing = useCallback(() => {
+    setUnsavedPromptOpen(false)
+    pendingActionRef.current = null
+    if (blocker.state === 'blocked') blocker.reset()
+  }, [blocker])
+
+  const handleDiscardAndProceed = useCallback(() => {
+    discardAll()
+    setUnsavedPromptOpen(false)
+    const action = pendingActionRef.current
+    pendingActionRef.current = null
+    if (blocker.state === 'blocked') blocker.proceed()
+    action?.()
+  }, [discardAll, blocker])
+
+  const handleSaveAndProceed = useCallback(async () => {
+    const ok = await handleSaveAllDrafts()
+    if (!ok) return
+    setUnsavedPromptOpen(false)
+    const action = pendingActionRef.current
+    pendingActionRef.current = null
+    if (blocker.state === 'blocked') blocker.proceed()
+    action?.()
+  }, [handleSaveAllDrafts, blocker])
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked' || unsavedPromptOpen) return
+    pendingActionRef.current = () => {}
+    setUnsavedPromptOpen(true)
+  }, [blocker.state, unsavedPromptOpen])
+
+  useEffect(() => {
+    if (!hasUnsaved) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnsaved])
 
   const handleSelectionChange = useCallback((next: TreeSelection) => {
     setSelection(next)
@@ -103,14 +240,36 @@ export function TreePage() {
     setFocusPersonId(personId)
   }, [])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'e' && event.key !== 'E') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      if (!isEditor || !selectedPerson) return
+      event.preventDefault()
+      if (!editMode) setEditMode(true)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isEditor, selectedPerson, editMode])
+
   const handleAddRelative = async (kind: 'child' | 'parent' | 'spouse' | 'sibling') => {
     if (!family || !selectedPerson || !graph || !user) return
-    const input: PersonInput = {
+    const input = {
       familyId: family.id,
       givenNames: 'New person',
       familyName: kind === 'spouse' ? null : selectedPerson.familyName,
       maidenName: null,
-      gender: 'unknown',
+      gender: 'unknown' as const,
       birth: null,
       death: null,
       birthPlace: null,
@@ -138,6 +297,7 @@ export function TreePage() {
     })
 
     if (result?.createdPersonIds[0]) {
+      const newPersonId = result.createdPersonIds[0]
       history.push(
         `Add ${kind}`,
         {
@@ -147,28 +307,49 @@ export function TreePage() {
               collection: 'relationships' as const,
               id,
             })),
-            { collection: 'people' as const, id: result.createdPersonIds[0] },
+            { collection: 'people' as const, id: newPersonId },
           ],
           warnings: [],
           errors: [],
         },
         forward,
       )
-      navigate(`/families/${slug}/person/${result.createdPersonIds[0]}`)
+      if (!editMode) setEditMode(true)
+      selectPerson(newPersonId)
     }
   }
 
-  const handleConnect = useCallback(
-    async (sourceId: string, targetId: string, option: ConnectionOption) => {
-      if (!family || !user) return
-      const plan = buildConnectionPlan(option)
+  const handlePersonDelete = async () => {
+    if (!family || !selectedPerson || !user) return
+    const personId = selectedPerson.id
+    const deleted = await mutation.run('Person deleted', async () => {
+      await deletePersonWithRelationships(family.id, personId)
+      await reload()
+    })
+    if (deleted === null) throw new Error('Delete failed')
+    removePerson(personId)
+    setSelection(null)
+    setFocusPersonId(null)
+  }
+
+  const handleConnectRequest = useCallback(
+    async (
+      sourceId: string,
+      targetId: string,
+      option: ConnectionOption,
+      overwriteChoice?: OverwriteChoice,
+    ) => {
+      if (!family || !user || !graph) return
+      const plan = overwriteChoice
+        ? resolveOverwritePlan(graph, option, overwriteChoice)
+        : buildConnectionPlan(option)
       if (plan.errors.length > 0) {
         mutation.setError(plan.errors[0].message)
         return
       }
 
-      const source = people.find((p) => p.id === sourceId)
-      const target = people.find((p) => p.id === targetId)
+      const source = displayPeople.find((p) => p.id === sourceId)
+      const target = displayPeople.find((p) => p.id === targetId)
       const label = source && target ? `${displayName(source)} → ${displayName(target)}` : 'Connected'
 
       const result = await mutation.run(`Connected: ${label}`, async () => {
@@ -181,19 +362,29 @@ export function TreePage() {
         history.push('Connect people', planDeleteRelationships(result.createdRelationshipIds), plan)
       }
     },
-    [family, user, people, mutation, reload, history],
+    [family, user, graph, displayPeople, mutation, reload, history],
+  )
+
+  const handleDisconnectRelationship = useCallback(
+    async (relationshipId: string, clearSelection = false) => {
+      if (!user || !graph) return
+      const rel = graph.relationshipsById.get(relationshipId)
+      if (!rel) return
+      const forward = planDisconnectRelationship(relationshipId)
+      const snapshot = { ...rel }
+      await mutation.run('Connection removed', async () => {
+        await executeCommandPlan(forward, user.uid)
+        history.push('Disconnect', planReconnectRelationship(snapshot), forward)
+        await reload()
+        if (clearSelection) setSelection(null)
+      })
+    },
+    [user, graph, mutation, history, reload],
   )
 
   const handleDisconnect = async () => {
-    if (!selectedRelationship || !user) return
-    const forward = planDisconnectRelationship(selectedRelationship.id)
-    const snapshot = { ...selectedRelationship }
-    await mutation.run('Connection removed', async () => {
-      await executeCommandPlan(forward, user.uid)
-      history.push('Disconnect', planReconnectRelationship(snapshot), forward)
-      await reload()
-      setSelection(null)
-    })
+    if (!selectedRelationship) return
+    await handleDisconnectRelationship(selectedRelationship.id, true)
   }
 
   const handleChangeType = async (type: 'spouse' | 'parent_child') => {
@@ -221,15 +412,24 @@ export function TreePage() {
 
   const handleExport = async (format: 'svg' | 'png') => {
     if (!family || !graph) return
-    const layout = computeTreeLayout(projectFamilyGraph(graph))
+    const layout = await computeTreeLayout(projectFamilyGraph(graph), { quality: 'export' })
     if (format === 'svg') exportSvg(layout, family.name)
     else await exportPng(layout, family.name)
   }
 
   const handleBackup = () => {
     if (!family) return
-    downloadJson(`${family.slug}-backup.json`, buildFamilyBackup(family, people, relationships))
+    downloadJson(`${family.slug}-backup.json`, buildFamilyBackup(family, displayPeople, relationships))
   }
+
+  const exitEditMode = useCallback(() => {
+    history.clear()
+    setEditMode(false)
+  }, [history])
+
+  const discardEditSession = useCallback(() => {
+    void history.discard().then(() => setEditMode(false))
+  }, [history])
 
   if (loading) {
     return (
@@ -255,27 +455,42 @@ export function TreePage() {
     )
   }
 
-  const inspectorContent = selectedPerson && graph ? (
-    <PersonInspector
-      person={selectedPerson}
-      parents={getParents(graph, selectedPerson.id)}
-      children={getChildren(graph, selectedPerson.id)}
-      spouses={getSpouses(graph, selectedPerson.id)}
-      editMode={canEdit}
+  const hasInspector = Boolean(
+    (selectedPerson && selectedPersonDisplay && graph) || (selectedRelationship && graph),
+  )
+
+  const inspectorContent = hasInspector ? (
+    <TreeInspectorPanel
+      graph={graph}
+      selectedPerson={selectedPerson}
+      selectedPersonDisplay={selectedPersonDisplay}
+      selectedRelationship={selectedRelationship}
+      selectedPersonRelationshipCount={selectedPersonRelationshipCount}
+      canEdit={canEdit}
+      familyId={family.id}
+      draft={selectedPerson ? getDraftForPerson(selectedPerson) : undefined}
+      hasDraft={selectedPerson ? drafts.has(selectedPerson.id) : false}
+      formRevision={formRevision}
+      onDraftChange={(draft) => selectedPerson && updateDraft(selectedPerson, draft)}
+      onRevertDraft={() => {
+        if (!selectedPerson) return
+        discardOne(selectedPerson.id)
+        setFormRevision((n) => n + 1)
+      }}
+      onDeletePerson={handlePersonDelete}
       onAddRelative={(kind) => void handleAddRelative(kind)}
-      onOpenProfile={() => navigate(`/families/${slug}/person/${selectedPerson.id}`)}
+      onConnectExisting={() => setConnectOpen(true)}
+      onDisconnectRelationship={(relationshipId) =>
+        handleDisconnectRelationship(relationshipId, false)
+      }
+      onOpenProfile={() =>
+        selectedPerson &&
+        requestLeave(() => navigate(`/families/${slug}/person/${selectedPerson.id}`))
+      }
       onSelectPerson={selectPerson}
       onClear={() => setSelection(null)}
-    />
-  ) : selectedRelationship && graph ? (
-    <RelationshipInspector
-      relationship={selectedRelationship}
-      personA={graph.peopleById.get(selectedRelationship.personAId)!}
-      personB={graph.peopleById.get(selectedRelationship.personBId)!}
-      editMode={canEdit}
       onDisconnect={() => void handleDisconnect()}
       onChangeType={(type) => void handleChangeType(type)}
-      onClear={() => setSelection(null)}
     />
   ) : null
 
@@ -287,9 +502,21 @@ export function TreePage() {
       adminHref={`/families/${slug}/admin`}
     >
       <ToastRegion
-        message={mutation.error ?? mutation.success}
+        message={mutation.error ?? connectHint ?? mutation.success}
         tone={mutation.error ? 'error' : 'success'}
-        onDismiss={mutation.clear}
+        onDismiss={() => {
+          mutation.clear()
+          setConnectHint(null)
+        }}
+      />
+
+      <UnsavedChangesDialog
+        open={unsavedPromptOpen}
+        count={unsavedCount}
+        busy={savingDrafts || mutation.pending}
+        onStay={handleStayEditing}
+        onDiscard={handleDiscardAndProceed}
+        onSave={() => void handleSaveAndProceed()}
       />
 
       <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
@@ -348,7 +575,12 @@ export function TreePage() {
             )}
           </div>
 
-          <StatusBadge tone="neutral">{people.length} people</StatusBadge>
+          <StatusBadge tone="neutral">{displayPeople.length} people</StatusBadge>
+          {hasUnsaved && (
+            <StatusBadge tone="warning">
+              {unsavedCount === 1 ? '1 unsaved change' : `${unsavedCount} unsaved changes`}
+            </StatusBadge>
+          )}
           {issueCount > 0 && (
             <Link to={`/families/${slug}/health`} className="rounded-full">
               <StatusBadge tone="warning">{issueCount} to review</StatusBadge>
@@ -356,6 +588,17 @@ export function TreePage() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            {canEdit && hasUnsaved && (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={savingDrafts || mutation.pending || history.busy}
+                onClick={() => void handleSaveAllDrafts()}
+              >
+                {savingDrafts ? 'Saving…' : 'Save changes'}
+              </Button>
+            )}
+
             {canEdit && (
               <div className="flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] p-0.5">
                 <Button
@@ -414,7 +657,10 @@ export function TreePage() {
                   />
                   <div className="absolute top-full right-0 z-30 mt-1.5 w-52 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] py-1 shadow-xl">
                     {[
-                      { label: 'Browse as cards', run: () => navigate(`/families/${slug}/people`) },
+                      {
+                        label: 'Browse as cards',
+                        run: () => requestLeave(() => navigate(`/families/${slug}/people`)),
+                      },
                       { label: 'Export as SVG', run: () => void handleExport('svg') },
                       { label: 'Export as PNG', run: () => void handleExport('png') },
                       { label: 'Download backup', run: handleBackup },
@@ -439,21 +685,32 @@ export function TreePage() {
               )}
             </div>
 
-            {isEditor && (
-              <Button
-                variant={editMode ? 'primary' : 'secondary'}
-                size="sm"
-                aria-pressed={editMode}
-                onClick={() =>
-                  setEditMode((value) => {
-                    if (value) history.clear()
-                    return !value
-                  })
-                }
-              >
-                {editMode ? 'Done editing' : 'Edit'}
-              </Button>
-            )}
+            {isEditor &&
+              (editMode ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={history.busy || savingDrafts}
+                    onClick={() => requestLeave(discardEditSession)}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={history.busy || savingDrafts}
+                    aria-pressed={true}
+                    onClick={() => requestLeave(exitEditMode)}
+                  >
+                    Done editing
+                  </Button>
+                </>
+              ) : (
+                <Button variant="secondary" size="sm" aria-pressed={false} onClick={() => setEditMode(true)}>
+                  Edit
+                </Button>
+              ))}
           </div>
         </div>
 
@@ -467,16 +724,20 @@ export function TreePage() {
           <div className="relative min-w-0 flex-1">
             <TreeWorkspace
               familyId={family.id}
-              people={people}
+              layoutPeople={people}
+              displayPeople={deferredDisplayPeople}
               relationships={relationships}
               editMode={canEdit}
               selection={selection}
-              matchedPersonIds={matchedPersonIds}
+              matchedPersonIds={canvasMatchedPersonIds}
               focusPersonId={focusPersonId}
               connectBusy={mutation.pending}
               onSelectionChange={handleSelectionChange}
-              onOpenPerson={(id) => navigate(`/families/${slug}/person/${id}`)}
-              onConnect={handleConnect}
+              onOpenPerson={(id) =>
+                requestLeave(() => navigate(`/families/${slug}/person/${id}`))
+              }
+              onConnect={handleConnectRequest}
+              onConnectDropMiss={() => setConnectHint('Drop on a person card to connect')}
             />
           </div>
 
@@ -500,6 +761,16 @@ export function TreePage() {
         userId={user?.uid ?? null}
         onClose={() => setRestoreOpen(false)}
         onRestored={reload}
+      />
+
+      <ConnectPersonDialog
+        open={connectOpen}
+        anchor={selectedPersonDisplay}
+        people={displayPeople}
+        graph={graph}
+        busy={mutation.pending}
+        onClose={() => setConnectOpen(false)}
+        onConnect={handleConnectRequest}
       />
     </Layout>
   )

@@ -49,6 +49,44 @@ export function parseDateInput(value: string): ParsedDateInput {
   const trimmed = value.trim()
   if (!trimmed) return { date: null }
 
+  const europeanDayDots = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (europeanDayDots) {
+    const day = Number(europeanDayDots[1])
+    const month = Number(europeanDayDots[2])
+    const year = Number(europeanDayDots[3])
+    const result = validatePartialDate({ year, month, day, precision: 'day' })
+    if (!result.ok) return { date: null, error: result.error }
+    return { date: result.value }
+  }
+
+  const europeanMonthDots = trimmed.match(/^(\d{1,2})\.(\d{4})$/)
+  if (europeanMonthDots) {
+    const month = Number(europeanMonthDots[1])
+    const year = Number(europeanMonthDots[2])
+    const result = validatePartialDate({ year, month, precision: 'month' })
+    if (!result.ok) return { date: null, error: result.error }
+    return { date: result.value }
+  }
+
+  const europeanDay = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (europeanDay) {
+    const day = Number(europeanDay[1])
+    const month = Number(europeanDay[2])
+    const year = Number(europeanDay[3])
+    const result = validatePartialDate({ year, month, day, precision: 'day' })
+    if (!result.ok) return { date: null, error: result.error }
+    return { date: result.value }
+  }
+
+  const europeanMonth = trimmed.match(/^(\d{1,2})-(\d{4})$/)
+  if (europeanMonth) {
+    const month = Number(europeanMonth[1])
+    const year = Number(europeanMonth[2])
+    const result = validatePartialDate({ year, month, precision: 'month' })
+    if (!result.ok) return { date: null, error: result.error }
+    return { date: result.value }
+  }
+
   const iso = trimmed.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/)
   if (iso) {
     const year = Number(iso[1])

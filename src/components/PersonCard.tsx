@@ -17,6 +17,7 @@ interface PersonCardProps {
 const genderRing: Record<Person['gender'], string> = {
   male: 'var(--gender-male)',
   female: 'var(--gender-female)',
+  inter: 'var(--gender-inter)',
   unknown: 'var(--gender-unknown)',
 }
 

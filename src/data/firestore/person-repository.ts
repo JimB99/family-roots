@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import type { Person, PersonInput } from '../../types'
-import { personFromDoc } from './codecs'
+import { personFromDoc, personToFirestore } from './codecs'
 
 export async function listPeopleForFamily(familyId: string): Promise<Person[]> {
   const snap = await getDocs(query(collection(db, 'people'), where('familyId', '==', familyId)))
@@ -27,7 +27,7 @@ export async function getPersonById(personId: string): Promise<Person | null> {
 export async function createPerson(input: PersonInput, userId: string | null): Promise<string> {
   const ref = doc(collection(db, 'people'))
   await setDoc(ref, {
-    ...input,
+    ...personToFirestore(input),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     createdBy: userId,
@@ -38,7 +38,7 @@ export async function createPerson(input: PersonInput, userId: string | null): P
 export async function updatePerson(personId: string, input: PersonInput): Promise<void> {
   await setDoc(
     doc(db, 'people', personId),
-    { ...input, updatedAt: serverTimestamp() },
+    { ...personToFirestore(input), updatedAt: serverTimestamp() },
     { merge: true },
   )
 }

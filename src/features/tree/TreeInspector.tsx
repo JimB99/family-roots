@@ -1,48 +1,77 @@
+import { useState } from 'react'
+import { PersonEditPanel } from '../../components/PersonEditPanel'
+import { PersonDeleteButton } from '../../components/PersonDeleteButton'
 import { displayName } from '../../lib/tree'
+import { formatLifeSpan, formatPartialDate } from '../../lib/dates'
+import type { PersonDraft } from './person-drafts'
 import type { Person, Relationship } from '../../types'
 import { Button } from '../../components/ui/Button'
+import { Dialog } from '../../components/ui/Dialog'
+
+export interface RelationLink {
+  person: Person
+  relationshipId: string
+}
 
 interface PersonInspectorProps {
   person: Person
-  parents: Person[]
-  children: Person[]
-  spouses: Person[]
+  parentLinks: RelationLink[]
+  childLinks: RelationLink[]
+  spouseLinks: RelationLink[]
   editMode: boolean
+  draft?: PersonDraft
+  hasDraft?: boolean
+  onDraftChange?: (draft: PersonDraft) => void
+  onRevertDraft?: () => void
+  formRevision?: number
+  onDeletePerson?: () => Promise<void>
+  relationshipCount?: number
+  familyId?: string
   onAddRelative: (kind: 'child' | 'parent' | 'spouse' | 'sibling') => void
+  onConnectExisting?: () => void
+  onDisconnectRelationship?: (relationshipId: string) => Promise<void>
   onOpenProfile: () => void
   onSelectPerson: (personId: string) => void
   onClear: () => void
 }
 
 function lifespan(person: Person): string | null {
-  const born = person.birth?.year
-  const died = person.death?.year
-  if (born && died) return `${born} – ${died}`
-  if (born) return `Born ${born}`
-  if (died) return `Died ${died}`
-  return null
+  return formatLifeSpan(person.birth, person.death, person.isLiving) || null
 }
 
 export function PersonInspector({
   person,
-  parents,
-  children,
-  spouses,
+  parentLinks,
+  childLinks,
+  spouseLinks,
   editMode,
+  draft,
+  hasDraft,
+  onDraftChange,
+  onRevertDraft,
+  formRevision = 0,
+  onDeletePerson,
+  relationshipCount = 0,
+  familyId,
   onAddRelative,
+  onConnectExisting,
+  onDisconnectRelationship,
   onOpenProfile,
   onSelectPerson,
   onClear,
 }: PersonInspectorProps) {
   const span = lifespan(person)
+  const showInlineEdit = editMode && draft && onDraftChange && familyId
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate font-semibold text-[var(--text-primary)]">{displayName(person)}</h3>
-          {span && <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{span}</p>}
-          {person.birthPlace && (
+          {!showInlineEdit && span && (
+            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{span}</p>
+          )}
+          {!showInlineEdit && person.birthPlace && (
             <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">{person.birthPlace}</p>
           )}
         </div>
@@ -51,12 +80,51 @@ export function PersonInspector({
         </Button>
       </div>
 
-      <Button variant="secondary" size="sm" onClick={onOpenProfile} className="w-full">
-        Open full profile
-      </Button>
+      {showInlineEdit && (
+        <PersonEditPanel
+          mode="draft"
+          person={person}
+          familyId={familyId}
+          draft={draft}
+          hasUnsaved={hasDraft}
+          onDraftChange={onDraftChange}
+          onRevert={onRevertDraft}
+          formRevision={formRevision}
+        />
+      )}
+
+      <RelationSection
+        title="Parents"
+        links={parentLinks}
+        editMode={editMode}
+        onSelectPerson={onSelectPerson}
+        onDisconnectRelationship={onDisconnectRelationship}
+      />
+      <RelationSection
+        title="Partners"
+        links={spouseLinks}
+        editMode={editMode}
+        onSelectPerson={onSelectPerson}
+        onDisconnectRelationship={onDisconnectRelationship}
+      />
+      <RelationSection
+        title="Children"
+        links={childLinks}
+        editMode={editMode}
+        onSelectPerson={onSelectPerson}
+        onDisconnectRelationship={onDisconnectRelationship}
+      />
 
       {editMode && (
-        <section>
+        <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)]/40 p-3">
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+            Link existing people
+          </h4>
+          {onConnectExisting && (
+            <Button variant="secondary" size="sm" className="mb-3 w-full" onClick={onConnectExisting}>
+              Connect to existing person…
+            </Button>
+          )}
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
             Add a new relative
           </h4>
@@ -73,58 +141,133 @@ export function PersonInspector({
             <Button
               variant="secondary"
               size="sm"
-              disabled={parents.length === 0}
-              title={parents.length === 0 ? 'Add a parent first' : undefined}
+              disabled={parentLinks.length === 0}
+              title={parentLinks.length === 0 ? 'Add a parent first' : undefined}
               onClick={() => onAddRelative('sibling')}
             >
               Sibling
             </Button>
           </div>
           <p className="mt-2 text-xs text-[var(--text-muted)]">
-            To link two people who already exist, drag one onto the other.
+            Drag one person onto another, or use Connect to search for someone already in the tree.
           </p>
         </section>
       )}
 
-      <RelationSection title="Parents" people={parents} onSelectPerson={onSelectPerson} />
-      <RelationSection title="Partners" people={spouses} onSelectPerson={onSelectPerson} />
-      <RelationSection title="Children" people={children} onSelectPerson={onSelectPerson} />
+      {!showInlineEdit && (
+        <Button variant="secondary" size="sm" onClick={onOpenProfile} className="w-full">
+          Open full profile
+        </Button>
+      )}
+
+      {showInlineEdit && onDeletePerson && (
+        <PersonDeleteButton
+          person={person}
+          relationshipCount={relationshipCount}
+          onDelete={onDeletePerson}
+        />
+      )}
     </div>
   )
 }
 
 function RelationSection({
   title,
-  people,
+  links,
+  editMode,
   onSelectPerson,
+  onDisconnectRelationship,
 }: {
   title: string
-  people: Person[]
+  links: RelationLink[]
+  editMode: boolean
   onSelectPerson: (personId: string) => void
+  onDisconnectRelationship?: (relationshipId: string) => Promise<void>
 }) {
+  const [pendingRemove, setPendingRemove] = useState<RelationLink | null>(null)
+  const [removeError, setRemoveError] = useState<string | null>(null)
+
+  const handleRemove = async () => {
+    if (!pendingRemove || !onDisconnectRelationship) return
+    setRemoveError(null)
+    try {
+      await onDisconnectRelationship(pendingRemove.relationshipId)
+      setPendingRemove(null)
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : 'Remove failed')
+    }
+  }
+
   return (
     <section>
       <h4 className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">{title}</h4>
-      {people.length === 0 ? (
+      {links.length === 0 ? (
         <p className="mt-1 text-sm text-[var(--text-muted)]">None recorded</p>
       ) : (
         <ul className="mt-1.5 space-y-0.5">
-          {people.map((p) => (
-            <li key={p.id}>
+          {links.map((link) => (
+            <li key={link.relationshipId} className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => onSelectPerson(p.id)}
-                className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--surface-sunken)]"
+                onClick={() => onSelectPerson(link.person.id)}
+                className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--surface-sunken)]"
               >
-                {displayName(p)}
-                {p.birth?.year && (
-                  <span className="ml-1.5 text-[var(--text-muted)]">{p.birth.year}</span>
+                {displayName(link.person)}
+                {formatPartialDate(link.person.birth) && (
+                  <span className="ml-1.5 text-[var(--text-muted)]">
+                    {formatPartialDate(link.person.birth)}
+                  </span>
                 )}
               </button>
+              {editMode && onDisconnectRelationship && (
+                <button
+                  type="button"
+                  onClick={() => setPendingRemove(link)}
+                  aria-label={`Remove link to ${displayName(link.person)}`}
+                  className="shrink-0 rounded-md px-2 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--color-bloom-600)]"
+                >
+                  Remove
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
+
+      <Dialog
+        open={pendingRemove !== null}
+        title="Remove connection"
+        description="This only removes the relationship link."
+        onClose={() => {
+          setPendingRemove(null)
+          setRemoveError(null)
+        }}
+      >
+        {pendingRemove && (
+          <p className="text-sm text-[var(--text-secondary)]">
+            Remove the link between {displayName(pendingRemove.person)} and this person?
+          </p>
+        )}
+        {removeError && (
+          <p className="mt-2 text-sm text-[var(--color-bloom-600)]" role="alert">
+            {removeError}
+          </p>
+        )}
+        <div className="mt-5 flex gap-2">
+          <Button variant="danger" onClick={() => void handleRemove()}>
+            Remove link
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPendingRemove(null)
+              setRemoveError(null)
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </Dialog>
     </section>
   )
 }

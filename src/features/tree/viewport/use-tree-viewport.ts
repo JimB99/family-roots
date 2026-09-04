@@ -45,6 +45,7 @@ export function useTreeViewport() {
   const run = useCallback(
     (action: ViewportAction, commit = false) => {
       viewportRef.current = viewportReducer(viewportRef.current, action)
+      applyRef.current?.(viewportRef.current)
       scheduleApply()
       if (commit) setCommitted(viewportRef.current)
     },

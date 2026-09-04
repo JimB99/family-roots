@@ -6,9 +6,11 @@ interface DialogProps {
   description?: string
   onClose: () => void
   children: ReactNode
+  /** Wider panel for forms (e.g. person edit). */
+  wide?: boolean
 }
 
-export function Dialog({ open, title, description, onClose, children }: DialogProps) {
+export function Dialog({ open, title, description, onClose, children, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -33,7 +35,7 @@ export function Dialog({ open, title, description, onClose, children }: DialogPr
   return (
     <dialog
       ref={ref}
-      className="w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+      className={`w-[calc(100%-2rem)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm ${wide ? 'max-w-2xl' : 'max-w-lg'}`}
       aria-labelledby={titleId}
     >
       <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4">

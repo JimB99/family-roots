@@ -1,0 +1,89 @@
+---
+description: Family Roots test matrix, fixtures, and coverage expectations
+globs: family-roots/**
+alwaysApply: false
+---
+
+# Family Roots testing
+
+## Commands (run before commit / deploy)
+
+| Script | Purpose |
+|--------|---------|
+| `npm run check` | lint + typecheck + all Vitest + a11y + Firestore rules |
+| `npm run check:full` | `check` + Playwright E2E |
+| `npm run deploy` | runs `check`, then build, then Firebase deploy |
+
+Always run `npm run check` before committing. Run `npm run check:full` before deploy when tree or routing changed.
+
+## Runner
+
+- **Vitest only** — do not add `node:test` files.
+- Tests live beside source: `src/**/*.test.ts`, `tests/rules/`, `tests/e2e/`.
+- Slow layout tests use `testTimeout: 60_000` in `vite.config.ts`; keep Aguilar perf test under 20s interactive.
+- **Playwright** uses port `5180` (not 5173) so E2E does not attach to another Vite app on the default port.
+
+## Fixtures
+
+- Mini graphs: `src/test/fixtures/family.ts` (`person`, `spouse`, `parentChild`, `TEST_FAMILY_ID`).
+- Large pedigree: `src/features/tree/layout/aguilar-graph.fixture.json`.
+- Use fixtures — do not inline 50-line graph setup in every test.
+
+## Coverage by area
+
+### Domain (`src/domain/`)
+
+Test: graph build, validation, commands, audit, collapse, direct-line, connections, date rules.
+
+Edge cases to cover:
+- Missing persons, self-relationships, cross-family links
+- Duplicate relationships, cycles, disconnected components
+- Sibling without parents, overwrite plans, imported/low confidence links
+
+### Layout (`src/features/tree/layout/`)
+
+Test: ELK graph build, invariants S1–S10, structure key, display patches, async layout + worker fallback.
+
+Edge cases:
+- Name-only draft changes must **not** change structure key
+- Birth year changes **must** change structure key (sibling order)
+- Collapsed unions retain union nodes
+- Component shelf-packing (no overlap)
+- Aguilar: width/centering bounds in `layout-invariants.test.ts`
+
+### Drafts & display (`person-drafts`, `apply-display-patches`)
+
+Test: merge, commit, discard, parse validation; label overlay without coordinate change.
+
+### Lib (`src/lib/`)
+
+Test: dates (partial formats, life span), person-search, tree helpers.
+
+### Data (`src/data/firestore/`)
+
+Prefer rules tests + command plan unit tests. Repository integration only when emulator setup exists.
+
+### UI
+
+- a11y: `src/components/ui/*.a11y.test.tsx`
+- E2E: `tests/e2e/` — tree canvas loads, search toolbar
+- Component tests for forms when edit/save logic is non-trivial
+
+## Layout performance regression
+
+`layout-performance.test.ts` guards:
+- Aguilar interactive layout &lt; 20s
+- Structure key stable on rename
+
+Do not remove these when optimizing — update thresholds with evidence.
+
+## Firestore rules
+
+- `tests/rules/firestore.rules.test.ts` via `npm run test:rules` (needs Java).
+- If Java missing locally, rules tests skip with warning; CI/deploy machine should have Java.
+
+## When changing TreeWorkspace / TreePage
+
+- Verify structure fingerprint still skips ELK on cosmetic edits
+- Verify worker timeout + main-thread fallback (see `compute-layout-async.test.ts`)
+- Add E2E if load or edit flow changes

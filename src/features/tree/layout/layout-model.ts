@@ -7,6 +7,8 @@ export interface LayoutNode {
   kind: LayoutNodeKind
   personId?: string
   label: string
+  givenNames: string
+  familyName: string | null
   subtitle: string | null
   gender: Person['gender']
   birthYear: number | null
