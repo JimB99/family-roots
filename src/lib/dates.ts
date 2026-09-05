@@ -15,10 +15,10 @@ export function formatPartialDate(
   if (!year && precision === 'year') return ''
 
   if (precision === 'day' && year && month && day) {
-    return `${prefix}${pad2(day)}-${pad2(month)}-${year}`
+    return `${prefix}${pad2(day)}.${pad2(month)}.${year}`
   }
   if (precision === 'month' && year && month) {
-    return `${prefix}${pad2(month)}-${year}`
+    return `${prefix}${pad2(month)}.${year}`
   }
   if (precision === 'year' && year) return `${prefix}${year}`
 
@@ -26,16 +26,19 @@ export function formatPartialDate(
   return ''
 }
 
+const DEATH_PREFIX = '† '
+
 export function formatLifeSpan(
   birth: PartialDate | null,
   death: PartialDate | null,
   isLiving: boolean | null,
 ): string {
   const birthText = formatPartialDate(birth)
-  if (isLiving) return birthText ? `${birthText} – living` : 'living'
+  if (isLiving) return birthText
   const deathText = formatPartialDate(death)
   if (birthText && deathText) return `${birthText} – ${deathText}`
-  return birthText || deathText || ''
+  if (deathText) return formatPartialDate(death, DEATH_PREFIX)
+  return birthText
 }
 
 export function parsePartialDateInput(value: string): PartialDate | null {

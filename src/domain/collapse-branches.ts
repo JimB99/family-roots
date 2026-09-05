@@ -38,6 +38,30 @@ export function isOffspringOfUnion(graph: FamilyGraph, personId: PersonId, union
   return !parents.some((parent) => otherSpouses.has(parent))
 }
 
+/** Expand hidden set with in-laws, their spouses, and entire descendant subtrees. */
+function expandHiddenBranch(
+  graph: FamilyGraph,
+  hidden: Set<PersonId>,
+  keep: ReadonlySet<PersonId>,
+): void {
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const id of hidden) {
+      for (const spouse of graph.spousesOf.get(id) ?? []) {
+        if (keep.has(spouse) || hidden.has(spouse)) continue
+        hidden.add(spouse)
+        changed = true
+      }
+      for (const descendant of descendantIds(graph, id)) {
+        if (hidden.has(descendant)) continue
+        hidden.add(descendant)
+        changed = true
+      }
+    }
+  }
+}
+
 /**
  * People hidden when the given unions' child branches are folded.
  * The union's parents stay visible.
@@ -47,39 +71,60 @@ export function hiddenPersonIds(
   collapsedUnionIds: ReadonlySet<string>,
 ): Set<PersonId> {
   const hidden = new Set<PersonId>()
-  const keep = new Set<PersonId>()
+  const candidateKeep = new Set<PersonId>()
   for (const unionId of collapsedUnionIds) {
-    for (const parent of parentIdsFromUnionId(unionId)) keep.add(parent)
+    for (const parent of parentIdsFromUnionId(unionId)) candidateKeep.add(parent)
   }
 
   for (const person of graph.peopleById.values()) {
     const isOffspring = [...collapsedUnionIds].some((unionId) =>
       isOffspringOfUnion(graph, person.id, unionId),
     )
-    if (!isOffspring) continue
-    hidden.add(person.id)
-    for (const descendant of descendantIds(graph, person.id)) hidden.add(descendant)
+    if (isOffspring) hidden.add(person.id)
   }
 
-  for (const id of [...hidden]) {
-    for (const spouse of graph.spousesOf.get(id) ?? []) {
-      if (!keep.has(spouse)) hidden.add(spouse)
-    }
-  }
+  expandHiddenBranch(graph, hidden, new Set())
 
+  const keep = new Set<PersonId>()
+  for (const parent of candidateKeep) {
+    if (!hidden.has(parent)) keep.add(parent)
+  }
   for (const id of keep) hidden.delete(id)
   return hidden
 }
 
+/** Collapsed unions that still have at least one visible parent (not superseded by an ancestor fold). */
+export function effectiveCollapsedUnionIds(
+  graph: FamilyGraph,
+  collapsedUnionIds: ReadonlySet<string>,
+): Set<string> {
+  const hidden = hiddenPersonIds(graph, collapsedUnionIds)
+  const effective = new Set<string>()
+  for (const unionId of collapsedUnionIds) {
+    const parents = parentIdsFromUnionId(unionId)
+    if (parents.length === 0) continue
+    if (parents.every((id) => hidden.has(id))) continue
+    effective.add(unionId)
+  }
+  return effective
+}
+
+export function normalizeCollapsedUnionIds(
+  graph: FamilyGraph,
+  collapsedUnionIds: ReadonlySet<string>,
+): Set<string> {
+  return effectiveCollapsedUnionIds(graph, collapsedUnionIds)
+}
+
 export function toggleCollapsedUnion(
-  _graph: FamilyGraph,
+  graph: FamilyGraph,
   collapsedUnionIds: ReadonlySet<string>,
   unionId: string,
 ): Set<string> {
   const next = new Set(collapsedUnionIds)
   if (next.has(unionId)) next.delete(unionId)
   else next.add(unionId)
-  return next
+  return normalizeCollapsedUnionIds(graph, next)
 }
 
 export function unionsHidingPerson(

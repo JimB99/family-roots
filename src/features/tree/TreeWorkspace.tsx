@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildFamilyGraph } from '../../domain/family-graph'
 import {
   childIdsOfUnion,
+  effectiveCollapsedUnionIds,
   hiddenPersonIds,
   toggleCollapsedUnion,
   unionsHidingPerson,
@@ -114,6 +115,11 @@ export const TreeWorkspace = memo(function TreeWorkspace({
     [graph, collapsedUnionIds],
   )
 
+  const effectiveCollapsedIds = useMemo(
+    () => effectiveCollapsedUnionIds(graph, collapsedUnionIds),
+    [graph, collapsedUnionIds],
+  )
+
   const layoutGraph = useMemo(() => {
     if (hiddenIds.size === 0) return graph
     const visiblePeople = layoutPeople.filter((person) => !hiddenIds.has(person.id))
@@ -124,8 +130,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   }, [familyId, graph, hiddenIds, layoutPeople, relationships])
 
   const structureModel = useMemo(
-    () => projectFamilyGraph(layoutGraph, { retainUnionIds: collapsedUnionIds }),
-    [layoutGraph, collapsedUnionIds],
+    () => projectFamilyGraph(layoutGraph, { retainUnionIds: effectiveCollapsedIds }),
+    [layoutGraph, effectiveCollapsedIds],
   )
   const structureKey = useMemo(() => layoutModelStructureKey(structureModel), [structureModel])
   const structureModelRef = useRef(structureModel)
@@ -224,7 +230,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       container.clientHeight,
       Math.max(viewportRef.current.scale, 0.75),
     )
-  }, [focusPersonId, focusOn, viewportRef, layout])
+  }, [focusPersonId, focusOn, viewportRef, structuralLayout])
 
   const toWorld = useCallback(
     (clientX: number, clientY: number) => {
@@ -794,7 +800,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                 const fold: UnionFold | null =
                   childCount > 0
                     ? {
-                        collapsed: collapsedUnionIds.has(node.id),
+                        collapsed: effectiveCollapsedIds.has(node.id),
                         hiddenCount: unionMeta.hiddenCountByUnion.get(node.id) ?? 0,
                         onToggle: () => toggleFold(node.id),
                       }

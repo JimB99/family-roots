@@ -193,7 +193,7 @@ export function PersonForm(props: PersonFormProps) {
 
   const lifeFields = (
     <>
-      <Field label="Birth date" hint={compact ? undefined : 'Use 1956, 07.1956, 16.07.1956 or 16-07-1956'}>
+      <Field label="Birth date" hint={compact ? undefined : 'Use 1956, 07.1956, or 16.07.1956'}>
         <input
           className={inputClass}
           value={birthInput}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   hiddenPersonIds,
+  normalizeCollapsedUnionIds,
   toggleCollapsedUnion,
   unionsHidingPerson,
 } from './collapse-branches'
@@ -82,6 +83,38 @@ describe('collapse branches', () => {
     ])
     const hidden = hiddenPersonIds(graphWithSolo, new Set([coupleUnion]))
     expect(hidden.has('solo')).toBe(true)
+  })
+
+  it('hides an in-law and their entire separate family when folding a branch', () => {
+    const ex = person('ex', 'Ex')
+    const sidekid = person('sidekid', 'Side Kid')
+    const withSideFamily = buildFamilyGraph(TEST_FAMILY_ID, [...people, ex, sidekid], [
+      ...relationships,
+      spouse('markus', 'ex'),
+      parentChild('markus', 'sidekid'),
+      parentChild('ex', 'sidekid'),
+    ])
+    const hidden = hiddenPersonIds(withSideFamily, new Set([coupleUnion]))
+    expect(hidden.has('ex')).toBe(true)
+    expect(hidden.has('sidekid')).toBe(true)
+    expect(hidden.has('markus')).toBe(true)
+    expect(hidden.has('carmen')).toBe(true)
+    expect(hidden.has('jim')).toBe(true)
+    expect(hidden.has('inlaw')).toBe(true)
+    expect(hidden.has('antonio')).toBe(false)
+    expect(hidden.has('josefa')).toBe(false)
+  })
+
+  it('drops a nested fold when an ancestor fold hides its parents', () => {
+    const collapsed = normalizeCollapsedUnionIds(graph, new Set([carmenUnion, coupleUnion]))
+    expect(collapsed.has(coupleUnion)).toBe(true)
+    expect(collapsed.has(carmenUnion)).toBe(false)
+
+    const hidden = hiddenPersonIds(graph, collapsed)
+    expect(hidden.has('carmen')).toBe(true)
+    expect(hidden.has('markus')).toBe(true)
+    expect(hidden.has('jim')).toBe(true)
+    expect(hidden.has('antonio')).toBe(false)
   })
 
   it('does not hide a child of a different marriage of one parent', () => {
