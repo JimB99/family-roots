@@ -1,6 +1,6 @@
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api'
 import type { LayoutNode } from './layout-model'
-import { parentGeneration, unionsOfPerson, type FamilyStructure } from './family-structure'
+import { parentGeneration, type FamilyStructure } from './family-structure'
 import { comparePersons, type SortKey } from './layout-order'
 import { ELK_THOROUGHNESS, type LayoutQuality } from './layout-options'
 import { NODE_GAP, PERSON_H, PERSON_W, ROW_GAP, SIBLING_GAP } from './layout-spacing'
@@ -62,6 +62,15 @@ function sortKeyFor(node: LayoutNode): SortKey {
   return { birthYear: node.birthYear ?? Number.POSITIVE_INFINITY, id: node.id }
 }
 
+function childBearingUnionCount(personId: string, structure: FamilyStructure): number {
+  let count = 0
+  for (const [unionId, parents] of structure.unionParents) {
+    if (!parents.includes(personId)) continue
+    if ((structure.unionChildren.get(unionId) ?? []).length > 0) count += 1
+  }
+  return count
+}
+
 export function marriageChains(
   personIds: string[],
   structure: FamilyStructure,
@@ -86,7 +95,6 @@ export function marriageChains(
     grouped.set(root, list)
   }
 
-  const unionCount = unionsOfPerson(structure)
   const ordered: string[][] = []
   for (const members of grouped.values()) {
     if (members.length <= 1) {
@@ -104,10 +112,12 @@ export function marriageChains(
     let hub = members[0]
     let best = -1
     for (const id of members) {
-      const count = (unionCount.get(id) ?? []).length
+      const count = childBearingUnionCount(id, structure)
       const hasParents = (structure.parentsOfPerson.get(id) ?? []).length > 0
       const score = count * 2 + (hasParents ? 1 : 0)
-      if (score > best || (score === best && id < hub)) {
+      const hubKey = sortKeyFor(nodeById.get(hub)!)
+      const idKey = sortKeyFor(nodeById.get(id)!)
+      if (score > best || (score === best && comparePersons(idKey, hubKey) < 0)) {
         best = score
         hub = id
       }

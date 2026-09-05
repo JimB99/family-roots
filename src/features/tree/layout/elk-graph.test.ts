@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFamilyGraph } from '../../../domain/family-graph'
 import { parentChild, person, spouse, TEST_FAMILY_ID } from '../../../test/fixtures/family'
 import { assignGenerations, structureFromModel } from './family-structure'
-import { buildElkGraph, elkIdForMembers, personPartition } from './elk-graph'
+import { buildElkGraph, elkIdForMembers, marriageChains, personPartition } from './elk-graph'
 import { NODE_GAP, PERSON_W } from './layout-spacing'
 import { projectFamilyGraph } from './project-family-graph'
 
@@ -87,5 +87,34 @@ describe('buildElkGraph', () => {
     )
     const childEdges = built.graph.edges?.filter((edge) => edge.sources[0] === 'person:amy') ?? []
     expect(childEdges.map((edge) => edge.targets[0])).toEqual(['person:c1', 'person:c2'])
+  })
+
+  it('places two spouses on either side of the child-bearing hub', () => {
+    const model = projectFamilyGraph(
+      buildFamilyGraph(TEST_FAMILY_ID, [
+        person('hub', 'Hub', { birth: { year: 1960, precision: 'year' } }),
+        person('wife-a', 'Wife A', { birth: { year: 1962, precision: 'year' } }),
+        person('wife-b', 'Wife B', { birth: { year: 1965, precision: 'year' } }),
+        person('c1', 'C1', { birth: { year: 1990, precision: 'year' } }),
+        person('c2', 'C2', { birth: { year: 1995, precision: 'year' } }),
+      ], [
+        spouse('hub', 'wife-a'),
+        spouse('hub', 'wife-b'),
+        parentChild('hub', 'c1'),
+        parentChild('wife-a', 'c1'),
+        parentChild('hub', 'c2'),
+        parentChild('wife-b', 'c2'),
+      ]),
+    )
+    const structure = structureFromModel(model)
+    const persons = model.nodes.filter((node) => node.kind === 'person')
+    const nodeById = new Map(persons.map((node) => [node.id, node]))
+    const chains = marriageChains(
+      persons.map((node) => node.id),
+      structure,
+      nodeById,
+    )
+    const chain = chains.find((members) => members.includes('person:hub'))
+    expect(chain).toEqual(['person:wife-a', 'person:hub', 'person:wife-b'])
   })
 })

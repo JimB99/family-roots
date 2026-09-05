@@ -1,6 +1,8 @@
 import { marriageChains } from './elk-graph.ts'
 import type { FamilyStructure } from './family-structure'
 import type { PositionedNode } from './layout-model'
+import { hasRowOverlap } from './layout-metrics.ts'
+import { comparePersons } from './layout-order.ts'
 import { FAMILY_GAP, NODE_GAP, SIBLING_GAP } from './layout-spacing'
 
 interface Interval {
@@ -205,9 +207,12 @@ function separateCousinClusters(nodes: PositionedNode[], structure: FamilyStruct
         translate(nodes, moving, dx)
         continue
       }
-      const fromX = right.left
-      for (const node of nodes) {
-        if (node.x >= fromX - 0.5) node.x += extra
+      const rightMoving = downwardSet(ordered[i], structure)
+      for (const member of ordered[i]) rightMoving.add(member)
+      const fallbackAllowed = maxShiftToward(nodes, rightMoving, 1, structure)
+      const fallbackDx = Math.min(extra, fallbackAllowed)
+      if (fallbackDx > 1) {
+        translate(nodes, rightMoving, fallbackDx)
       }
     }
   }
@@ -551,6 +556,147 @@ export function nudgeIsolatedParents(nodes: PositionedNode[], structure: FamilyS
   }
 }
 
+function sortKeyForNode(node: PositionedNode) {
+  return { birthYear: node.birthYear ?? Number.POSITIVE_INFINITY, id: node.id }
+}
+
+function swapClusterPositions(
+  nodes: PositionedNode[],
+  structure: FamilyStructure,
+  left: { childId: string; members: string[] },
+  right: { childId: string; members: string[] },
+) {
+  const leftInt = clusterInterval(nodes, left.members)
+  const rightInt = clusterInterval(nodes, right.members)
+  shiftCluster(nodes, structure, left, rightInt.left - leftInt.left)
+  shiftCluster(nodes, structure, right, leftInt.left - rightInt.left)
+}
+
+function shiftCluster(
+  nodes: PositionedNode[],
+  structure: FamilyStructure,
+  cluster: { childId: string; members: string[] },
+  dx: number,
+) {
+  if (Math.abs(dx) <= 0.5) return
+  const moving = downwardSet([cluster.childId], structure)
+  for (const member of cluster.members) moving.add(member)
+  translate(nodes, moving, dx)
+}
+
+function hasCrossFamilySpouse(childId: string, children: string[], structure: FamilyStructure): boolean {
+  const childParents = new Set(structure.parentsOfPerson.get(childId) ?? [])
+  for (const spouseId of spousesOf(childId, structure)) {
+    if (children.includes(spouseId)) continue
+    const spouseParents = structure.parentsOfPerson.get(spouseId) ?? []
+    if (spouseParents.length === 0) continue
+    if (!spouseParents.some((parent) => childParents.has(parent))) return true
+  }
+  return false
+}
+
+/** Reorder natal sibling clusters oldest→youngest left→right after other post-process passes. */
+export function enforceSiblingBirthOrder(nodes: PositionedNode[], structure: FamilyStructure): void {
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  const clusters = [...rowClusters(nodes, structure).values()]
+
+  for (const [, children] of structure.unionChildren) {
+    if (children.length < 2) continue
+
+    const childClusters: Array<{ childId: string; members: string[] }> = []
+    const seen = new Set<string>()
+    for (const childId of children) {
+      const cluster = clusters.find((members) => members.includes(childId))
+      if (!cluster) continue
+      const key = [...cluster].sort().join('|')
+      if (seen.has(key)) continue
+      seen.add(key)
+      childClusters.push({ childId, members: cluster })
+    }
+    if (childClusters.length < 2) continue
+
+    childClusters.sort((a, b) => {
+      const left = byId.get(a.childId)
+      const right = byId.get(b.childId)
+      if (!left || !right) return 0
+      return comparePersons(sortKeyForNode(left), sortKeyForNode(right))
+    })
+
+    const spatialOrder = [...childClusters].sort(
+      (a, b) => clusterInterval(nodes, a.members).left - clusterInterval(nodes, b.members).left,
+    )
+    const orderOk = spatialOrder.every((entry, index) => entry.childId === childClusters[index].childId)
+    if (orderOk) continue
+    if (children.some((childId) => (structure.childrenOfPerson.get(childId) ?? []).length > 0)) continue
+    if (childClusters.some(({ childId }) => hasCrossFamilySpouse(childId, children, structure))) continue
+    if (childClusters.length > 3) continue
+
+    if (childClusters.length === 3) {
+      const priorX = new Map(nodes.map((node) => [node.id, node.x]))
+      const slots = spatialOrder.map((entry) => clusterInterval(nodes, entry.members).left)
+      for (let i = 0; i < childClusters.length; i++) {
+        shiftCluster(
+          nodes,
+          structure,
+          childClusters[i],
+          slots[i] - clusterInterval(nodes, childClusters[i].members).left,
+        )
+      }
+      const rowY = byId.get(childClusters[0].childId)?.y ?? 0
+      const rowPersons = nodes.filter(
+        (node) => node.kind === 'person' && Math.abs(node.y - rowY) < 0.5,
+      )
+      if (hasRowOverlap(rowPersons)) {
+        for (const node of nodes) {
+          const x = priorX.get(node.id)
+          if (x != null) node.x = x
+        }
+      }
+      continue
+    }
+
+    for (let pass = 0; pass < childClusters.length; pass++) {
+      let changed = false
+      for (let i = 0; i < childClusters.length - 1; i++) {
+        const older = childClusters[i]
+        const younger = childClusters[i + 1]
+        const olderInt = clusterInterval(nodes, older.members)
+        const youngerInt = clusterInterval(nodes, younger.members)
+        if (youngerInt.left >= olderInt.right + SIBLING_GAP - 0.5) continue
+
+        const olderWidth = olderInt.right - olderInt.left
+        const youngerWidth = youngerInt.right - youngerInt.left
+        if (Math.abs(olderWidth - youngerWidth) < 0.5 && olderInt.left > youngerInt.left + 0.5) {
+          swapClusterPositions(nodes, structure, older, younger)
+          changed = true
+          continue
+        }
+
+        const needYoungerRight = olderInt.right + SIBLING_GAP - youngerInt.left
+        const targetOlderLeft = youngerInt.left - SIBLING_GAP - olderWidth
+        const needOlderLeft = olderInt.left - targetOlderLeft
+
+        const youngerMoving = downwardSet([younger.childId], structure)
+        for (const member of younger.members) youngerMoving.add(member)
+        const olderMoving = downwardSet([older.childId], structure)
+        for (const member of older.members) olderMoving.add(member)
+
+        const allowedYoungerRight = maxShiftToward(nodes, youngerMoving, 1, structure)
+        const allowedOlderLeft = maxShiftToward(nodes, olderMoving, -1, structure)
+
+        if (needOlderLeft > 0.5 && allowedOlderLeft >= needOlderLeft - 0.5) {
+          shiftCluster(nodes, structure, older, -Math.min(needOlderLeft, allowedOlderLeft))
+          changed = true
+        } else if (needYoungerRight > 0.5 && allowedYoungerRight >= needYoungerRight - 0.5) {
+          shiftCluster(nodes, structure, younger, Math.min(needYoungerRight, allowedYoungerRight))
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+  }
+}
+
 export function packPedigreeRows(nodes: PositionedNode[], structure: FamilyStructure): PositionedNode[] {
   const mutable = nodes.map((node) => ({ ...node }))
   orientCouplesTowardNatalSiblings(mutable, structure)
@@ -559,6 +705,9 @@ export function packPedigreeRows(nodes: PositionedNode[], structure: FamilyStruc
   centerUnionsOnCoreChildren(mutable, structure)
   tightenNatalGaps(mutable, structure)
   separateCousinClusters(mutable, structure)
+  resolveOverlaps(mutable, structure)
+  compactEmptyVerticalGaps(mutable)
+  enforceSiblingBirthOrder(mutable, structure)
   resolveOverlaps(mutable, structure)
   return compactEmptyVerticalGaps(mutable)
 }

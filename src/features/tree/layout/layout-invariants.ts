@@ -8,6 +8,7 @@ import {
   personCenter,
   totalWidth,
 } from './layout-metrics'
+import { comparePersons } from './layout-order'
 import { CENTER_TOL_LARGE, CENTER_TOL_UNIT, COUPLE_W, FAMILY_GAP, PERSON_W, SIBLING_GAP } from './layout-spacing'
 import type { FamilyStructure } from './family-structure'
 
@@ -464,6 +465,37 @@ export function invariantFailures(report: LayoutReport, options: InvariantOption
     failures.push(`width ${Math.round(report.width)}px > ${maxWidth}`)
   }
   return failures
+}
+
+export function siblingOrderViolations(layout: PositionedLayout, structure: FamilyStructure): string[] {
+  const byId = nodeById(layout)
+  const clusters = [...rowClusters(layout, structure).values()]
+  const violations: string[] = []
+
+  for (const [unionId, children] of structure.unionChildren) {
+    const present = children.filter((id) => byId.get(id)?.kind === 'person')
+    if (present.length < 2) continue
+
+    const expected = [...present].sort((a, b) => {
+      const left = byId.get(a)!
+      const right = byId.get(b)!
+      return comparePersons(
+        { birthYear: left.birthYear ?? Number.POSITIVE_INFINITY, id: left.id },
+        { birthYear: right.birthYear ?? Number.POSITIVE_INFINITY, id: right.id },
+      )
+    })
+
+    const clusterLeft = (childId: string): number => {
+      const cluster = clusters.find((members) => members.includes(childId))
+      if (cluster) return clusterInterval(layout, cluster).left
+      return byId.get(childId)?.x ?? 0
+    }
+    const actual = [...present].sort((a, b) => clusterLeft(a) - clusterLeft(b) || a.localeCompare(b))
+    if (actual.some((id, index) => id !== expected[index])) {
+      violations.push(`${unionId}: ${actual.join(',')} vs ${expected.join(',')}`)
+    }
+  }
+  return violations
 }
 
 export function spouseGap(layout: PositionedLayout, leftPersonId: string, rightPersonId: string): number | null {
