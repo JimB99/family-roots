@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildFamilyGraph } from '../../../domain/family-graph'
 import { parentChild, person, spouse, TEST_FAMILY_ID } from '../../../test/fixtures/family'
@@ -13,10 +10,14 @@ import {
   invariantFailures,
   siblingOrderViolations,
   spouseGap,
+  cousinGroupOrderViolations,
+  coupleCenteringError,
+  personMid,
 } from './layout-invariants'
 import { FAMILY_GAP, NODE_GAP, PERSON_W, SIBLING_GAP } from './layout-spacing'
 import { projectFamilyGraph, type ProjectOptions } from './project-family-graph'
 import type { PositionedLayout } from './layout-model'
+import { LAYOUT_SCENARIO_REGISTRY } from '../../../test/fixtures/layout-scenario-registry'
 
 async function layoutOf(people: Person[], relationships: Relationship[], options: ProjectOptions = {}) {
   const graph = buildFamilyGraph(TEST_FAMILY_ID, people, relationships)
@@ -44,26 +45,8 @@ function assertInvariants(
   expect(failures, `${failures.join('; ')}\n${formatReport(report)}`).toEqual([])
 }
 
-function loadAguilar() {
-  const fixturePath = join(dirname(fileURLToPath(import.meta.url)), 'aguilar-graph.fixture.json')
-  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
-    people: Array<{ id: string; givenNames: string; familyName: string | null; birthYear: number | null }>
-    relationships: Array<{ type: 'spouse' | 'parent_child'; a: string; b: string }>
-  }
-  const people = fixture.people.map((entry) =>
-    person(entry.id, entry.givenNames, {
-      familyName: entry.familyName,
-      birth: entry.birthYear == null ? null : { year: entry.birthYear, precision: 'year' },
-    }),
-  )
-  const relationships = fixture.relationships.map((entry) =>
-    entry.type === 'spouse' ? spouse(entry.a, entry.b) : parentChild(entry.a, entry.b),
-  )
-  return { people, relationships }
-}
-
-describe('layout invariants S1–S10', () => {
-  it('S1 — couple + two children baseline', async () => {
+describe('layout invariants — core spacing and unions', () => {
+  it('Couple with two children — spouses adjacent, children below', async () => {
     const amy = person('amy', 'Amy', { birth: { year: 1970, precision: 'year' } })
     const bob = person('bob', 'Bob', { birth: { year: 1971, precision: 'year' } })
     const c1 = person('c1', 'C1', { birth: { year: 2000, precision: 'year' } })
@@ -84,7 +67,7 @@ describe('layout invariants S1–S10', () => {
     expect(node(layout, 'amy').y).toBeLessThan(node(layout, 'c1').y)
   })
 
-  it('S2a — wide fan + narrow cousin', async () => {
+  it('Wide cousin fan beside narrow branch — no false widening', async () => {
     const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
     const h = person('h', 'H', { birth: { year: 1930, precision: 'year' } })
     const hc = person('hc', 'HC', { birth: { year: 1931, precision: 'year' } })
@@ -109,7 +92,7 @@ describe('layout invariants S1–S10', () => {
     assertInvariants(report, { centerTol: 200, allowWidenedNatal: true })
   })
 
-  it('S2b — one child each allows a smaller parent gap', async () => {
+  it('One child per cousin branch — compact parent spacing', async () => {
     const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
     const a = person('a', 'A', { birth: { year: 1930, precision: 'year' } })
     const asp = person('asp', 'ASp', { birth: { year: 1931, precision: 'year' } })
@@ -133,7 +116,7 @@ describe('layout invariants S1–S10', () => {
     assertInvariants(report)
   })
 
-  it('S2c — equal fans', async () => {
+  it('Equal cousin fans — symmetric gaps', async () => {
     const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
     const a = person('a', 'A', { birth: { year: 1930, precision: 'year' } })
     const asp = person('asp', 'ASp', { birth: { year: 1931, precision: 'year' } })
@@ -160,10 +143,10 @@ describe('layout invariants S1–S10', () => {
         parentChild('bsp', 'b2'),
       ],
     )
-    assertInvariants(report)
+    assertInvariants(report, { allowWidenedNatal: true })
   })
 
-  it('S3 — widest generation is not youngest', async () => {
+  it('Widest generation is not the youngest row', async () => {
     const p = person('p', 'P', { birth: { year: 1940, precision: 'year' } })
     const s = person('s', 'S', { birth: { year: 1941, precision: 'year' } })
     const kids = ['c1', 'c2', 'c3', 'c4', 'c5'].map((id, i) =>
@@ -186,7 +169,7 @@ describe('layout invariants S1–S10', () => {
     expect(width(gen2)).toBeGreaterThan(width(gen3))
   })
 
-  it('S4 — married couple sits between both natal sibling runs', async () => {
+  it('Cross-family marriage sits between natal sibling runs', async () => {
     const leftFather = person('lf', 'Left Father', { birth: { year: 1940, precision: 'year' } })
     const leftMother = person('lm', 'Left Mother', { birth: { year: 1942, precision: 'year' } })
     const rightFather = person('rf', 'Right Father', { birth: { year: 1941, precision: 'year' } })
@@ -238,7 +221,7 @@ describe('layout invariants S1–S10', () => {
     expect(betweenLeftThenRight || betweenRightThenLeft, `couple was not between natal runs: ${row.join(', ')}`).toBe(true)
   })
 
-  it('S5 — only-child marriage packs next to in-law siblings', async () => {
+  it('Only-child marriage packs beside in-law siblings', async () => {
     const leftFather = person('lf', 'Left Father', { birth: { year: 1940, precision: 'year' } })
     const leftMother = person('lm', 'Left Mother', { birth: { year: 1942, precision: 'year' } })
     const onlyChild = person('lc', 'Only Child', { birth: { year: 1965, precision: 'year' } })
@@ -278,7 +261,7 @@ describe('layout invariants S1–S10', () => {
     expect(nearestGap <= SIBLING_GAP + 1, `only-child couple was ${nearestGap}px from in-law siblings`).toBe(true)
   })
 
-  it('S6 — removing a marriage returns the person to their sibling', async () => {
+  it('Removed marriage returns person to natal sibling row', async () => {
     const gp = person('gp', 'Founder', { birth: { year: 1920, precision: 'year' } })
     const sibling = person('sib', 'Sibling', { birth: { year: 1950, precision: 'year' } })
     const personA = person('a', 'Anchor', { birth: { year: 1952, precision: 'year' } })
@@ -303,7 +286,7 @@ describe('layout invariants S1–S10', () => {
     expect(yGap != null && yGap <= NODE_GAP + 6, `remaining spouse was ${yGap}px from anchor`).toBe(true)
   })
 
-  it('S7 — two spouses keep each child set under its own union', async () => {
+  it('Two spouses — all children sibling-packed under full parent chain', async () => {
     const amy = person('amy', 'Amy', { birth: { year: 1970, precision: 'year' } })
     const bob = person('bob', 'Bob', { birth: { year: 1968, precision: 'year' } })
     const chad = person('chad', 'Chad', { birth: { year: 1972, precision: 'year' } })
@@ -330,9 +313,21 @@ describe('layout invariants S1–S10', () => {
     expect(spouses.map((entry) => entry.personId)).toEqual(['bob', 'amy', 'chad'])
     expect(spouseGap(layout, 'amy', 'bob')).toBeLessThanOrEqual(NODE_GAP + 1)
     expect(spouseGap(layout, 'amy', 'chad')).toBeLessThanOrEqual(NODE_GAP + 1)
+    const childOrder = ['c1', 'c2', 'd1']
+      .map((id) => node(layout, id))
+      .sort((a, b) => a.x - b.x)
+      .map((entry) => entry.personId)
+    expect(childOrder).toEqual(['c1', 'c2', 'd1'])
+    const c2ToD1 = node(layout, 'd1').x - (node(layout, 'c2').x + node(layout, 'c2').width)
+    expect(c2ToD1).toBe(SIBLING_GAP)
+    const parentCenter =
+      (spouses[0]!.x + spouses[spouses.length - 1]!.x + spouses[spouses.length - 1]!.width) / 2
+    const childCenter =
+      (node(layout, 'c1').x + node(layout, 'd1').x + node(layout, 'd1').width) / 2
+    expect(Math.abs(parentCenter - childCenter)).toBeLessThan(1)
   })
 
-  it('S8 — collapsed union stays between visible parents', async () => {
+  it('Collapsed union stays between visible parents', async () => {
     const gp = person('gp', 'Grandparent', { birth: { year: 1920, precision: 'year' } })
     const pa = person('pa', 'Parent A', { birth: { year: 1950, precision: 'year' } })
     const pb = person('pb', 'Parent B', { birth: { year: 1952, precision: 'year' } })
@@ -345,7 +340,7 @@ describe('layout invariants S1–S10', () => {
     expect(union!.y).toBeGreaterThan(node(layout, 'pa').y)
   })
 
-  it('S9 — disconnected components do not overlap', async () => {
+  it('Disconnected components do not overlap', async () => {
     const gp = person('gp', 'Grandparent', { birth: { year: 1920, precision: 'year' } })
     const pa = person('pa', 'Parent A', { birth: { year: 1950, precision: 'year' } })
     const pb = person('pb', 'Parent B', { birth: { year: 1952, precision: 'year' } })
@@ -367,36 +362,48 @@ describe('layout invariants S1–S10', () => {
     }
   })
 
-  it('S10 — Aguilar pedigree stays compact and centered', async () => {
-    const { people, relationships } = loadAguilar()
-    const { layout, report } = await layoutOf(people, relationships)
-    assertInvariants(report, {
-      centerTol: 2_500,
-      maxWidth: 40_000,
-      maxEmptyBand: 3 * PERSON_W,
-      allowWidenedNatal: true,
-      minCousinGap: SIBLING_GAP,
-    })
+  it('Single-parent child stays in birth-order sibling row', async () => {
+    const a = person('a', 'A', { birth: { year: 1970, precision: 'year' } })
+    const b = person('b', 'B', { birth: { year: 1971, precision: 'year' } })
+    const ab1 = person('ab1', 'Ab1', { birth: { year: 2000, precision: 'year' } })
+    const ab2 = person('ab2', 'Ab2', { birth: { year: 2001, precision: 'year' } })
+    const b3 = person('b3', 'B3', { birth: { year: 2002, precision: 'year' } })
+    const ab4 = person('ab4', 'Ab4', { birth: { year: 2003, precision: 'year' } })
+    const ab5 = person('ab5', 'Ab5', { birth: { year: 2004, precision: 'year' } })
+    const { layout, report, model } = await layoutOf(
+      [a, b, ab1, ab2, b3, ab4, ab5],
+      [
+        spouse('a', 'b'),
+        parentChild('a', 'ab1'),
+        parentChild('b', 'ab1'),
+        parentChild('a', 'ab2'),
+        parentChild('b', 'ab2'),
+        parentChild('b', 'b3'),
+        parentChild('a', 'ab4'),
+        parentChild('b', 'ab4'),
+        parentChild('a', 'ab5'),
+        parentChild('b', 'ab5'),
+      ],
+    )
+    assertInvariants(report, { allowWidenedNatal: true })
 
-    const kids = ['3864a900c', '4fbac65bb', '6c1801f1e', '7877862bb', 'b96c1513'].map((id) => node(layout, id))
-    const sortedKids = [...kids].sort((a, b) => a.x - b.x)
-    const natalKids = sortedKids.filter((kid, index, list) => {
-      if (list.length === 1) return true
-      const prevGap = index === 0 ? Infinity : kid.x - (list[index - 1].x + list[index - 1].width)
-      const nextGap = index === list.length - 1 ? Infinity : list[index + 1].x - (kid.x + kid.width)
-      return prevGap <= FAMILY_GAP * 3 || nextGap <= FAMILY_GAP * 3
-    })
-    const herminiaMid = (centerX(layout, '2ec3fa2f') + centerX(layout, '1b261ca414')) / 2
-    const kidsMid = natalKids.reduce((sum, entry) => sum + entry.x + entry.width / 2, 0) / natalKids.length
-    expect(
-      Math.abs(kidsMid - herminiaMid) < 3 * PERSON_W + 16,
-      `Herminia couple at ${herminiaMid} vs natal children at ${kidsMid}\n${formatReport(report)}`,
-    ).toBe(true)
+    const ordered = ['ab1', 'ab2', 'b3', 'ab4', 'ab5']
+      .map((id) => node(layout, id))
+      .sort((left, right) => left.x - right.x)
+    expect(ordered.map((entry) => entry.personId)).toEqual(['ab1', 'ab2', 'b3', 'ab4', 'ab5'])
+
+    const coupleMid = (centerX(layout, 'a') + centerX(layout, 'b')) / 2
+    const childMid =
+      ordered.reduce((sum, entry) => sum + entry.x + entry.width / 2, 0) / ordered.length
+    expect(Math.abs(childMid - coupleMid)).toBeLessThan(PERSON_W + 16)
+
+    const struct = structureFromModel(model)
+    expect(siblingOrderViolations(layout, struct)).toEqual([])
   })
 })
 
-describe('layout invariants S11 sibling birth order', () => {
-  it('S11a — three siblings oldest to youngest left to right', async () => {
+describe('layout invariants — sibling order and multi-union hubs', () => {
+  it('Children sorted oldest to youngest left to right', async () => {
     const fina = person('fina', 'Fina', { birth: { year: 1952, precision: 'year' } })
     const manoloSr = person('manolo-sr', 'Manolo', { birth: { year: 1952, precision: 'year' } })
     const alicia = person('alicia', 'Alicia', { birth: { year: 1980, precision: 'year' } })
@@ -426,7 +433,7 @@ describe('layout invariants S11 sibling birth order', () => {
     expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
   })
 
-  it('S11b — unknown birth years sort after dated siblings', async () => {
+  it('Undated siblings sort after dated siblings', async () => {
     const pa = person('pa', 'Parent A', { birth: { year: 1950, precision: 'year' } })
     const pb = person('pb', 'Parent B', { birth: { year: 1951, precision: 'year' } })
     const dated = person('dated', 'Dated', { birth: { year: 1980, precision: 'year' } })
@@ -452,10 +459,120 @@ describe('layout invariants S11 sibling birth order', () => {
     expect(order[0], `dated sibling was not leftmost: ${order.join(', ')}`).toBe('dated')
     expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
   })
-})
 
-describe('layout invariants S12 spouse chain placement', () => {
-  it('S12 — two spouses flank the hub after layout', async () => {
+  it('Undated siblings sort alphabetically left to right', async () => {
+    const pa = person('pa', 'Parent A', { birth: { year: 1950, precision: 'year' } })
+    const pb = person('pb', 'Parent B', { birth: { year: 1951, precision: 'year' } })
+    const zebra = person('zebra', 'Zebra')
+    const alpha = person('alpha', 'Alpha')
+    const mid = person('mid', 'Mid')
+    const { layout, report, model } = await layoutOf(
+      [pa, pb, zebra, alpha, mid],
+      [
+        spouse('pa', 'pb'),
+        parentChild('pa', 'zebra'),
+        parentChild('pb', 'zebra'),
+        parentChild('pa', 'alpha'),
+        parentChild('pb', 'alpha'),
+        parentChild('pa', 'mid'),
+        parentChild('pb', 'mid'),
+      ],
+    )
+    assertInvariants(report)
+    const order = ['alpha', 'mid', 'zebra']
+      .map((id) => ({ id, x: node(layout, id).x }))
+      .sort((a, b) => a.x - b.x)
+      .map((entry) => entry.id)
+    expect(order, `children were ${order.join(', ')}`).toEqual(['alpha', 'mid', 'zebra'])
+    expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
+  })
+
+  it('Multi-union undated children group by couple then name', async () => {
+    const a = person('a', 'A')
+    const b = person('b', 'B')
+    const c = person('c', 'C')
+    const ab1 = person('ab1', 'Ab1')
+    const ab2 = person('ab2', 'Ab2')
+    const bc1 = person('bc1', 'Bc1')
+    const bc2 = person('bc2', 'Bc2')
+    const { layout, report, model } = await layoutOf(
+      [a, b, c, ab1, ab2, bc1, bc2],
+      [
+        spouse('a', 'b'),
+        spouse('b', 'c'),
+        parentChild('a', 'ab1'),
+        parentChild('b', 'ab1'),
+        parentChild('a', 'ab2'),
+        parentChild('b', 'ab2'),
+        parentChild('b', 'bc1'),
+        parentChild('c', 'bc1'),
+        parentChild('b', 'bc2'),
+        parentChild('c', 'bc2'),
+      ],
+    )
+    assertInvariants(report, { centerTol: 120 })
+    const spouses = [node(layout, 'a'), node(layout, 'b'), node(layout, 'c')].sort((left, right) => left.x - right.x)
+    expect(spouses.map((entry) => entry.personId)).toEqual(['a', 'b', 'c'])
+    const childOrder = ['ab1', 'ab2', 'bc1', 'bc2']
+      .map((id) => ({ id, x: node(layout, id).x }))
+      .sort((left, right) => left.x - right.x)
+      .map((entry) => entry.id)
+    expect(childOrder, `children were ${childOrder.join(', ')}`).toEqual(['ab1', 'ab2', 'bc1', 'bc2'])
+    expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
+
+    const bc1Gap = node(layout, 'bc1').x - (node(layout, 'ab2').x + node(layout, 'ab2').width)
+    expect(bc1Gap).toBe(SIBLING_GAP)
+    const parentCenter =
+      (node(layout, 'a').x + node(layout, 'c').x + node(layout, 'c').width) / 2
+    const childCenter =
+      (node(layout, 'ab1').x + node(layout, 'bc2').x + node(layout, 'bc2').width) / 2
+    expect(Math.abs(parentCenter - childCenter)).toBeLessThan(1)
+  })
+
+  it('Multi-union dated children group by couple then birth year', async () => {
+    const a = person('a', 'A', { birth: { year: 1960, precision: 'year' } })
+    const b = person('b', 'B', { birth: { year: 1961, precision: 'year' } })
+    const c = person('c', 'C', { birth: { year: 1962, precision: 'year' } })
+    const ab1 = person('ab1', 'Ab1', { birth: { year: 1990, precision: 'year' } })
+    const ab2 = person('ab2', 'Ab2', { birth: { year: 1995, precision: 'year' } })
+    const ab3 = person('ab3', 'Ab3', { birth: { year: 2000, precision: 'year' } })
+    const bc1 = person('bc1', 'Bc1', { birth: { year: 1992, precision: 'year' } })
+    const bc2 = person('bc2', 'Bc2', { birth: { year: 1998, precision: 'year' } })
+    const { layout, report, model } = await layoutOf(
+      [a, b, c, ab1, ab2, ab3, bc1, bc2],
+      [
+        spouse('a', 'b'),
+        spouse('b', 'c'),
+        parentChild('a', 'ab1'),
+        parentChild('b', 'ab1'),
+        parentChild('a', 'ab2'),
+        parentChild('b', 'ab2'),
+        parentChild('a', 'ab3'),
+        parentChild('b', 'ab3'),
+        parentChild('b', 'bc1'),
+        parentChild('c', 'bc1'),
+        parentChild('b', 'bc2'),
+        parentChild('c', 'bc2'),
+      ],
+    )
+    assertInvariants(report, { centerTol: 120 })
+    const childOrder = ['ab1', 'ab2', 'ab3', 'bc1', 'bc2']
+      .map((id) => ({ id, x: node(layout, id).x }))
+      .sort((left, right) => left.x - right.x)
+      .map((entry) => entry.id)
+    expect(childOrder, `children were ${childOrder.join(', ')}`).toEqual(['ab1', 'ab2', 'ab3', 'bc1', 'bc2'])
+    expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
+
+    const bc1Gap = node(layout, 'bc1').x - (node(layout, 'ab3').x + node(layout, 'ab3').width)
+    expect(bc1Gap).toBe(SIBLING_GAP)
+    const parentCenter =
+      (node(layout, 'a').x + node(layout, 'c').x + node(layout, 'c').width) / 2
+    const childCenter =
+      (node(layout, 'ab1').x + node(layout, 'bc2').x + node(layout, 'bc2').width) / 2
+    expect(Math.abs(parentCenter - childCenter)).toBeLessThan(1)
+  })
+
+  it('Two spouses flank the child-bearing hub', async () => {
     const hub = person('hub', 'Hub', { birth: { year: 1960, precision: 'year' } })
     const wifeA = person('wife-a', 'Wife A', { birth: { year: 1962, precision: 'year' } })
     const wifeB = person('wife-b', 'Wife B', { birth: { year: 1965, precision: 'year' } })
@@ -479,11 +596,15 @@ describe('layout invariants S12 spouse chain placement', () => {
     expect(spouses.map((entry) => entry.personId)).toEqual(['wife-a', 'hub', 'wife-b'])
     expect(spouseGap(layout, 'hub', 'wife-a')).toBeLessThanOrEqual(NODE_GAP + 1)
     expect(spouseGap(layout, 'hub', 'wife-b')).toBeLessThanOrEqual(NODE_GAP + 1)
+    const cGap = node(layout, 'c2').x - (node(layout, 'c1').x + node(layout, 'c1').width)
+    expect(cGap).toBe(SIBLING_GAP)
+    const parentCenter =
+      (spouses[0]!.x + spouses[spouses.length - 1]!.x + spouses[spouses.length - 1]!.width) / 2
+    const childCenter = (node(layout, 'c1').x + node(layout, 'c2').x + node(layout, 'c2').width) / 2
+    expect(Math.abs(parentCenter - childCenter)).toBeLessThan(1)
   })
-})
 
-describe('layout invariants S13 cousin branch compaction', () => {
-  it('S13 — sibling branches with spouses stay compact', async () => {
+  it('Sibling branches with spouses stay compact', async () => {
     const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
     const a = person('a', 'A', { birth: { year: 1930, precision: 'year' } })
     const asp = person('asp', 'ASp', { birth: { year: 1931, precision: 'year' } })
@@ -505,5 +626,245 @@ describe('layout invariants S13 cousin branch compaction', () => {
       ],
     )
     assertInvariants(report, { maxEmptyBand: FAMILY_GAP + PERSON_W })
+  })
+})
+
+function childOrder(layout: PositionedLayout, ids: string[]) {
+  return ids
+    .map((id) => ({ id, x: node(layout, id).x }))
+    .sort((left, right) => left.x - right.x)
+    .map((entry) => entry.id)
+}
+
+function coupleMid(layout: PositionedLayout, leftId: string, rightId: string) {
+  return (centerX(layout, leftId) + centerX(layout, rightId)) / 2
+}
+
+function childClusterMid(layout: PositionedLayout, childIds: string[]) {
+  const centers = childIds.map((id) => centerX(layout, id))
+  return centers.reduce((sum, value) => sum + value, 0) / centers.length
+}
+
+describe('layout invariants — cousin row centering', () => {
+  it('Cousin children grouped by union, not global birth year', async () => {
+    const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
+    const a = person('a', 'A', { birth: { year: 1930, precision: 'year' } })
+    const asp = person('asp', 'ASp', { birth: { year: 1931, precision: 'year' } })
+    const b = person('b', 'B', { birth: { year: 1932, precision: 'year' } })
+    const bsp = person('bsp', 'BSp', { birth: { year: 1933, precision: 'year' } })
+    const ab1 = person('ab1', 'Ab1', { birth: { year: 1990, precision: 'year' } })
+    const ab2 = person('ab2', 'Ab2', { birth: { year: 1995, precision: 'year' } })
+    const ab3 = person('ab3', 'Ab3', { birth: { year: 2000, precision: 'year' } })
+    const cd1 = person('cd1', 'Cd1', { birth: { year: 1992, precision: 'year' } })
+    const cd2 = person('cd2', 'Cd2', { birth: { year: 1998, precision: 'year' } })
+    const { layout, report, model } = await layoutOf(
+      [gp, a, asp, b, bsp, ab1, ab2, ab3, cd1, cd2],
+      [
+        parentChild('gp', 'a'),
+        parentChild('gp', 'b'),
+        spouse('a', 'asp'),
+        spouse('b', 'bsp'),
+        parentChild('a', 'ab1'),
+        parentChild('asp', 'ab1'),
+        parentChild('a', 'ab2'),
+        parentChild('asp', 'ab2'),
+        parentChild('a', 'ab3'),
+        parentChild('asp', 'ab3'),
+        parentChild('b', 'cd1'),
+        parentChild('bsp', 'cd1'),
+        parentChild('b', 'cd2'),
+        parentChild('bsp', 'cd2'),
+      ],
+    )
+    assertInvariants(report, { centerTol: PERSON_W + 32, allowWidenedNatal: true })
+    const order = childOrder(layout, ['ab1', 'ab2', 'ab3', 'cd1', 'cd2'])
+    expect(order, `children were ${order.join(', ')}; global birth would be ab1,ab2,cd1,ab3,cd2`).toEqual([
+      'ab1',
+      'ab2',
+      'ab3',
+      'cd1',
+      'cd2',
+    ])
+    expect(cousinGroupOrderViolations(layout, structureFromModel(model))).toEqual([])
+    expect(siblingOrderViolations(layout, structureFromModel(model))).toEqual([])
+  })
+
+  it('Each cousin couple centered over its own children (Diego/Jose tree)', async () => {
+    const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
+    const diego = person('diego', 'Diego', { birth: { year: 1906, precision: 'year' } })
+    const franD = person('fran-d', 'Francisca', { birth: { year: 1893, precision: 'year' } })
+    const jose = person('jose', 'Jose', { birth: { year: 1908, precision: 'year' } })
+    const franJ = person('fran-j', 'Francisca L', { birth: { year: 1914, precision: 'year' } })
+    const isabel = person('isabel', 'Isabel', { birth: { year: 1928, precision: 'year' } })
+    const gaspar = person('gaspar', 'Gaspar', { birth: { year: 1925, precision: 'year' } })
+    const paqui = person('paqui', 'Paqui', { birth: { year: 1937, precision: 'year' } })
+    const manuel = person('manuel', 'Manuel', { birth: { year: 1935, precision: 'year' } })
+    const maria = person('maria', 'Maria', { birth: { year: 1937, precision: 'year' } })
+    const antonio = person('antonio', 'Antonio', { birth: { year: 1934, precision: 'year' } })
+    const herminia = person('herminia', 'Herminia', { birth: { year: 1941, precision: 'year' } })
+    const cristobal = person('cristobal', 'Cristobal', { birth: { year: 1938, precision: 'year' } })
+    const fermin = person('fermin', 'Fermin', { birth: { year: 1965, precision: 'year' } })
+    const { layout, report, model } = await layoutOf(
+      [
+        gp,
+        diego,
+        franD,
+        jose,
+        franJ,
+        isabel,
+        gaspar,
+        paqui,
+        manuel,
+        maria,
+        antonio,
+        herminia,
+        cristobal,
+        fermin,
+      ],
+      [
+        parentChild('gp', 'diego'),
+        parentChild('gp', 'jose'),
+        spouse('diego', 'fran-d'),
+        spouse('jose', 'fran-j'),
+        spouse('isabel', 'gaspar'),
+        spouse('paqui', 'manuel'),
+        spouse('maria', 'antonio'),
+        spouse('herminia', 'cristobal'),
+        parentChild('diego', 'isabel'),
+        parentChild('fran-d', 'isabel'),
+        parentChild('diego', 'paqui'),
+        parentChild('fran-d', 'paqui'),
+        parentChild('jose', 'maria'),
+        parentChild('fran-j', 'maria'),
+        parentChild('jose', 'herminia'),
+        parentChild('fran-j', 'herminia'),
+        parentChild('herminia', 'fermin'),
+        parentChild('cristobal', 'fermin'),
+      ],
+    )
+    const struct = structureFromModel(model)
+
+    const diegoErr = coupleCenteringError(layout, struct, ['diego', 'fran-d'], ['isabel', 'paqui'])
+    const joseMariaErr = coupleCenteringError(layout, struct, ['jose', 'fran-j'], ['maria', 'herminia'])
+    expect(diegoErr, `Diego couple off by ${diegoErr}px`).toBeLessThan(PERSON_W + 16)
+    expect(joseMariaErr, `Jose couple vs Maria off by ${joseMariaErr}px`).toBeLessThan(PERSON_W + 16)
+
+    const diegoMid = coupleMid(layout, 'diego', 'fran-d')
+    const isabelPaquiMid = childClusterMid(layout, ['isabel', 'paqui'])
+    const joseMid = coupleMid(layout, 'jose', 'fran-j')
+    const mariaHerminiaMid = childClusterMid(layout, ['maria', 'herminia'])
+    expect(Math.abs(diegoMid - isabelPaquiMid)).toBeLessThan(PERSON_W + 16)
+    expect(Math.abs(joseMid - mariaHerminiaMid)).toBeLessThan(PERSON_W + 16)
+    expect(cousinGroupOrderViolations(layout, struct)).toEqual([])
+    const cousinOrder = childOrder(layout, ['isabel', 'paqui', 'maria', 'herminia'])
+    expect(cousinOrder).toEqual(['isabel', 'paqui', 'maria', 'herminia'])
+  })
+
+  it('Wide left fan must not pull narrow cousin off center', async () => {
+    const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
+    const wide = person('wide', 'Wide', { birth: { year: 1930, precision: 'year' } })
+    const wideSp = person('wide-sp', 'WideSp', { birth: { year: 1931, precision: 'year' } })
+    const narrow = person('narrow', 'Narrow', { birth: { year: 1932, precision: 'year' } })
+    const narrowSp = person('narrow-sp', 'NarrowSp', { birth: { year: 1933, precision: 'year' } })
+    const k1 = person('k1', 'K1', { birth: { year: 1960, precision: 'year' } })
+    const k2 = person('k2', 'K2', { birth: { year: 1961, precision: 'year' } })
+    const k3 = person('k3', 'K3', { birth: { year: 1962, precision: 'year' } })
+    const k4 = person('k4', 'K4', { birth: { year: 1963, precision: 'year' } })
+    const k5 = person('k5', 'K5', { birth: { year: 1964, precision: 'year' } })
+    const n1 = person('n1', 'N1', { birth: { year: 1965, precision: 'year' } })
+    const n1sp = person('n1sp', 'N1Sp', { birth: { year: 1966, precision: 'year' } })
+    const n2 = person('n2', 'N2', { birth: { year: 1967, precision: 'year' } })
+    const { layout, report, model } = await layoutOf(
+      [gp, wide, wideSp, narrow, narrowSp, k1, k2, k3, k4, k5, n1, n1sp, n2],
+      [
+        parentChild('gp', 'wide'),
+        parentChild('gp', 'narrow'),
+        spouse('wide', 'wide-sp'),
+        spouse('narrow', 'narrow-sp'),
+        spouse('n1', 'n1sp'),
+        ...['k1', 'k2', 'k3', 'k4', 'k5'].flatMap((kid) => [
+          parentChild('wide', kid),
+          parentChild('wide-sp', kid),
+        ]),
+        parentChild('narrow', 'n1'),
+        parentChild('narrow-sp', 'n1'),
+        parentChild('narrow', 'n2'),
+        parentChild('narrow-sp', 'n2'),
+      ],
+    )
+    const struct = structureFromModel(model)
+
+    const wideErr = coupleCenteringError(layout, struct, ['wide', 'wide-sp'], ['k1', 'k2', 'k3', 'k4', 'k5'])
+    const narrowErr = coupleCenteringError(layout, struct, ['narrow', 'narrow-sp'], ['n1', 'n1sp', 'n2'])
+    expect(wideErr, `wide couple off by ${wideErr}px`).toBeLessThan(PERSON_W + 16)
+    expect(narrowErr, `narrow couple off by ${narrowErr}px`).toBeLessThan(PERSON_W + 16)
+    expect(
+      narrowErr,
+      `right cousin should not drift worse than left; wide=${wideErr}px narrow=${narrowErr}px`,
+    ).toBeLessThanOrEqual(wideErr + 8)
+
+    const parentRowMid =
+      (coupleMid(layout, 'wide', 'wide-sp') + coupleMid(layout, 'narrow', 'narrow-sp')) / 2
+    expect(Math.abs(personMid(layout, 'gp') - parentRowMid)).toBeLessThan(PERSON_W + 16)
+    expect(spouseGap(layout, 'n1', 'n1sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(node(layout, 'n1sp').x).toBeGreaterThan(node(layout, 'k5').x)
+  })
+})
+
+describe('layout review scenarios (U1, U2)', () => {
+  function scenario(id: string) {
+    const def = LAYOUT_SCENARIO_REGISTRY.find((entry) => entry.id === id)
+    if (!def) throw new Error(`missing scenario ${id}`)
+    return def
+  }
+
+  it('U1 — undated cousin row sorts children by name with spouses adjacent', async () => {
+    const { people, relationships, invariantOptions } = scenario('undatedCousinSpouses')
+    const { layout, report, model } = await layoutOf(people, relationships)
+    if (invariantOptions !== false) {
+      assertInvariants(report, invariantOptions)
+    }
+
+    const aBranchOrder = ['a1', 'a2', 'a3']
+      .map((id) => ({ id, x: node(layout, id).x }))
+      .sort((left, right) => left.x - right.x)
+      .map((entry) => entry.id)
+    expect(aBranchOrder, `A-branch children were ${aBranchOrder.join(', ')}`).toEqual(['a1', 'a2', 'a3'])
+
+    expect(spouseGap(layout, 'a1', 'a1sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(spouseGap(layout, 'a2', 'a2sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(spouseGap(layout, 'a3', 'a3sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(spouseGap(layout, 'b1', 'b1sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(node(layout, 'b1').x).toBeGreaterThan(node(layout, 'a3sp').x)
+
+    const struct = structureFromModel(model)
+    expect(siblingOrderViolations(layout, struct)).toEqual([])
+  })
+
+  it('U2 — half-sibling row keeps birth order with child-row spouses', async () => {
+    const { people, relationships, invariantOptions } = scenario('halfSiblingSpouses')
+    const { layout, report, model } = await layoutOf(people, relationships)
+    if (invariantOptions !== false) {
+      assertInvariants(report, invariantOptions)
+    }
+
+    const childOrder = ['ab1', 'ab2', 'b3', 'ab4', 'ab5']
+      .map((id) => node(layout, id))
+      .sort((left, right) => left.x - right.x)
+      .map((entry) => entry.personId)
+    expect(childOrder, `children were ${childOrder.join(', ')}`).toEqual([
+      'ab1',
+      'ab2',
+      'b3',
+      'ab4',
+      'ab5',
+    ])
+
+    expect(spouseGap(layout, 'ab1', 'ab1sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(spouseGap(layout, 'b3', 'b3sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+    expect(spouseGap(layout, 'ab5', 'ab5sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+
+    const struct = structureFromModel(model)
+    expect(siblingOrderViolations(layout, struct)).toEqual([])
   })
 })

@@ -42,8 +42,10 @@ export function siblingGap(layout: PositionedLayout, leftId: string, rightId: st
 
 export function hasRowOverlap(nodes: PositionedNode[]): boolean {
   const sorted = [...nodes].sort((a, b) => a.x - b.x)
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].x < sorted[i - 1].x + sorted[i - 1].width - 0.5) return true
+  for (let i = 0; i < sorted.length - 1; i++) {
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (sorted[j].x < sorted[i].x + sorted[i].width - 0.5) return true
+    }
   }
   return false
 }

@@ -1,0 +1,20 @@
+Layout canvases (engine output)
+===============================
+
+Open from your repo — these files are copied here on each export:
+
+  Private/canvases/layout-scenario-gallery.canvas.tsx
+  Private/canvases/cousin-layout-decisions.canvas.tsx
+
+In Cursor: Ctrl+P → type "layout-scenario-gallery" → Enter.
+
+If it opens as a normal tab, use the Canvas / open beside chat control on the tab.
+
+Refresh data:
+
+  cd family-roots
+  npm run export:layout-canvas
+
+Or open directly:
+
+  npm run open:layout-gallery

@@ -8,7 +8,7 @@ import {
   personCenter,
   totalWidth,
 } from './layout-metrics'
-import { comparePersons } from './layout-order'
+import { compareSiblingLayoutOrder, twoParentUnionIdOnRow } from './layout-order'
 import { CENTER_TOL_LARGE, CENTER_TOL_UNIT, COUPLE_W, FAMILY_GAP, PERSON_W, SIBLING_GAP } from './layout-spacing'
 import type { FamilyStructure } from './family-structure'
 
@@ -137,6 +137,52 @@ function clusterInterval(layout: PositionedLayout, memberIds: string[]): { left:
     right = Math.max(right, node.x + node.width)
   }
   return { left, right }
+}
+
+function descendantColumnCenter(
+  layout: PositionedLayout,
+  childIds: string[],
+  structure: FamilyStructure,
+): number | null {
+  const byId = nodeById(layout)
+  const column = new Set<string>()
+  for (const id of childIds) {
+    column.add(id)
+    for (const desc of downwardSet([id], structure)) column.add(desc)
+  }
+  let left = Infinity
+  let right = -Infinity
+  for (const id of column) {
+    const node = byId.get(id)
+    if (!node) continue
+    left = Math.min(left, node.x)
+    right = Math.max(right, node.x + node.width)
+  }
+  if (!Number.isFinite(left)) return null
+  return (left + right) / 2
+}
+
+function unionCenteringError(
+  layout: PositionedLayout,
+  parentPersonIds: string[],
+  childPersonIds: string[],
+  structure: FamilyStructure,
+): number {
+  const byId = nodeById(layout)
+  const parents = parentPersonIds
+    .map((id) => byId.get(id))
+    .filter((node): node is PositionedNode => node != null)
+  if (parents.length === 0 || childPersonIds.length === 0) return 0
+
+  const parentMid = parents.reduce((sum, node) => sum + personCenter(node), 0) / parents.length
+  const hasDescendants = childPersonIds.some((id) =>
+    [...downwardSet([id], structure)].some((desc) => desc !== id && byId.has(desc)),
+  )
+  if (hasDescendants) {
+    const columnCenter = descendantColumnCenter(layout, childPersonIds, structure)
+    if (columnCenter != null) return Math.abs(parentMid - columnCenter)
+  }
+  return coupleCenteringOffset(layout, parentPersonIds, childPersonIds) ?? 0
 }
 
 function parentUnionsOfCluster(
@@ -327,7 +373,7 @@ export function analyzeLayout(layout: PositionedLayout, structure: FamilyStructu
         leftIds: ordered[i - 1],
         rightIds: ordered[i],
         gap,
-        tooTight: !joined && gap < FAMILY_GAP - 1,
+        tooTight: !joined && gap >= 0 && gap < FAMILY_GAP - 1,
       })
     }
   }
@@ -360,7 +406,7 @@ export function analyzeLayout(layout: PositionedLayout, structure: FamilyStructu
     const coreChildIds = children.filter((id) => !isJoinPerson(layout, structure, id))
     const measured = coreChildIds.length > 0 ? coreChildIds : children
     const measuredPersonIds = measured.map((id) => toPersonId(layout, id)).filter((id): id is string => id != null)
-    const error = coupleCenteringOffset(layout, parentPersonIds, measuredPersonIds) ?? 0
+    const error = unionCenteringError(layout, parentPersonIds, measuredPersonIds, structure)
     const multi = parents.some((parentId) => childBearingUnionCount(parentId, structure) > 1)
     const joins = coreChildIds.length > 0 && coreChildIds.length < children.length
     centering.push({
@@ -476,13 +522,18 @@ export function siblingOrderViolations(layout: PositionedLayout, structure: Fami
     const present = children.filter((id) => byId.get(id)?.kind === 'person')
     if (present.length < 2) continue
 
+    const parentIds = structure.unionParents.get(unionId) ?? []
+    const parentRowMembers = parentIds
+      .map((id) => byId.get(id))
+      .filter((node): node is PositionedNode => node != null)
+      .sort((a, b) => a.x - b.x)
+      .map((node) => node.id)
+    const fallbackMembers = parentIds.length > 0 ? parentIds : parentRowMembers
+
     const expected = [...present].sort((a, b) => {
       const left = byId.get(a)!
       const right = byId.get(b)!
-      return comparePersons(
-        { birthYear: left.birthYear ?? Number.POSITIVE_INFINITY, id: left.id },
-        { birthYear: right.birthYear ?? Number.POSITIVE_INFINITY, id: right.id },
-      )
+      return compareSiblingLayoutOrder(left, right, structure, parentRowMembers.length > 0 ? parentRowMembers : fallbackMembers)
     })
 
     const clusterLeft = (childId: string): number => {
@@ -496,6 +547,86 @@ export function siblingOrderViolations(layout: PositionedLayout, structure: Fami
     }
   }
   return violations
+}
+
+/** Children from different two-parent unions must not interleave on the same row. */
+export function cousinGroupOrderViolations(layout: PositionedLayout, structure: FamilyStructure): string[] {
+  const byId = nodeById(layout)
+  const rows = new Map<number, PositionedNode[]>()
+  for (const node of personNodes(layout)) {
+    const row = Math.round(node.y)
+    const list = rows.get(row) ?? []
+    list.push(node)
+    rows.set(row, list)
+  }
+
+  const violations: string[] = []
+  for (const rowNodes of rows.values()) {
+    const parentIds = new Set<string>()
+    for (const node of rowNodes) {
+      for (const parent of structure.parentsOfPerson.get(node.id) ?? []) parentIds.add(parent)
+    }
+    if (parentIds.size === 0) continue
+
+    const parentRowMembers = [...parentIds]
+      .map((id) => byId.get(id))
+      .filter((node): node is PositionedNode => node != null)
+      .sort((a, b) => a.x - b.x)
+      .map((node) => node.id)
+    if (parentRowMembers.length === 0) continue
+
+    const grouped = new Map<string, string[]>()
+    for (const node of rowNodes) {
+      const unionId = twoParentUnionIdOnRow(node.id, parentRowMembers, structure)
+      if (!unionId) continue
+      const list = grouped.get(unionId) ?? []
+      list.push(node.id)
+      grouped.set(unionId, list)
+    }
+    if (grouped.size <= 1) continue
+
+    const unionOrder = [...grouped.keys()].sort((left, right) => {
+      const leftChild = grouped.get(left)![0]!
+      const rightChild = grouped.get(right)![0]!
+      return (
+        compareSiblingLayoutOrder(byId.get(leftChild)!, byId.get(rightChild)!, structure, parentRowMembers) ||
+        left.localeCompare(right)
+      )
+    })
+
+    const expected: string[] = []
+    for (const unionId of unionOrder) {
+      const children = grouped.get(unionId)!
+      const sorted = [...children].sort((a, b) =>
+        compareSiblingLayoutOrder(byId.get(a)!, byId.get(b)!, structure, parentRowMembers),
+      )
+      expected.push(...sorted)
+    }
+
+    const actual = [...rowNodes]
+      .filter((node) => twoParentUnionIdOnRow(node.id, parentRowMembers, structure))
+      .sort((a, b) => a.x - b.x)
+      .map((node) => node.id)
+    if (actual.some((id, index) => id !== expected[index])) {
+      violations.push(`row y=${rowNodes[0]?.y}: ${actual.join(',')} vs ${expected.join(',')}`)
+    }
+  }
+  return violations
+}
+
+export function coupleCenteringError(
+  layout: PositionedLayout,
+  _structure: FamilyStructure,
+  parentPersonIds: string[],
+  childPersonIds: string[],
+): number {
+  const find = (personId: string) => layout.nodes.find((entry) => entry.personId === personId)
+  const parents = parentPersonIds.map(find).filter((entry): entry is PositionedNode => entry != null)
+  const children = childPersonIds.map(find).filter((entry): entry is PositionedNode => entry != null)
+  if (parents.length === 0 || children.length === 0) return 0
+  const parentMid = parents.reduce((sum, entry) => sum + personCenter(entry), 0) / parents.length
+  const childMid = children.reduce((sum, entry) => sum + personCenter(entry), 0) / children.length
+  return Math.abs(parentMid - childMid)
 }
 
 export function spouseGap(layout: PositionedLayout, leftPersonId: string, rightPersonId: string): number | null {

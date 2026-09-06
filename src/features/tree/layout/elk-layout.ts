@@ -58,7 +58,7 @@ export async function layoutComponentWithElk(
     }
   }
 
-  const compactedPersons = packPedigreeRows(positioned, structure)
+  const compactedPersons = packPedigreeRows(positioned, structure, generations)
   const byId = new Map(compactedPersons.map((node) => [node.id, node]))
 
   const withUnions: PositionedNode[] = [...compactedPersons]

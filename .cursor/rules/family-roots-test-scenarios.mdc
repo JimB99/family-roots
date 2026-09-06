@@ -41,16 +41,17 @@ Use this as a checklist when adding or changing family-graph, layout, or tree be
 
 | Scenario | Intent |
 |----------|--------|
-| S1 | Couple + two children baseline |
-| S2a–c | Wide vs narrow cousin branches |
-| S3 | Widest generation not youngest |
-| S4 | Couple between natal sibling runs |
-| S5 | Only-child marriage near in-laws |
-| S6 | Remove marriage → return to natal sibling |
-| S7 | Two spouses, separate child sets |
-| S8 | Collapsed union between parents |
-| S9 | Disconnected components don't overlap |
-| S10 | Aguilar pedigree compact + centered |
+| Couple + two children | Spouses adjacent, children below |
+| Wide vs narrow cousins | No false widening between branches |
+| One child per branch | Compact parent spacing |
+| Equal cousin fans | Symmetric gaps |
+| Widest generation | Fan wider than youngest tail |
+| Cross-family marriage | Couple between natal sibling runs |
+| Only-child marriage | Packs beside in-law siblings |
+| Remove marriage | Person returns to natal sibling row |
+| Two spouses | Separate child sets under each union |
+| Collapsed union | Stays between visible parents |
+| Disconnected components | No mutual overlap |
 
 ## Display vs structure (performance)
 

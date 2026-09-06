@@ -1,4 +1,4 @@
-import { layoutComponentWithElk } from './elk-layout.ts'
+import { layoutComponentWithContract } from './layout-component.ts'
 import { assignGenerations, buildStructure } from './family-structure.ts'
 import type {
   LayoutBounds,
@@ -86,9 +86,8 @@ function packComponents(components: ComponentLayout[]): {
 
 export async function computeTreeLayout(
   model: LayoutModel,
-  options: ComputeLayoutOptions = {},
+  _options: ComputeLayoutOptions = {},
 ): Promise<PositionedLayout> {
-  const quality = options.quality ?? 'export'
   const byComponent = new Map<string, { persons: PositionedNode[]; unions: PositionedNode[] }>()
   for (const node of model.nodes) {
     const entry = byComponent.get(node.componentId) ?? { persons: [], unions: [] }
@@ -117,13 +116,12 @@ export async function computeTreeLayout(
       const structure = buildStructure(edges, kindById)
       const personIds = entry.persons.map((node) => node.id).sort()
       const generations = assignGenerations(personIds, structure)
-      return layoutComponentWithElk(
+      return layoutComponentWithContract(
         componentId,
         entry.persons,
         entry.unions,
         structure,
         generations,
-        quality,
       )
     }),
   )

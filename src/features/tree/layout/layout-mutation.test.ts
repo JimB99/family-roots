@@ -23,8 +23,8 @@ const baseRels = [
   parentChild('bob', 'c2'),
 ]
 
-describe('layout mutations S6', () => {
-  it('S6a — add sibling c3 keeps the couple centered', async () => {
+describe('layout mutations after graph edits', () => {
+  it('Adding a sibling keeps the couple centered', async () => {
     const c3 = person('c3', 'C3', { birth: { year: 2004, precision: 'year' } })
     const after = await layoutOf(
       [amy, bob, c1, c2, c3],
@@ -33,7 +33,7 @@ describe('layout mutations S6', () => {
     expect(coupleCenteringOffset(after, ['amy', 'bob'], ['c1', 'c2', 'c3'])!).toBeLessThan(100)
   })
 
-  it('S6b — add spouse to c2 does not overlap siblings', async () => {
+  it('Adding a child spouse does not overlap siblings', async () => {
     const c2s = person('c2s', 'C2S', { birth: { year: 2003, precision: 'year' } })
     const after = await layoutOf([amy, bob, c1, c2, c2s], [...baseRels, spouse('c2', 'c2s')])
     const left = after.nodes.find((n) => n.personId === 'c1')!
@@ -45,7 +45,7 @@ describe('layout mutations S6', () => {
     expect(gap <= SIBLING_GAP + 1 || gap >= 0).toBe(true)
   })
 
-  it('S6e — remove marriage does not overlap the natal row', async () => {
+  it('Removing a marriage avoids natal row overlap', async () => {
     const x = person('x', 'X', { birth: { year: 1953, precision: 'year' } })
     const y = person('y', 'Y', { birth: { year: 1956, precision: 'year' } })
     const sib = person('sib', 'Sib', { birth: { year: 1950, precision: 'year' } })
