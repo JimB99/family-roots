@@ -22,7 +22,7 @@ import {
   contractRuleViolations,
   goldenPlacementDiffs,
 } from '../src/features/tree/layout/layout-contract-assertions.ts'
-import { structureFromModel } from '../src/features/tree/layout/family-structure.ts'
+import { structureFromModel, assignGenerations } from '../src/features/tree/layout/family-structure.ts'
 import {
   analyzeLayout,
   coupleCenteringError,
@@ -30,6 +30,14 @@ import {
 } from '../src/features/tree/layout/layout-invariants.ts'
 import { joinParentGoldenDiffs } from '../src/features/tree/layout/join-parent-contract-reference.ts'
 import { projectFamilyGraph } from '../src/features/tree/layout/project-family-graph.ts'
+import {
+  formatColumnLayoutTrace,
+  traceLayoutComponentColumnPipeline,
+} from '../src/features/tree/layout/column-layout-trace.ts'
+import {
+  formatJoinLayoutTrace,
+  traceLayoutComponentJoinPipeline,
+} from '../src/features/tree/layout/join-layout-trace.ts'
 import { PERSON_H, ROW_GAP } from '../src/features/tree/layout/layout-spacing.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -180,6 +188,14 @@ function enrichCousinScenario(id, layout, structure, base) {
     }
   }
   return base
+}
+
+function displayEdgesFromRelationships(relationships) {
+  return relationships.flatMap((r) => {
+    if (r.type === 'spouse') return [{ type: 'spouse', from: r.personAId, to: r.personBId }]
+    if (r.type === 'parent_child') return [{ type: 'parent_child', from: r.personAId, to: r.personBId }]
+    return []
+  })
 }
 
 function statusFromFailures(failures) {
@@ -362,6 +378,74 @@ if (scenarios.joinDeepCousin) {
     '__SCENARIO__',
     'SCENARIO',
   )
+
+  const jdcDef = LAYOUT_SCENARIO_REGISTRY.find((def) => def.id === 'joinDeepCousin')
+  if (jdcDef) {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, jdcDef.people, jdcDef.relationships)
+    const model = projectFamilyGraph(graph, jdcDef.projectOptions)
+    const structure = structureFromModel(model)
+    const persons = model.nodes.filter((node) => node.kind === 'person')
+    const unions = model.nodes.filter((node) => node.kind === 'union')
+    const generations = assignGenerations(persons.map((node) => node.id), structure)
+    const trace = traceLayoutComponentJoinPipeline(persons, unions, structure, generations)
+    console.log(`JDC join-layout pipeline:\n${formatJoinLayoutTrace(trace)}`)
+    writeCanvasFromTemplate(
+      'jdc-layout-pipeline.canvas.tsx',
+      {
+        meta: {
+          code: 'JDC-PIPE',
+          title: 'JDC join-parent pipeline — step through each phase',
+          scenarioCode: 'JDC',
+          stepCount: trace.stages.length,
+          exportedAt: payload.exportedAt,
+        },
+        stages: trace.stages,
+        displayEdges: displayEdgesFromRelationships(jdcDef.relationships),
+      },
+      cursorCanvasesDir,
+      '__PIPELINE__',
+      'PIPELINE',
+    )
+  }
+}
+
+if (scenarios.wideFourGenPedigree) {
+  writeCanvasFromTemplate(
+    'wide-four-gen-pedigree-scenario.canvas.tsx',
+    scenarios.wideFourGenPedigree,
+    cursorCanvasesDir,
+    '__SCENARIO__',
+    'SCENARIO',
+  )
+
+  const w3gDef = LAYOUT_SCENARIO_REGISTRY.find((def) => def.id === 'wideFourGenPedigree')
+  if (w3gDef) {
+    const graph = buildFamilyGraph(TEST_FAMILY_ID, w3gDef.people, w3gDef.relationships)
+    const model = projectFamilyGraph(graph, w3gDef.projectOptions)
+    const structure = structureFromModel(model)
+    const persons = model.nodes.filter((node) => node.kind === 'person')
+    const unions = model.nodes.filter((node) => node.kind === 'union')
+    const generations = assignGenerations(persons.map((node) => node.id), structure)
+    const trace = traceLayoutComponentColumnPipeline(persons, unions, structure, generations)
+    console.log(`W3G column-layout pipeline:\n${formatColumnLayoutTrace(trace)}`)
+    writeCanvasFromTemplate(
+      'w3g-layout-pipeline.canvas.tsx',
+      {
+        meta: {
+          code: 'W3G-PIPE',
+          title: 'W3G column-layout pipeline — step through each phase',
+          scenarioCode: 'W3G',
+          stepCount: trace.stages.length,
+          exportedAt: payload.exportedAt,
+        },
+        stages: trace.stages,
+        displayEdges: displayEdgesFromRelationships(w3gDef.relationships),
+      },
+      cursorCanvasesDir,
+      '__PIPELINE__',
+      'PIPELINE',
+    )
+  }
 }
 
 for (const [key, data] of Object.entries(scenarios)) {

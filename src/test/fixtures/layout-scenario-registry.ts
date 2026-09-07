@@ -13,6 +13,11 @@ import {
   JOIN_DEEP_COUSIN_RELATIONSHIPS,
   JOIN_DEEP_COUSIN_SCENARIO,
 } from './join-deep-cousin-scenario'
+import {
+  WIDE_FOUR_GEN_PEDIGREE_PEOPLE,
+  WIDE_FOUR_GEN_PEDIGREE_RELATIONSHIPS,
+  WIDE_FOUR_GEN_PEDIGREE_SCENARIO,
+} from './wide-four-gen-pedigree-scenario'
 import type { ProjectOptions } from '../../features/tree/layout/project-family-graph'
 import type { InvariantOptions } from '../../features/tree/layout/layout-invariants'
 import { FAMILY_GAP, PERSON_W } from '../../features/tree/layout/layout-spacing'
@@ -843,5 +848,14 @@ export const LAYOUT_SCENARIO_REGISTRY: LayoutScenarioDef[] = [
     people: JOIN_DEEP_COUSIN_PEOPLE,
     relationships: JOIN_DEEP_COUSIN_RELATIONSHIPS,
     invariantOptions: false,
+  },
+  {
+    id: WIDE_FOUR_GEN_PEDIGREE_SCENARIO.id,
+    code: WIDE_FOUR_GEN_PEDIGREE_SCENARIO.code,
+    title: WIDE_FOUR_GEN_PEDIGREE_SCENARIO.title,
+    group: 'cousin',
+    people: WIDE_FOUR_GEN_PEDIGREE_PEOPLE,
+    relationships: WIDE_FOUR_GEN_PEDIGREE_RELATIONSHIPS,
+    invariantOptions: { centerTol: 200, allowWidenedNatal: true },
   },
 ]

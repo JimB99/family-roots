@@ -16,7 +16,12 @@ import {
   compareSiblingLayoutOrder,
   sortKeyFromNode,
 } from './layout-order'
+import type { ColumnLayoutTraceStepId } from './column-layout-trace-steps'
+import type { JoinLayoutTraceStepId } from './join-layout-trace-steps'
 import { FAMILY_GAP, NODE_GAP, PERSON_W, ROW_GAP, SIBLING_GAP } from './layout-spacing'
+
+export type ColumnLayoutPhaseRecorder = (step: ColumnLayoutTraceStepId) => void
+export type JoinLayoutPhaseRecorder = (step: JoinLayoutTraceStepId) => void
 
 export interface ColumnInterval {
   left: number
@@ -316,49 +321,138 @@ function requiredCousinGapAtRow(
   return FAMILY_GAP
 }
 
-function enforceCousinGapsRow(
-  branches: Branch[],
-  packingRowY: number,
-  ctx: ColumnLayoutContext,
-  mode: CousinGapEnforceMode = 'minimumGap',
-  shiftOptions?: CousinGapShiftOptions,
-) {
-  const withChildren = branches.filter((branch) => branch.directChildIds.length > 0)
-  const shiftBranchHorizontally = (branch: Branch, dx: number) => {
-    if (shiftOptions?.descendantOnlyBelowY != null) {
-      shiftSubtreeFromY(ctx.nodes, branch, ctx.structure, shiftOptions.descendantOnlyBelowY, dx)
-    } else {
-      shiftBranch(ctx.nodes, branch, ctx.structure, dx)
+function rowYsForBranchSubtrees(branches: Branch[], ctx: ColumnLayoutContext): number[] {
+  const rowYs = new Set<number>()
+  for (const branch of branches) {
+    for (const id of branchSubtreeIds(branch, ctx.structure)) {
+      const node = ctx.nodes.find((entry) => entry.id === id)
+      if (node) rowYs.add(node.y)
     }
   }
-  for (let i = 0; i < withChildren.length - 1; i++) {
-    const leftBranch = withChildren[i]!
-    const rightBranch = withChildren[i + 1]!
-    const leftBox =
-      mode === 'resolveOverlap'
-        ? columnIntervalOnRowStrict(ctx.nodes, leftBranch, ctx.structure, packingRowY)
-        : columnIntervalOnRow(ctx.nodes, leftBranch, ctx.structure, packingRowY)
-    const rightBox =
-      mode === 'resolveOverlap'
-        ? columnIntervalOnRowStrict(ctx.nodes, rightBranch, ctx.structure, packingRowY)
-        : columnIntervalOnRow(ctx.nodes, rightBranch, ctx.structure, packingRowY)
-    if (mode === 'resolveOverlap' && (leftBox == null || rightBox == null)) continue
-    const gap = rightBox!.left - leftBox!.right
+  return [...rowYs]
+}
+
+/** One rigid shift for a cousin pair: max separation needed across all shared rows (binding row). */
+function bindingShiftBetweenBranches(
+  leftBranch: Branch,
+  rightBranch: Branch,
+  ctx: ColumnLayoutContext,
+): number {
+  let maxDelta = 0
+  for (const y of rowYsForBranchSubtrees([leftBranch, rightBranch], ctx)) {
+    const leftBox = columnIntervalOnRowStrict(ctx.nodes, leftBranch, ctx.structure, y)
+    const rightBox = columnIntervalOnRowStrict(ctx.nodes, rightBranch, ctx.structure, y)
+    if (leftBox == null || rightBox == null) continue
     const requiredGap = Math.max(
-      requiredCousinGapAtRow(leftBranch, packingRowY, ctx, mode),
-      requiredCousinGapAtRow(rightBranch, packingRowY, ctx, mode),
+      requiredCousinGapAtRow(leftBranch, y, ctx, 'minimumGap'),
+      requiredCousinGapAtRow(rightBranch, y, ctx, 'minimumGap'),
     )
-    if (mode === 'resolveOverlap') {
-      const overlap =
-        Math.min(leftBox!.right, rightBox!.right) - Math.max(leftBox!.left, rightBox!.left)
-      if (overlap <= 0.5) continue
-    } else if (gap + 0.5 >= requiredGap) {
-      continue
+    const delta = requiredGap - (rightBox.left - leftBox.right)
+    if (delta > maxDelta) maxDelta = delta
+  }
+  return maxDelta
+}
+
+type ColumnLayoutPackingOptions = {
+  skipRowYs?: Set<number>
+  descendantOnlyBelowY?: number
+  resolveOverlaps?: boolean
+  joinOrderTopLevel?: boolean
+}
+
+function shiftBranchHorizontal(
+  nodes: PositionedNode[],
+  branch: Branch,
+  structure: FamilyStructure,
+  dx: number,
+  options?: Pick<ColumnLayoutPackingOptions, 'descendantOnlyBelowY'>,
+) {
+  if (options?.descendantOnlyBelowY != null) {
+    shiftSubtreeFromY(nodes, branch, structure, options.descendantOnlyBelowY, dx)
+  } else {
+    shiftBranch(nodes, branch, structure, dx)
+  }
+}
+
+/** Sorted left-to-right: one whole-subtree shift per pair using the binding-row delta. */
+function placeSortedCousinBranchesBindingRow(
+  branches: Branch[],
+  ctx: ColumnLayoutContext,
+  options?: Pick<ColumnLayoutPackingOptions, 'descendantOnlyBelowY'>,
+) {
+  const columns = branches.filter((branch) => branch.directChildIds.length > 0)
+  if (columns.length < 2) return
+  for (let i = 0; i < columns.length - 1; i++) {
+    const delta = bindingShiftBetweenBranches(columns[i]!, columns[i + 1]!, ctx)
+    if (delta <= 0.5) continue
+    for (let j = i + 1; j < columns.length; j++) {
+      shiftBranchHorizontal(ctx.nodes, columns[j]!, ctx.structure, delta, options)
     }
-    const delta = requiredGap - gap
-    for (let j = i + 1; j < withChildren.length; j++) {
-      shiftBranchHorizontally(withChildren[j]!, delta)
+  }
+}
+
+function packCousinColumnsBindingRowAll(
+  branch: Branch,
+  ctx: ColumnLayoutContext,
+  options?: ColumnLayoutPackingOptions,
+) {
+  for (const child of branch.childBranches) {
+    packCousinColumnsBindingRowAll(child, ctx, options)
+  }
+  if (shouldPackCousinColumns(branch, ctx.structure) || hasCousinColumnChildren(branch, ctx.structure)) {
+    const columns = cousinColumnChildBranches(branch)
+    if (columns.length >= 2) {
+      const sorted = orderSiblingBranches(columns, ctx, branch.members)
+      placeSortedCousinBranchesBindingRow(sorted, ctx, options)
     }
+  }
+  enforceDirectChildrenGapsAtAllRows(branch, ctx, options)
+}
+
+function placeJoinOrderTopLevelCousinColumnsBindingRow(
+  forest: BranchForest,
+  ctx: ColumnLayoutContext,
+  options?: Pick<ColumnLayoutPackingOptions, 'descendantOnlyBelowY'>,
+) {
+  const columns = topLevelBranchesInJoinOrder(forest, ctx).filter((branch) => branch.directChildIds.length > 0)
+  if (columns.length < 2) return
+  placeSortedCousinBranchesBindingRow(columns, ctx, options)
+}
+
+function placeForestTopLevelCousinColumnsBindingRow(
+  forest: BranchForest,
+  ctx: ColumnLayoutContext,
+  options?: Pick<ColumnLayoutPackingOptions, 'descendantOnlyBelowY'>,
+) {
+  for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
+    const topBranches = group.filter((branch) => branch.directChildIds.length > 0)
+    if (topBranches.length < 2) continue
+    const parentIds = new Set<string>()
+    for (const branch of topBranches) {
+      for (const parent of ctx.structure.parentsOfPerson.get(branch.anchorId) ?? []) {
+        parentIds.add(parent)
+      }
+    }
+    const parentRowMembers = parentRowMembersForScope(parentIds, ctx.structure, ctx.nodeById)
+    const sorted =
+      parentRowMembers.length > 0
+        ? orderSiblingBranches(topBranches, ctx, parentRowMembers)
+        : [...topBranches].sort(
+            (left, right) =>
+              interval(ctx.nodes, left.members).left - interval(ctx.nodes, right.members).left,
+          )
+    placeSortedCousinBranchesBindingRow(sorted, ctx, options)
+  }
+}
+
+function applyCousinColumnsBindingRowLayout(forest: BranchForest, ctx: ColumnLayoutContext, options?: ColumnLayoutPackingOptions) {
+  for (const branch of forest.branches) {
+    packCousinColumnsBindingRowAll(branch, ctx, options)
+  }
+  if (options?.joinOrderTopLevel) {
+    placeJoinOrderTopLevelCousinColumnsBindingRow(forest, ctx, options)
+  } else {
+    placeForestTopLevelCousinColumnsBindingRow(forest, ctx, options)
   }
 }
 
@@ -483,47 +577,6 @@ function enforceDirectChildrenGapsAtAllRows(
       descendantOnlyBelowY: options?.descendantOnlyBelowY,
     })
   }
-}
-
-function enforceCousinColumnsAtAllRows(
-  parent: Branch,
-  ctx: ColumnLayoutContext,
-  options?: { skipRowYs?: Set<number>; descendantOnlyBelowY?: number; resolveOverlaps?: boolean },
-) {
-  const nested = parent.childBranches.filter((branch) => branch.directChildIds.length > 0)
-  if (nested.length <= 1) return
-
-  const rowYs = new Set<number>()
-  for (const child of nested) {
-    for (const id of branchSubtreeIds(child, ctx.structure)) {
-      const node = ctx.nodes.find((entry) => entry.id === id)
-      if (node) rowYs.add(node.y)
-    }
-  }
-
-  const mode: CousinGapEnforceMode = options?.resolveOverlaps ? 'resolveOverlap' : 'minimumGap'
-  for (const y of [...rowYs].sort((left, right) => right - left)) {
-    if (options?.skipRowYs?.has(y)) continue
-    enforceCousinGapsRow(nested, y, ctx, mode, {
-      descendantOnlyBelowY: options?.descendantOnlyBelowY,
-    })
-  }
-}
-
-function packAllCousinColumnRows(
-  branch: Branch,
-  ctx: ColumnLayoutContext,
-  options?: { skipRowYs?: Set<number>; descendantOnlyBelowY?: number; resolveOverlaps?: boolean },
-) {
-  for (const child of branch.childBranches) {
-    packAllCousinColumnRows(child, ctx, options)
-  }
-  if (!shouldPackCousinColumns(branch, ctx.structure) && !hasCousinColumnChildren(branch, ctx.structure)) {
-    enforceDirectChildrenGapsAtAllRows(branch, ctx, options)
-    return
-  }
-  enforceCousinColumnsAtAllRows(branch, ctx, options)
-  enforceDirectChildrenGapsAtAllRows(branch, ctx, options)
 }
 
 function packSiblingChildrenRow(branch: Branch, ctx: ColumnLayoutContext) {
@@ -749,20 +802,35 @@ function centerParentsRow(
   }
 }
 
-function descendantSubtreeInterval(
+function joinBranchColumnIntervalAtRow(
   branch: Branch,
   ctx: ColumnLayoutContext,
-  minY: number,
+  packingRowY: number,
 ): ColumnInterval | null {
-  const ids = [...branchSubtreeIds(branch, ctx.structure)].filter((id) => {
-    const node = ctx.nodeById.get(id)
-    return node != null && node.y >= minY - 0.5
-  })
-  if (ids.length === 0) return null
-  return interval(ctx.nodes, ids)
+  if (branch.directChildIds.length === 0) return null
+  return columnIntervalOnRowStrict(ctx.nodes, branch, ctx.structure, packingRowY)
 }
 
-/** Pack top-level branches in join order using full descendant subtree width (gen2+ only shifts). */
+function walkRepackNatalSiblingRows(branch: Branch, ctx: ColumnLayoutContext) {
+  if (branch.childBranches.length > 1 && childBranchesShareSiblingRow(branch, ctx)) {
+    repackNatalSiblingRowBranches(branch.childBranches, ctx, branch.members)
+  }
+  for (const child of branch.childBranches) {
+    walkRepackNatalSiblingRows(child, ctx)
+  }
+}
+
+/** Re-pack nested half-sibling / natal sibling rows after join-parent shifts disturbed local geometry. */
+function repackAllNatalSiblingRows(forest: BranchForest, ctx: ColumnLayoutContext) {
+  for (const branch of forest.branches) {
+    walkRepackNatalSiblingRows(branch, ctx)
+  }
+}
+
+/**
+ * Pack top-level join-ordered branches using gen-2 column intervals (not full subtree bbox).
+ * Preserves join-parent gen-1 hub order from step 4.
+ */
 function packJoinOrderTopLevelDescendants(
   forest: BranchForest,
   ctx: ColumnLayoutContext,
@@ -772,21 +840,21 @@ function packJoinOrderTopLevelDescendants(
   let cursor = 0
   let placed = 0
   for (const branch of sorted) {
-    const box = descendantSubtreeInterval(branch, ctx, firstDescendantRowY)
+    const box = joinBranchColumnIntervalAtRow(branch, ctx, firstDescendantRowY)
     if (!box) continue
     if (placed > 0) cursor += FAMILY_GAP
     const dx = cursor - box.left
     if (Math.abs(dx) > 0.5) {
       shiftSubtreeFromY(ctx.nodes, branch, ctx.structure, firstDescendantRowY, dx)
     }
-    const placedBox = descendantSubtreeInterval(branch, ctx, firstDescendantRowY)
+    const placedBox = joinBranchColumnIntervalAtRow(branch, ctx, firstDescendantRowY)
     if (!placedBox) continue
     cursor = placedBox.right
     placed++
   }
 }
 
-/** Resolve cross-branch subtree overlaps between consecutive join-ordered top-level branches. */
+/** Resolve cross-branch overlaps at the gen-2 packing row between join-ordered top-level branches. */
 function resolveJoinOrderTopLevelSubtreeOverlaps(
   forest: BranchForest,
   ctx: ColumnLayoutContext,
@@ -794,15 +862,15 @@ function resolveJoinOrderTopLevelSubtreeOverlaps(
 ) {
   const sorted = topLevelBranchesInJoinOrder(forest, ctx)
   for (let i = 0; i < sorted.length - 1; i++) {
-    const leftBox = descendantSubtreeInterval(sorted[i]!, ctx, firstDescendantRowY)
-    const rightBox = descendantSubtreeInterval(sorted[i + 1]!, ctx, firstDescendantRowY)
+    const leftBox = joinBranchColumnIntervalAtRow(sorted[i]!, ctx, firstDescendantRowY)
+    const rightBox = joinBranchColumnIntervalAtRow(sorted[i + 1]!, ctx, firstDescendantRowY)
     if (!leftBox || !rightBox) continue
     const gap = rightBox.left - leftBox.right
     if (gap + 0.5 >= FAMILY_GAP) continue
     const delta = FAMILY_GAP - gap
     for (let j = i + 1; j < sorted.length; j++) {
       const branch = sorted[j]!
-      if (!descendantSubtreeInterval(branch, ctx, firstDescendantRowY)) continue
+      if (!joinBranchColumnIntervalAtRow(branch, ctx, firstDescendantRowY)) continue
       shiftSubtreeFromY(ctx.nodes, branch, ctx.structure, firstDescendantRowY, delta)
     }
   }
@@ -1258,60 +1326,45 @@ function topLevelBranchesInJoinOrder(forest: BranchForest, ctx: ColumnLayoutCont
   )
 }
 
-function enforceForestTopLevelCousinGaps(
+function layoutBranchColumnsInternal(
   forest: BranchForest,
   ctx: ColumnLayoutContext,
-  options?: { skipRowYs?: Set<number>; descendantOnlyBelowY?: number },
+  onPhase?: ColumnLayoutPhaseRecorder,
 ) {
-  for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
-    const topBranches = group
-      .filter((branch) => branch.directChildIds.length > 0)
-      .sort((left, right) => interval(ctx.nodes, left.members).left - interval(ctx.nodes, right.members).left)
-    if (topBranches.length <= 1) continue
-
-    const rowYs = new Set<number>()
-    for (const branch of topBranches) {
-      for (const id of branchSubtreeIds(branch, ctx.structure)) {
-        const node = ctx.nodes.find((entry) => entry.id === id)
-        if (node) rowYs.add(node.y)
-      }
-    }
-    for (const y of [...rowYs].sort((left, right) => right - left)) {
-      if (options?.skipRowYs?.has(y)) continue
-      enforceCousinGapsRow(topBranches, y, ctx, 'resolveOverlap', {
-        descendantOnlyBelowY: options?.descendantOnlyBelowY,
-      })
-    }
-  }
-}
-
-function layoutBranchColumnsInternal(forest: BranchForest, ctx: ColumnLayoutContext) {
   for (const branch of forest.branches) {
     layoutBranchColumn(branch, ctx)
   }
+  onPhase?.('branchInteriors')
   for (const branch of forest.branches) {
-    packAllCousinColumnRows(branch, ctx)
+    packCousinColumnsBindingRowAll(branch, ctx)
   }
+  onPhase?.('cousinPackLocal')
 }
 
 /** Spread cousin columns after join-parent without disturbing gen-row anchor order. */
-export function spreadColumnsAfterJoin(forest: BranchForest, ctx: ColumnLayoutContext) {
-  const joinRowY = rowY(forest.branchGen, ctx.personHeight)
+export function spreadColumnsAfterJoin(
+  forest: BranchForest,
+  ctx: ColumnLayoutContext,
+  onPhase?: JoinLayoutPhaseRecorder,
+) {
   const firstDescendantRowY = rowY(forest.branchGen + 1, ctx.personHeight)
-  const spreadOptions = {
-    skipRowYs: new Set([joinRowY]),
+  const bindingOptions = {
     descendantOnlyBelowY: firstDescendantRowY,
-    resolveOverlaps: true,
+    joinOrderTopLevel: true,
   }
 
+  repackAllNatalSiblingRows(forest, ctx)
   packJoinOrderTopLevelDescendants(forest, ctx, firstDescendantRowY)
+  onPhase?.('joinPackDescendants')
 
-  for (let pass = 0; pass < 2; pass++) {
-    for (const branch of forest.branches) {
-      packAllCousinColumnRows(branch, ctx, spreadOptions)
-    }
-    resolveJoinOrderTopLevelSubtreeOverlaps(forest, ctx, firstDescendantRowY)
-  }
+  applyCousinColumnsBindingRowLayout(forest, ctx, bindingOptions)
+  onPhase?.('joinBindingRow')
+
+  resolveJoinOrderTopLevelSubtreeOverlaps(forest, ctx, firstDescendantRowY)
+  onPhase?.('joinResolveOverlaps')
+
+  applyCousinColumnsBindingRowLayout(forest, ctx, bindingOptions)
+  onPhase?.('joinBindingRowFinal')
 
   centerSiblingRowHubs(
     topLevelBranchesInJoinOrder(forest, ctx),
@@ -1322,6 +1375,9 @@ export function spreadColumnsAfterJoin(forest: BranchForest, ctx: ColumnLayoutCo
   for (const branch of forest.branches) {
     recenterBranchSubtree(branch.childBranches, ctx, branch.members)
   }
+  onPhase?.('joinRecenterHubs')
+
+  repackAllNatalSiblingRows(forest, ctx)
 }
 
 /** Horizontal cousin packing and centering after branch interiors (and optional join-parent). */
@@ -1329,6 +1385,7 @@ export function finalizeForestColumnLayout(
   forest: BranchForest,
   ctx: ColumnLayoutContext,
   options?: { preserveGenRowAnchors?: boolean },
+  onPhase?: ColumnLayoutPhaseRecorder,
 ) {
   const groups = packingGroupsForForest(forest, ctx).sort((left, right) => {
     const leftBirth = Math.min(
@@ -1362,14 +1419,14 @@ export function finalizeForestColumnLayout(
     }
     cursor = packSiblingBranches(sorted, forest.branchGen + 1, ctx, cursor)
   }
+  onPhase?.('packSiblingBranches')
 
   const useColumnGaps = forestUsesColumnGaps(forest)
   const rootGroups = partitionBranchesByParentScope(forest.branches, ctx.structure)
   for (const group of rootGroups) {
     if (group.length > 1) enforceSiblingGapsRow(group, ctx, useColumnGaps)
   }
-
-  centerParentGenerationRow(forest, ctx)
+  onPhase?.('enforceTopLevelSiblingGaps')
 
   const branchY = rowY(forest.branchGen, ctx.personHeight)
   for (const branch of forest.branches) {
@@ -1382,12 +1439,10 @@ export function finalizeForestColumnLayout(
   for (const chain of marriageChains(forest.rootIds, ctx.structure, ctx.nodeById)) {
     alignRootDescendantsUnderUnions(chain, branchY, ctx)
   }
+  onPhase?.('alignUnderUnions')
 
-  for (const branch of forest.branches) {
-    packAllCousinColumnRows(branch, ctx)
-  }
-
-  enforceForestTopLevelCousinGaps(forest, ctx)
+  applyCousinColumnsBindingRowLayout(forest, ctx)
+  onPhase?.('placeCousinColumnsBindingRow')
 
   if (!options?.preserveGenRowAnchors) {
     recenterParentsOverChildren(forest, ctx)
@@ -1399,16 +1454,21 @@ export function finalizeForestColumnLayout(
     for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
       if (group.length > 1) enforceHubClusterSiblingGapsRow(group, ctx)
     }
-    // Cousin-column shifts during recenter can leave a later top-level branch inside an
-    // earlier branch's row span (DCC: d1 between c2 and c3). Re-resolve cross-branch overlaps.
-    enforceForestTopLevelCousinGaps(forest, ctx)
+    onPhase?.('convergeRecenterRepair')
+    applyCousinColumnsBindingRowLayout(forest, ctx)
+    onPhase?.('repairCousinColumnsBindingRow')
     recenterParentsOverChildren(forest, ctx)
     repairSiblingRowGapsAfterRecenter(forest, ctx)
+    onPhase?.('convergeRecenterFinal')
+    applyCousinColumnsBindingRowLayout(forest, ctx)
+    onPhase?.('finalizeCousinColumnsBindingRow')
   }
   centerParentGenerationRow(forest, ctx)
   if (!options?.preserveGenRowAnchors) {
     repairSiblingRowGapsAfterRecenter(forest, ctx)
+    applyCousinColumnsBindingRowLayout(forest, ctx)
   }
+  onPhase?.('finalizeParentRow')
 }
 
 function repairSiblingRowGapsAfterRecenter(forest: BranchForest, ctx: ColumnLayoutContext) {
@@ -1438,10 +1498,23 @@ function repairSiblingRowGapsAfterRecenter(forest: BranchForest, ctx: ColumnLayo
 export function layoutColumnForest(
   forest: BranchForest,
   ctx: ColumnLayoutContext,
-  options?: { deferHorizontalPack?: boolean },
+  options?: { deferHorizontalPack?: boolean; onPhase?: ColumnLayoutPhaseRecorder },
 ) {
-  layoutBranchColumnsInternal(forest, ctx)
+  layoutBranchColumnsInternal(forest, ctx, options?.onPhase)
   if (!options?.deferHorizontalPack) {
-    finalizeForestColumnLayout(forest, ctx)
+    finalizeForestColumnLayout(forest, ctx, undefined, options?.onPhase)
   }
+}
+
+export function layoutColumnForestWithTrace(
+  forest: BranchForest,
+  ctx: ColumnLayoutContext,
+  options?: { deferHorizontalPack?: boolean },
+): Array<{ step: ColumnLayoutTraceStepId; nodes: PositionedNode[] }> {
+  const traces: Array<{ step: ColumnLayoutTraceStepId; nodes: PositionedNode[] }> = []
+  const onPhase = (step: ColumnLayoutTraceStepId) => {
+    traces.push({ step, nodes: ctx.nodes.map((node) => ({ ...node })) })
+  }
+  layoutColumnForest(forest, ctx, { ...options, onPhase })
+  return traces
 }

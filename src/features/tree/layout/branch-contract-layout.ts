@@ -70,6 +70,16 @@ function columnCtx(ctx: LayoutContext) {
   }
 }
 
+/** True when join-parent defers forest finalize and uses spreadColumnsAfterJoin (Aguilar cross-marriage). */
+export function needsDeferredJoinHorizontalPack(
+  nodes: PositionedNode[],
+  structure: FamilyStructure,
+  generations: Map<string, number>,
+): boolean {
+  const ctx = buildContext(nodes.map((node) => ({ ...node })), structure, generations)
+  return shouldDeferHorizontalPack(ctx)
+}
+
 function applyStep(step: ContractPackStep, ctx: LayoutContext) {
   switch (step) {
     case 'buildBranchForest':

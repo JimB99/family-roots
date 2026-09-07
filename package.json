@@ -17,6 +17,7 @@
     "check:full": "npm run check && npm run test:e2e",
     "generate:join-parent-golden": "tsx scripts/generate-join-parent-golden.mjs",
     "export:layout-canvas": "tsx scripts/export-layout-canvas-data.mjs",
+    "export:aguilar-canvas": "tsx scripts/export-aguilar-layout-canvas.mjs",
     "open:layout-gallery": "node -e \"console.log('Use private Cursor: Ctrl+Shift+P → Open Canvas → layout-scenario-gallery.canvas.tsx\\nSee family-roots/canvases/OPEN-ME.txt')\"",
     "open:deep-cousin-canvas": "node -e \"console.log('Use private Cursor: Ctrl+Shift+P → Open Canvas → deep-cousin-column-scenario.canvas.tsx\\nSee family-roots/canvases/OPEN-ME.txt')\"",
     "preview": "vite preview",

@@ -1,38 +1,95 @@
 Layout canvases — how to see the VISUAL preview
+
 ================================================
 
+
+
 IMPORTANT: npm open scripts do NOT work here. The `cursor` CLI on your machine
+
 opens your WORK Cursor, not this private one.
 
+
+
 Also: double-clicking a .canvas.tsx file always shows SOURCE CODE. That is normal.
+
 Cursor does not have a markdown-style Preview button for canvases yet.
+
+
 
 Do this IN YOUR PRIVATE CURSOR (this window, Private workspace):
 
+
+
 1. Open workspace file (once):
+
    File → Open Workspace from File → Private/Private.code-workspace
+
    You should see a sidebar folder "Layout canvases (rendered preview)".
 
+
+
 2. Open the rendered canvas (pick ONE):
+
    A) Ctrl+Shift+P → type "Open Canvas" → choose
+
       deep-cousin-column-scenario.canvas.tsx
+
       join-deep-cousin-scenario.canvas.tsx
+
+      wide-four-gen-pedigree-scenario.canvas.tsx
+
+      w3g-layout-pipeline.canvas.tsx
+      jdc-layout-pipeline.canvas.tsx
+      aguilar-layout-pipeline.canvas.tsx
+
       (This is the most reliable method.)
 
+
+
    B) In the "Layout canvases" folder: RIGHT-CLICK the file → Open
+
       (Do NOT double-click — that opens raw TSX.)
 
+
+
 3. Use Editor / IDE layout, not Agents-only layout.
+
    Canvas preview is not available in Agents-only view.
 
+
+
 Canvas files live at:
+
   %USERPROFILE%\.cursor\projects\c-Users-JimBuisman-Desktop-Private\canvases\
 
+
+
 Refresh after layout engine changes:
+
   cd family-roots && npm run export:layout-canvas
 
+Aguilar real-tree pipeline (from backup JSON):
+
+  cd family-roots && npm run export:aguilar-canvas
+  (defaults to test-data/aguilar-backup.json or Downloads/aguilar-backup.json)
+
+
+
 Files:
-  deep-cousin-column-scenario.canvas.tsx   DCC regression scenario
-  join-deep-cousin-scenario.canvas.tsx     JDC join + deep cousin stress
-  layout-scenario-gallery.canvas.tsx       all layout test scenarios
+
+  deep-cousin-column-scenario.canvas.tsx       DCC regression scenario
+
+  join-deep-cousin-scenario.canvas.tsx         JDC join + deep cousin stress
+
+  wide-four-gen-pedigree-scenario.canvas.tsx   W3G synthetic 3-gen wide pedigree (zoom/pan)
+
+  w3g-layout-pipeline.canvas.tsx               W3G stepper — layout after each column phase
+
+  jdc-layout-pipeline.canvas.tsx               JDC stepper — join-parent pipeline (a3|b3)
+
+  aguilar-layout-pipeline.canvas.tsx           Aguilar real tree stepper (Markus/Carmen highlighted)
+
+  layout-scenario-gallery.canvas.tsx           all layout test scenarios
+
   cousin-layout-decisions.canvas.tsx
+
