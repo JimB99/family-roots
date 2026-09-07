@@ -645,6 +645,44 @@ function childClusterMid(layout: PositionedLayout, childIds: string[]) {
   return centers.reduce((sum, value) => sum + value, 0) / centers.length
 }
 
+function clusterRight(layout: PositionedLayout, ids: string[]) {
+  return Math.max(...ids.map((id) => node(layout, id).x + node(layout, id).width))
+}
+
+function clusterLeft(layout: PositionedLayout, ids: string[]) {
+  return Math.min(...ids.map((id) => node(layout, id).x))
+}
+
+function siblingClusterGap(layout: PositionedLayout, leftIds: string[], rightIds: string[]) {
+  return clusterLeft(layout, rightIds) - clusterRight(layout, leftIds)
+}
+
+function registryScenario(id: string) {
+  const def = LAYOUT_SCENARIO_REGISTRY.find((entry) => entry.id === id)
+  if (!def) throw new Error(`missing scenario ${id}`)
+  return def
+}
+
+describe('layout invariants — natal sibling gap', () => {
+  it('U3 — one sibling with spouse and child keeps sibling gap on the natal row', async () => {
+    const { people, relationships, invariantOptions } = registryScenario('siblingWithGrandchild')
+    const { layout, report } = await layoutOf(people, relationships)
+    if (invariantOptions !== false) {
+      assertInvariants(report, invariantOptions)
+    }
+
+    const childOrder = ['ab1', 'ab2', 'ab3', 'ab4']
+      .map((id) => node(layout, id))
+      .sort((left, right) => left.x - right.x)
+      .map((entry) => entry.personId)
+    expect(childOrder).toEqual(['ab1', 'ab2', 'ab3', 'ab4'])
+
+    expect(siblingClusterGap(layout, ['ab1'], ['ab2', 'ab2sp'])).toBe(SIBLING_GAP)
+    expect(siblingClusterGap(layout, ['ab2', 'ab2sp'], ['ab3'])).toBe(SIBLING_GAP)
+    expect(siblingClusterGap(layout, ['ab3'], ['ab4'])).toBe(SIBLING_GAP)
+  })
+})
+
 describe('layout invariants — cousin row centering', () => {
   it('Cousin children grouped by union, not global birth year', async () => {
     const gp = person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })
@@ -863,6 +901,11 @@ describe('layout review scenarios (U1, U2)', () => {
     expect(spouseGap(layout, 'ab1', 'ab1sp')).toBeLessThanOrEqual(NODE_GAP + 1)
     expect(spouseGap(layout, 'b3', 'b3sp')).toBeLessThanOrEqual(NODE_GAP + 1)
     expect(spouseGap(layout, 'ab5', 'ab5sp')).toBeLessThanOrEqual(NODE_GAP + 1)
+
+    expect(siblingClusterGap(layout, ['ab1', 'ab1sp'], ['ab2'])).toBe(SIBLING_GAP)
+    expect(siblingClusterGap(layout, ['ab2'], ['b3', 'b3sp'])).toBe(SIBLING_GAP)
+    expect(siblingClusterGap(layout, ['b3', 'b3sp'], ['ab4'])).toBe(SIBLING_GAP)
+    expect(siblingClusterGap(layout, ['ab4'], ['ab5', 'ab5sp'])).toBe(SIBLING_GAP)
 
     const struct = structureFromModel(model)
     expect(siblingOrderViolations(layout, struct)).toEqual([])

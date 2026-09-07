@@ -264,13 +264,10 @@ function packDirectChildRun(
     const nested = childBranchForDirectChild(branch, childId)
     const prevNested = i > 0 ? childBranchForDirectChild(branch, childIds[i - 1]!) : undefined
     const betweenGap =
-      packMode === 'cousin'
-        ? branchOpensDescendantColumn(nested) || branchOpensDescendantColumn(prevNested)
-          ? FAMILY_GAP
-          : SIBLING_GAP
-        : branchOpensDescendantColumn(nested) && branchOpensDescendantColumn(prevNested)
-          ? FAMILY_GAP
-          : SIBLING_GAP
+      packMode === 'cousin' &&
+      (branchOpensDescendantColumn(nested) || branchOpensDescendantColumn(prevNested))
+        ? FAMILY_GAP
+        : SIBLING_GAP
     const useColumnSpan = packMode === 'cousin' || nested != null
     if (nested) {
       const span = useColumnSpan
@@ -427,7 +424,7 @@ function enforceDirectChildrenRowGaps(
     const leftNested = childBranchForDirectChild(parent, leftId)
     const rightNested = childBranchForDirectChild(parent, rightId)
     const requiredGap =
-      branchOpensDescendantColumn(leftNested) || branchOpensDescendantColumn(rightNested)
+      branchOpensDescendantColumn(leftNested) && branchOpensDescendantColumn(rightNested)
         ? FAMILY_GAP
         : SIBLING_GAP
     const gap = rightBox.left - leftBox.right
@@ -465,7 +462,7 @@ function enforceDirectChildrenGapsAtAllRows(
   }
 
   const mode: CousinGapEnforceMode = options?.resolveOverlaps ? 'resolveOverlap' : 'minimumGap'
-  for (const y of [...rowYs].sort((left, right) => left - right)) {
+  for (const y of [...rowYs].sort((left, right) => right - left)) {
     if (options?.skipRowYs?.has(y)) continue
     enforceDirectChildrenRowGaps(parent, y, ctx, mode, {
       descendantOnlyBelowY: options?.descendantOnlyBelowY,
@@ -490,7 +487,7 @@ function enforceCousinColumnsAtAllRows(
   }
 
   const mode: CousinGapEnforceMode = options?.resolveOverlaps ? 'resolveOverlap' : 'minimumGap'
-  for (const y of [...rowYs].sort((left, right) => left - right)) {
+  for (const y of [...rowYs].sort((left, right) => right - left)) {
     if (options?.skipRowYs?.has(y)) continue
     enforceCousinGapsRow(nested, y, ctx, mode, {
       descendantOnlyBelowY: options?.descendantOnlyBelowY,
@@ -525,21 +522,11 @@ function packSiblingChildrenRow(branch: Branch, ctx: ColumnLayoutContext) {
     branch.members,
   )
   const groups = useUnionGroups ? directChildUnionGroups(branch, ctx.structure) : [orderedChildIds]
-  const packAsSiblings = shouldPackMultiUnionChildrenAsSiblings(
-    branch.members,
-    branch.directChildIds,
-    ctx.structure,
-    { hasNestedChildBranches: branch.childBranches.length > 0 },
-  )
-  const packMode: ChildPackMode =
-    !packAsSiblings && branch.childBranches.some((child) => child.directChildIds.length > 0)
-      ? 'cousin'
-      : 'sibling'
   let cursor = 0
 
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
     if (useUnionGroups && groupIndex > 0) cursor += FAMILY_GAP
-    cursor = packDirectChildRun(branch, groups[groupIndex]!, cursor, y, ctx, packMode)
+    cursor = packDirectChildRun(branch, groups[groupIndex]!, cursor, y, ctx, 'sibling')
   }
 }
 
@@ -983,10 +970,7 @@ export function packSiblingBranches(
     let siblingCursor = cousinCursor > 0 ? cousinCursor + FAMILY_GAP : 0
     for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
       if (useUnionGroups && groupIndex > 0) siblingCursor += FAMILY_GAP
-      const packMode: ChildPackMode = shouldPackCousinColumns(branch, ctx.structure)
-        ? 'cousin'
-        : 'sibling'
-      siblingCursor = packDirectChildRun(branch, groups[groupIndex]!, siblingCursor, y, ctx, packMode)
+      siblingCursor = packDirectChildRun(branch, groups[groupIndex]!, siblingCursor, y, ctx, 'sibling')
     }
     cousinCursor = Math.max(
       cousinCursor,
@@ -1177,7 +1161,7 @@ function enforceForestTopLevelCousinGaps(
         if (node) rowYs.add(node.y)
       }
     }
-    for (const y of [...rowYs].sort((left, right) => left - right)) {
+    for (const y of [...rowYs].sort((left, right) => right - left)) {
       if (options?.skipRowYs?.has(y)) continue
       enforceCousinGapsRow(topBranches, y, ctx, 'resolveOverlap', {
         descendantOnlyBelowY: options?.descendantOnlyBelowY,
@@ -1297,14 +1281,32 @@ export function finalizeForestColumnLayout(
     for (const branch of forest.branches) {
       recenterBranchSubtree(branch.childBranches, ctx, branch.members)
     }
+    repairSiblingRowGapsAfterRecenter(forest, ctx)
     for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
       if (group.length > 1) enforceHubClusterSiblingGapsRow(group, ctx)
     }
     // Cousin-column shifts during recenter can leave a later top-level branch inside an
     // earlier branch's row span (DCC: d1 between c2 and c3). Re-resolve cross-branch overlaps.
     enforceForestTopLevelCousinGaps(forest, ctx)
+    recenterParentsOverChildren(forest, ctx)
+    repairSiblingRowGapsAfterRecenter(forest, ctx)
   }
   centerParentGenerationRow(forest, ctx)
+  if (!options?.preserveGenRowAnchors) {
+    repairSiblingRowGapsAfterRecenter(forest, ctx)
+  }
+}
+
+function repairSiblingRowGapsAfterRecenter(forest: BranchForest, ctx: ColumnLayoutContext) {
+  const personCount = ctx.nodes.filter((node) => node.kind === 'person').length
+  const useColumnGaps = forest.maxGen > 2 || personCount > 30
+  for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
+    if (group.length <= 1) continue
+    const sorted = [...group].sort(
+      (left, right) => interval(ctx.nodes, left.members).left - interval(ctx.nodes, right.members).left,
+    )
+    enforceSiblingGapsRow(sorted, ctx, useColumnGaps)
+  }
 }
 
 /** Single-pass column layout: pack columns and gaps, then contract centering once. */

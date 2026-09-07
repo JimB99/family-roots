@@ -42,7 +42,7 @@ describe('layout mutations after graph edits', () => {
     const second = left.x <= right.x ? right : left
     const gap = second.x - (first.x + first.width)
     expect(gap).toBeGreaterThanOrEqual(-1)
-    expect(gap <= SIBLING_GAP + 1 || gap >= 0).toBe(true)
+    expect(gap).toBeLessThanOrEqual(SIBLING_GAP + 1)
   })
 
   it('Removing a marriage avoids natal row overlap', async () => {
