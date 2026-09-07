@@ -1,37 +1,32 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildFamilyGraph } from '../../../domain/family-graph'
+import type { Relationship } from '../../../types'
 import { parentChild, person, spouse, TEST_FAMILY_ID } from '../../../test/fixtures/family'
 import { computeTreeLayoutAsync } from './compute-layout-async'
 import { layoutModelStructureKey } from './layout-structure-key'
 import { projectFamilyGraph } from './project-family-graph'
 
-function loadAguilarModel() {
-  const fixturePath = join(
-    dirname(fileURLToPath(import.meta.url)),
-    'aguilar-graph.fixture.json',
-  )
-  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
-    people: Array<{ id: string; givenNames: string; familyName: string | null; birthYear: number | null }>
-    relationships: Array<{ type: 'spouse' | 'parent_child'; a: string; b: string }>
+function loadLargeSyntheticModel() {
+  const people = [person('gp', 'GP', { birth: { year: 1900, precision: 'year' } })]
+  const relationships: Relationship[] = []
+
+  for (let branch = 0; branch < 100; branch++) {
+    const parentId = `p${branch}`
+    people.push(person(parentId, `P${branch}`, { birth: { year: 1930 + branch, precision: 'year' } }))
+    relationships.push(parentChild('gp', parentId))
+    for (let child = 0; child < 3; child++) {
+      const childId = `p${branch}-c${child}`
+      people.push(person(childId, `P${branch}C${child}`, { birth: { year: 1960 + child, precision: 'year' } }))
+      relationships.push(parentChild(parentId, childId))
+    }
   }
-  const people = fixture.people.map((entry) =>
-    person(entry.id, entry.givenNames, {
-      familyName: entry.familyName,
-      birth: entry.birthYear == null ? null : { year: entry.birthYear, precision: 'year' },
-    }),
-  )
-  const relationships = fixture.relationships.map((entry) =>
-    entry.type === 'spouse' ? spouse(entry.a, entry.b) : parentChild(entry.a, entry.b),
-  )
+
   return projectFamilyGraph(buildFamilyGraph(TEST_FAMILY_ID, people, relationships))
 }
 
 describe('layout performance', () => {
-  it('lays out Aguilar interactively within 20 seconds', async () => {
-    const model = loadAguilarModel()
+  it('lays out a large synthetic tree interactively within 20 seconds', async () => {
+    const model = loadLargeSyntheticModel()
     const started = performance.now()
     const layout = await computeTreeLayoutAsync(model, { quality: 'interactive' })
     expect(performance.now() - started).toBeLessThan(20_000)

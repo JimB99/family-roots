@@ -2,8 +2,8 @@
  * Export real engine layouts for layout scenario gallery canvas.
  * Usage: npm run export:layout-canvas
  */
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { writeFileSync, readFileSync, existsSync, mkdirSync, cpSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildFamilyGraph } from '../src/domain/family-graph.ts'
 import { TEST_FAMILY_ID } from '../src/test/fixtures/family.ts'
@@ -34,7 +34,6 @@ import { PERSON_H, ROW_GAP } from '../src/features/tree/layout/layout-spacing.ts
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(__dirname, '..')
-const workspaceCanvasesDir = join(repoRoot, '..', 'canvases')
 const cursorCanvasesDir = join(
   process.env.USERPROFILE ?? process.env.HOME ?? '',
   '.cursor/projects/c-Users-JimBuisman-Desktop-Private/canvases',
@@ -187,18 +186,38 @@ function statusFromFailures(failures) {
   return failures.length === 0 ? 'pass' : 'fail'
 }
 
-function writeCanvasFromTemplate(templateName, enginePayload, targetDir) {
+function writeCanvasFromTemplate(templateName, enginePayload, targetDir, placeholder = '__ENGINE__', constantName = 'ENGINE') {
   const templatePath = join(templatesDir, templateName)
   if (!existsSync(templatePath)) {
     console.warn(`Missing template ${templatePath}`)
     return
   }
   const template = readFileSync(templatePath, 'utf8')
-  const engineBlock = `const ENGINE = ${JSON.stringify(enginePayload, null, 2)};`
-  const canvas = template.replace('__ENGINE__', engineBlock)
+  const engineBlock = `const ${constantName} = ${JSON.stringify(enginePayload, null, 2)};`
+  const canvas = template.replace(placeholder, engineBlock)
   const outFile = join(targetDir, templateName)
   writeFileSync(outFile, canvas)
   console.log(`Wrote ${outFile}`)
+}
+
+function syncCanvasTypeStubs(targetDir) {
+  if (resolve(targetDir) === resolve(cursorCanvasesDir)) return
+
+  const tsconfigSrc = join(cursorCanvasesDir, 'tsconfig.json')
+  const tsconfigDest = join(targetDir, 'tsconfig.json')
+  if (existsSync(tsconfigSrc)) {
+    writeFileSync(tsconfigDest, readFileSync(tsconfigSrc, 'utf8'))
+    console.log(`Copied ${tsconfigDest}`)
+  }
+
+  for (const rel of ['node_modules/cursor', 'node_modules/@types']) {
+    const src = join(cursorCanvasesDir, rel)
+    const dest = join(targetDir, rel)
+    if (!existsSync(src)) continue
+    mkdirSync(dirname(dest), { recursive: true })
+    cpSync(src, dest, { recursive: true })
+    console.log(`Copied ${dest}`)
+  }
 }
 
 const scenarios = {}
@@ -325,18 +344,24 @@ const cousinPayload = {
 }
 writeCanvasFromTemplate('cousin-layout-decisions.canvas.tsx', cousinPayload, cursorCanvasesDir)
 
-try {
-  mkdirSync(workspaceCanvasesDir, { recursive: true })
-  for (const name of ['layout-scenario-gallery.canvas.tsx', 'cousin-layout-decisions.canvas.tsx']) {
-    const src = join(cursorCanvasesDir, name)
-    const dest = join(workspaceCanvasesDir, name)
-    if (existsSync(src)) {
-      writeFileSync(dest, readFileSync(src, 'utf8'))
-      console.log(`Copied ${dest}`)
-    }
-  }
-} catch (error) {
-  console.warn(`Could not copy canvases into workspace: ${error}`)
+if (scenarios.deepCousinColumn) {
+  writeCanvasFromTemplate(
+    'deep-cousin-column-scenario.canvas.tsx',
+    scenarios.deepCousinColumn,
+    cursorCanvasesDir,
+    '__SCENARIO__',
+    'SCENARIO',
+  )
+}
+
+if (scenarios.joinDeepCousin) {
+  writeCanvasFromTemplate(
+    'join-deep-cousin-scenario.canvas.tsx',
+    scenarios.joinDeepCousin,
+    cursorCanvasesDir,
+    '__SCENARIO__',
+    'SCENARIO',
+  )
 }
 
 for (const [key, data] of Object.entries(scenarios)) {

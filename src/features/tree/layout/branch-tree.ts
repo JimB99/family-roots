@@ -316,3 +316,45 @@ export function crossFamilyCouplesAtRow(
   }
   return couples
 }
+
+/** Group sibling branches that share the same parent union (cousin packing scope). */
+export function partitionBranchesByParentScope(
+  branches: Branch[],
+  structure: FamilyStructure,
+): Branch[][] {
+  const groups = new Map<string, Branch[]>()
+  for (const branch of branches) {
+    const key = [...(structure.parentsOfPerson.get(branch.anchorId) ?? [])].sort().join('|')
+    const list = groups.get(key) ?? []
+    list.push(branch)
+    groups.set(key, list)
+  }
+  return [...groups.values()].filter((group) => group.length > 0)
+}
+
+/** Parent marriage-row members for a branch (includes half-siblings on the same row). */
+export function parentRowMembersForBranch(
+  branch: Branch,
+  structure: FamilyStructure,
+  nodeById: Map<string, LayoutNode>,
+): string[] {
+  const parents = structure.parentsOfPerson.get(branch.anchorId) ?? []
+  if (parents.length === 0) return []
+  return parentRowMembersForScope(new Set(parents), structure, nodeById)
+}
+
+/** Group sibling branches that share a parent row (half-siblings included). */
+export function partitionBranchesBySiblingRow(
+  branches: Branch[],
+  structure: FamilyStructure,
+  nodeById: Map<string, LayoutNode>,
+): Branch[][] {
+  const groups = new Map<string, Branch[]>()
+  for (const branch of branches) {
+    const key = parentRowMembersForBranch(branch, structure, nodeById).join('|')
+    const list = groups.get(key) ?? []
+    list.push(branch)
+    groups.set(key, list)
+  }
+  return [...groups.values()].filter((group) => group.length > 0)
+}

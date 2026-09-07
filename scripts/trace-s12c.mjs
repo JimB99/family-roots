@@ -1,7 +1,6 @@
 import { buildFamilyGraph } from '../src/domain/family-graph.ts'
 import { parentChild, person, spouse, TEST_FAMILY_ID } from '../src/test/fixtures/family.ts'
 import { applyBranchContractLayout, applyBranchContractLayoutWithTrace } from '../src/features/tree/layout/branch-contract-layout.ts'
-import { compactEmptyVerticalGaps } from '../src/features/tree/layout/compact-subtrees.ts'
 import { computeTreeLayout } from '../src/features/tree/layout/compute-tree-layout.ts'
 import { assignGenerations, structureFromModel } from '../src/features/tree/layout/family-structure.ts'
 import { projectFamilyGraph } from '../src/features/tree/layout/project-family-graph.ts'
@@ -58,8 +57,6 @@ function coupleErr(layout, p1, p2, childIds) {
 
 const laid = applyBranchContractLayout(positioned, structure, gens)
 console.log('after branch contract', 'wide=' + coupleErr(laid, 'wide', 'wide-sp', ['k1', 'k2', 'k3', 'k4', 'k5']) + 'px')
-const compact = compactEmptyVerticalGaps(laid)
-console.log('after compactEmptyVerticalGaps', 'wide=' + coupleErr(compact, 'wide', 'wide-sp', ['k1', 'k2', 'k3', 'k4', 'k5']) + 'px')
 const full = await computeTreeLayout(model)
 console.log('after computeTreeLayout', 'wide=' + coupleErr(full.nodes, 'wide', 'wide-sp', ['k1', 'k2', 'k3', 'k4', 'k5']) + 'px')
 

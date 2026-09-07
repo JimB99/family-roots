@@ -1,3 +1,6 @@
+import type { Branch } from './branch-tree'
+import { hasCousinColumnChildren } from './column-branch-layout'
+import { branchSubtreeIds } from './branch-shift'
 import type { PositionedLayout, PositionedNode } from './layout-model'
 import { downwardSet } from './compact-subtrees'
 import {
@@ -9,7 +12,7 @@ import {
   totalWidth,
 } from './layout-metrics'
 import { compareSiblingLayoutOrder, twoParentUnionIdOnRow } from './layout-order'
-import { CENTER_TOL_LARGE, CENTER_TOL_UNIT, COUPLE_W, FAMILY_GAP, PERSON_W, SIBLING_GAP } from './layout-spacing'
+import { CENTER_TOL_LARGE, CENTER_TOL_UNIT, COUPLE_W, FAMILY_GAP, PERSON_W, ROW_GAP, SIBLING_GAP } from './layout-spacing'
 import type { FamilyStructure } from './family-structure'
 
 export type CenteringException = 'multiUnionPerson' | 'noParents' | 'collapsedUnion' | 'joinChildren'
@@ -648,4 +651,143 @@ export function personMid(layout: PositionedLayout, personId: string): number {
   const node = layout.nodes.find((entry) => entry.personId === personId)
   if (!node) throw new Error(`missing person ${personId}`)
   return personCenter(node)
+}
+
+function branchColumnIntervalAtRow(
+  layout: PositionedLayout,
+  branch: Branch,
+  structure: FamilyStructure,
+  childRowY: number,
+): { left: number; right: number } | null {
+  const onRow = [...branchSubtreeIds(branch, structure)]
+    .map((id) => layout.nodes.find((node) => node.id === id))
+    .filter((node): node is PositionedNode => node != null && Math.abs(node.y - childRowY) < 0.5)
+  if (onRow.length === 0) return null
+  return {
+    left: Math.min(...onRow.map((node) => node.x)),
+    right: Math.max(...onRow.map((node) => node.x + node.width)),
+  }
+}
+
+function walkBranches(branch: Branch, visit: (entry: Branch) => void) {
+  visit(branch)
+  for (const child of branch.childBranches) walkBranches(child, visit)
+}
+
+function childRowY(branch: Branch, layout: PositionedLayout): number {
+  const personHeight = layout.nodes.find((node) => node.kind === 'person')?.height ?? 92
+  return (branch.row + 1) * (personHeight + ROW_GAP)
+}
+
+/** Adjacent cousin branch columns must not overlap and must respect FAMILY_GAP. */
+export function branchColumnViolations(
+  layout: PositionedLayout,
+  branches: Branch[],
+  structure: FamilyStructure,
+): string[] {
+  const violations: string[] = []
+
+  function checkAdjacentColumns(siblings: Branch[], parent: Branch | 'forest') {
+    if (parent !== 'forest' && hasCousinColumnChildren(parent, structure)) {
+      const withChildren = siblings.filter((branch) => branch.directChildIds.length > 0)
+      for (let i = 0; i < withChildren.length - 1; i++) {
+        const left = withChildren[i]!
+        const right = withChildren[i + 1]!
+        const rowY = childRowY(left, layout)
+        const leftNodes = left.directChildIds
+          .map((id) => layout.nodes.find((node) => node.id === id))
+          .filter((node): node is PositionedNode => node != null && Math.abs(node.y - rowY) < 0.5)
+        const rightNodes = right.directChildIds
+          .map((id) => layout.nodes.find((node) => node.id === id))
+          .filter((node): node is PositionedNode => node != null && Math.abs(node.y - rowY) < 0.5)
+        if (leftNodes.length === 0 || rightNodes.length === 0) continue
+        const leftBox = {
+          left: Math.min(...leftNodes.map((node) => node.x)),
+          right: Math.max(...leftNodes.map((node) => node.x + node.width)),
+        }
+        const rightBox = {
+          left: Math.min(...rightNodes.map((node) => node.x)),
+          right: Math.max(...rightNodes.map((node) => node.x + node.width)),
+        }
+        const gap = rightBox.left - leftBox.right
+        if (gap + 0.5 < FAMILY_GAP) {
+          violations.push(
+            `${parent.id}: ${left.id}→${right.id} column gap ${Math.round(gap)}px < ${FAMILY_GAP}px`,
+          )
+        }
+      }
+    }
+    for (const branch of siblings) {
+      if (branch.childBranches.length > 1) {
+        checkAdjacentColumns(branch.childBranches, branch)
+      }
+    }
+  }
+
+  checkAdjacentColumns(branches, 'forest')
+
+  for (const branch of branches) {
+    walkBranches(branch, (entry) => {
+      if (entry.childBranches.length < 2) return
+      const rowY = childRowY(entry, layout)
+      const columns = entry.childBranches
+        .filter((b) => b.directChildIds.length > 0)
+        .map((b) => ({ branch: b, box: branchColumnIntervalAtRow(layout, b, structure, rowY) }))
+        .filter((entry): entry is { branch: Branch; box: { left: number; right: number } } => entry.box != null)
+      const reserved = new Set<string>()
+      for (const child of entry.childBranches) {
+        for (const id of branchSubtreeIds(child, structure)) reserved.add(id)
+      }
+      const directChildren = new Set(entry.directChildIds)
+      for (let i = 0; i < columns.length - 1; i++) {
+        const leftBox = columns[i]!.box
+        const rightBox = columns[i + 1]!.box
+        for (const node of personNodes(layout)) {
+          if (Math.abs(node.y - rowY) > 0.5) continue
+          if (reserved.has(node.id)) continue
+          if (directChildren.has(node.id)) continue
+          if (node.x + node.width > leftBox.right + 0.5 && node.x < rightBox.left - 0.5) {
+            violations.push(
+              `${entry.id}: foreign node ${node.personId ?? node.id} between ${columns[i]!.branch.id} and ${columns[i + 1]!.branch.id}`,
+            )
+          }
+        }
+      }
+    })
+  }
+
+  return violations
+}
+
+/** Top-level cousin branch subtrees must not overlap on any shared row. */
+export function topLevelForestBranchRowOverlapViolations(
+  layout: PositionedLayout,
+  branches: Branch[],
+  structure: FamilyStructure,
+): string[] {
+  const top = branches.filter((branch) => branch.directChildIds.length > 0)
+  if (top.length < 2) return []
+
+  const rowYs = new Set(personNodes(layout).map((node) => node.y))
+  const violations: string[] = []
+
+  for (const y of rowYs) {
+    for (let i = 0; i < top.length - 1; i++) {
+      for (let j = i + 1; j < top.length; j++) {
+        const left = top[i]!
+        const right = top[j]!
+        const leftBox = branchColumnIntervalAtRow(layout, left, structure, y)
+        const rightBox = branchColumnIntervalAtRow(layout, right, structure, y)
+        if (!leftBox || !rightBox) continue
+        const overlap = Math.min(leftBox.right, rightBox.right) - Math.max(leftBox.left, rightBox.left)
+        if (overlap > 0.5) {
+          violations.push(
+            `y=${y}: ${left.id} (${Math.round(leftBox.left)}–${Math.round(leftBox.right)}) overlaps ${right.id} (${Math.round(rightBox.left)}–${Math.round(rightBox.right)}) by ${Math.round(overlap)}px`,
+          )
+        }
+      }
+    }
+  }
+
+  return violations
 }

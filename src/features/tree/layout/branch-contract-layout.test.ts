@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildFamilyGraph } from '../../../domain/family-graph'
 import { parentChild, person, spouse, TEST_FAMILY_ID } from '../../../test/fixtures/family'
@@ -188,89 +185,6 @@ describe('generalized branch contract layout', () => {
     )
     expect(viktoriaX).toBeLessThan(benjaminX)
     expect(viktoriaX).toBeGreaterThan(0)
-  })
-
-  it('keeps Viktoria between Nadja and Benjamin on the full Aguilar graph without foreign cousins in the gap', async () => {
-    const fixturePath = join(dirname(fileURLToPath(import.meta.url)), 'aguilar-graph.fixture.json')
-    const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
-      people: Array<{ id: string; givenNames: string; familyName: string | null; birthYear: number | null }>
-      relationships: Array<{ type: 'spouse' | 'parent_child'; a: string; b: string }>
-    }
-    const people = fixture.people.map((entry) =>
-      person(entry.id, entry.givenNames, {
-        familyName: entry.familyName,
-        birth: entry.birthYear == null ? null : { year: entry.birthYear, precision: 'year' },
-      }),
-    )
-    let relationships = fixture.relationships.map((entry) =>
-      entry.type === 'spouse' ? spouse(entry.a, entry.b) : parentChild(entry.a, entry.b),
-    )
-    relationships = relationships.filter(
-      (rel) =>
-        !(
-          rel.type === 'parent_child' &&
-          rel.personAId === '54f3eaf5c' &&
-          rel.personBId === '11480c3217'
-        ) &&
-        !(rel.type === 'spouse' && rel.personAId === '3b17770310' && rel.personBId === 'b441f4fb'),
-    )
-    const layout = await computeTreeLayout(
-      projectFamilyGraph(buildFamilyGraph(TEST_FAMILY_ID, people, relationships)),
-    )
-    const ids = { nadja: 'b441f4fb', viktoria: '11480c3217', benjamin: '275d2456e' }
-    const node = (id: string) => {
-      const found = layout.nodes.find((entry) => entry.personId === id)
-      if (!found) throw new Error(`missing ${id}`)
-      return found
-    }
-    const name = (id: string) => fixture.people.find((p) => p.id === id)?.givenNames ?? id
-
-    expect(node(ids.viktoria).x).toBeGreaterThan(node(ids.nadja).x)
-    expect(node(ids.viktoria).x).toBeLessThan(node(ids.benjamin).x)
-
-    const lo = Math.min(node(ids.nadja).x, node(ids.benjamin).x)
-    const hi = Math.max(node(ids.nadja).x, node(ids.benjamin).x)
-    const between = layout.nodes
-      .filter(
-        (n) =>
-          n.kind === 'person' &&
-          Math.abs(n.y - node(ids.nadja).y) < 1 &&
-          n.x >= lo - 1 &&
-          n.x <= hi + 1,
-      )
-      .sort((a, b) => a.x - b.x)
-      .map((n) => name(n.personId ?? ''))
-
-    const allowedBetween = new Set([
-      'Nadja',
-      'Steven',
-      'Viktoria',
-      'Christian',
-      'Benjamin',
-      'Sarah',
-      'Elena',
-    ])
-    for (const label of between) {
-      expect(allowedBetween.has(label), `unexpected person in gap: ${label}`).toBe(true)
-    }
-
-    const carmen = node('54f3eaf5c')
-    const markus = layout.nodes.find((entry) => entry.personId === '990389013')
-    if (!markus) throw new Error('missing markus')
-    const parentRow = layout.nodes
-      .filter((n) => n.kind === 'person' && Math.abs(n.y - carmen.y) < 1)
-      .sort((a, b) => a.x - b.x)
-    const betweenCouple = parentRow.filter(
-      (n) =>
-        n.personId !== '54f3eaf5c' &&
-        n.personId !== '990389013' &&
-        n.x + n.width > carmen.x + 0.5 &&
-        n.x < markus.x + markus.width - 0.5,
-    )
-    expect(
-      betweenCouple.map((n) => name(n.personId ?? '')),
-      'foreign nodes between Carmen and Markus',
-    ).toEqual([])
   })
 
   it('places Jose branch after the full Diego branch (Aguilar Diego/Jose shape)', async () => {

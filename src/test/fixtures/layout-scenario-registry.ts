@@ -3,6 +3,16 @@
  */
 import type { Person, Relationship } from '../../types'
 import { parentChild, person, spouse } from './family'
+import {
+  DEEP_COUSIN_COLUMN_PEOPLE,
+  DEEP_COUSIN_COLUMN_RELATIONSHIPS,
+  DEEP_COUSIN_COLUMN_SCENARIO,
+} from './deep-cousin-column-scenario'
+import {
+  JOIN_DEEP_COUSIN_PEOPLE,
+  JOIN_DEEP_COUSIN_RELATIONSHIPS,
+  JOIN_DEEP_COUSIN_SCENARIO,
+} from './join-deep-cousin-scenario'
 import type { ProjectOptions } from '../../features/tree/layout/project-family-graph'
 import type { InvariantOptions } from '../../features/tree/layout/layout-invariants'
 import { FAMILY_GAP, PERSON_W } from '../../features/tree/layout/layout-spacing'
@@ -92,6 +102,7 @@ export const LAYOUT_SCENARIO_REGISTRY: LayoutScenarioDef[] = [
       parentChild('b', 'b1'),
       parentChild('bsp', 'b1'),
     ],
+    invariantOptions: { allowWidenedNatal: true },
   },
   {
     id: 's2c',
@@ -480,7 +491,7 @@ export const LAYOUT_SCENARIO_REGISTRY: LayoutScenarioDef[] = [
       parentChild('b', 'bc2'),
       parentChild('c', 'bc2'),
     ],
-    invariantOptions: { centerTol: 120 },
+    invariantOptions: { centerTol: 120, allowWidenedNatal: true },
   },
   {
     id: 's12',
@@ -528,7 +539,7 @@ export const LAYOUT_SCENARIO_REGISTRY: LayoutScenarioDef[] = [
       parentChild('b', 'b1'),
       parentChild('bsp', 'b1'),
     ],
-    invariantOptions: { maxEmptyBand: FAMILY_GAP + PERSON_W },
+    invariantOptions: { maxEmptyBand: FAMILY_GAP + PERSON_W, allowWidenedNatal: true },
   },
   {
     id: 's11f',
@@ -782,6 +793,24 @@ export const LAYOUT_SCENARIO_REGISTRY: LayoutScenarioDef[] = [
       parentChild('gp', 'x'),
       spouse('a', 'y'),
     ],
+    invariantOptions: false,
+  },
+  {
+    id: DEEP_COUSIN_COLUMN_SCENARIO.id,
+    code: DEEP_COUSIN_COLUMN_SCENARIO.code,
+    title: DEEP_COUSIN_COLUMN_SCENARIO.title,
+    group: 'cousin',
+    people: DEEP_COUSIN_COLUMN_PEOPLE,
+    relationships: DEEP_COUSIN_COLUMN_RELATIONSHIPS,
+    invariantOptions: { centerTol: 200, allowWidenedNatal: true },
+  },
+  {
+    id: JOIN_DEEP_COUSIN_SCENARIO.id,
+    code: JOIN_DEEP_COUSIN_SCENARIO.code,
+    title: JOIN_DEEP_COUSIN_SCENARIO.title,
+    group: 'cousin',
+    people: JOIN_DEEP_COUSIN_PEOPLE,
+    relationships: JOIN_DEEP_COUSIN_RELATIONSHIPS,
     invariantOptions: false,
   },
 ]

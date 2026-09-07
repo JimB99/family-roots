@@ -17,7 +17,8 @@
     "check:full": "npm run check && npm run test:e2e",
     "generate:join-parent-golden": "tsx scripts/generate-join-parent-golden.mjs",
     "export:layout-canvas": "tsx scripts/export-layout-canvas-data.mjs",
-    "open:layout-gallery": "cursor ../canvases/layout-scenario-gallery.canvas.tsx",
+    "open:layout-gallery": "node -e \"console.log('Use private Cursor: Ctrl+Shift+P → Open Canvas → layout-scenario-gallery.canvas.tsx\\nSee family-roots/canvases/OPEN-ME.txt')\"",
+    "open:deep-cousin-canvas": "node -e \"console.log('Use private Cursor: Ctrl+Shift+P → Open Canvas → deep-cousin-column-scenario.canvas.tsx\\nSee family-roots/canvases/OPEN-ME.txt')\"",
     "preview": "vite preview",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes",
     "deploy": "npm run check && npm run build && firebase deploy"

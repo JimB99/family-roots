@@ -1,5 +1,4 @@
 import { applyBranchContractLayout } from './branch-contract-layout'
-import { compactEmptyVerticalGaps } from './compact-subtrees'
 import { parentGeneration, type FamilyStructure } from './family-structure'
 import type { LayoutNode, PositionedNode } from './layout-model'
 import { meanOrNull } from './layout-order'
@@ -28,12 +27,10 @@ export function layoutComponentWithContract(
     y: rowY(generations.get(person.id) ?? 0, personHeight),
   }))
 
-  const compactedPersons = compactEmptyVerticalGaps(
-    applyBranchContractLayout(positioned, structure, generations),
-  )
-  const byId = new Map(compactedPersons.map((node) => [node.id, node]))
+  const laidOutPersons = applyBranchContractLayout(positioned, structure, generations)
+  const byId = new Map(laidOutPersons.map((node) => [node.id, node]))
 
-  const withUnions: PositionedNode[] = [...compactedPersons]
+  const withUnions: PositionedNode[] = [...laidOutPersons]
   for (const union of unions) {
     const parents = (structure.unionParents.get(union.id) ?? [])
       .map((id) => byId.get(id))

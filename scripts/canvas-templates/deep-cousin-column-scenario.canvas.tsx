@@ -3,12 +3,9 @@ import {
   Card,
   CardBody,
   CardHeader,
-  CollapsibleSection,
   H1,
-  H2,
   Pill,
   Stack,
-  Table,
   Text,
   useHostTheme,
 } from "cursor/canvas";
@@ -46,24 +43,7 @@ interface Scenario {
   displayEdges: ScenarioEdge[];
 }
 
-interface EnginePayload {
-  exportedAt: string;
-  summary: { total: number; pass: number; fail: number };
-  scenarios: Record<string, Scenario>;
-}
-
-__ENGINE__
-
-const GROUP_ORDER = ["core", "order", "cousin", "mutation", "join", "contract"] as const;
-
-const GROUP_LABELS: Record<string, string> = {
-  core: "Core spacing and unions",
-  order: "Sibling order and multi-union hubs",
-  cousin: "Cousin row centering",
-  mutation: "Graph edits after layout",
-  join: "Join-parent edge cases",
-  contract: "Three-generation layout contract",
-};
+__SCENARIO__
 
 function nodeCenter(n: ScenarioNode) {
   return n.x + n.w / 2;
@@ -72,7 +52,7 @@ function nodeCenter(n: ScenarioNode) {
 function LayoutDiagram({
   scenario,
   theme,
-  maxWidth = 880,
+  maxWidth = 1200,
 }: {
   scenario: Scenario;
   theme: ReturnType<typeof useHostTheme>;
@@ -172,101 +152,42 @@ function LayoutDiagram({
   );
 }
 
-function ScenarioSection({
-  id,
-  scenario,
-  theme,
-}: {
-  id: string;
-  scenario: Scenario;
-  theme: ReturnType<typeof useHostTheme>;
-}) {
-  const ok = scenario.meta.status === "pass";
-  const code = scenario.meta.code ? `[${scenario.meta.code}] ` : "";
-  const title = `${code}${scenario.meta.title}`;
-  return (
-    <CollapsibleSection
-      defaultOpen={!ok}
-      title={title}
-      trailing={
-        <Pill tone={ok ? "success" : "warning"} size="sm">
-          {ok ? "pass" : "fail"}
-        </Pill>
-      }
-    >
-      <Text tone="secondary" size="small">
-        {id} · {scenario.meta.nodeCount} nodes · {scenario.meta.width}px
-      </Text>
-      {!ok && scenario.meta.failures && scenario.meta.failures.length > 0 ? (
-        <Text tone="secondary" size="small">
-          {scenario.meta.failures.join(" · ")}
-        </Text>
-      ) : null}
-      <LayoutDiagram scenario={scenario} theme={theme} />
-    </CollapsibleSection>
-  );
-}
-
-export default function LayoutScenarioGalleryCanvas() {
+export default function DeepCousinColumnScenarioCanvas() {
   const theme = useHostTheme();
-  const data = ENGINE as EnginePayload;
-  const entries = Object.entries(data.scenarios);
-
-  const summaryRows = entries
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, scenario]) => [
-      scenario.meta.code ?? "—",
-      scenario.meta.title,
-      scenario.meta.group,
-      scenario.meta.status,
-      String(scenario.meta.nodeCount ?? "—"),
-    ]);
-
-  const rowTones = entries
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, scenario]) => (scenario.meta.status === "pass" ? "success" : "danger")) as Array<
-    "success" | "danger"
-  >;
+  const scenario = SCENARIO as Scenario;
+  const ok = scenario.meta.status === "pass";
 
   return (
-    <Stack gap={24} style={{ padding: 24, maxWidth: 960 }}>
-      <Stack gap={8}>
-        <H1>Layout engine — all test scenarios</H1>
+    <Stack gap={20} style={{ padding: 24, maxWidth: 1240 }}>
+      <Stack gap={6}>
+        <H1>[DCC] Five-gen cousin columns</H1>
         <Text tone="secondary">
-          computeTreeLayout · {data.summary.pass}/{data.summary.total} passing · exported{" "}
-          {data.exportedAt ? new Date(data.exportedAt).toLocaleString() : "—"}
+          Wide Ana branch (3 gen-2 siblings + half-sibling hub) beside narrow Bob branch ·{" "}
+          {scenario.meta.nodeCount} nodes · {scenario.meta.width}px engine width
         </Text>
       </Stack>
 
-      <Callout tone="info" title="Open this canvas">
-        Open from %USERPROFILE%\.cursor\projects\c-Users-JimBuisman-Desktop-Private\canvases\. Refresh data with npm run
-        export:layout-canvas in family-roots.
-      </Callout>
+      <Pill tone={ok ? "success" : "warning"} size="sm">
+        {ok ? "layout invariants pass" : "layout invariants fail — cousin column overlap"}
+      </Pill>
+
+      {!ok && scenario.meta.failures && scenario.meta.failures.length > 0 ? (
+        <Callout tone="warning" title="Invariant failures">
+          {scenario.meta.failures.join(" · ")}
+        </Callout>
+      ) : null}
 
       <Card>
-        <CardHeader>
-          Summary — {data.summary.pass} pass, {data.summary.fail} fail
-        </CardHeader>
-        <CardBody style={{ padding: 0 }}>
-          <Table headers={["Code", "Scenario", "Group", "Status", "Nodes"]} rows={summaryRows} rowTone={rowTones} />
+        <CardHeader>Engine layout (computeTreeLayout)</CardHeader>
+        <CardBody>
+          <LayoutDiagram scenario={scenario} theme={theme} />
         </CardBody>
       </Card>
 
-      {GROUP_ORDER.map((group) => {
-        const groupScenarios = entries.filter(([, s]) => s.meta.group === group);
-        if (groupScenarios.length === 0) return null;
-        const groupPass = groupScenarios.filter(([, s]) => s.meta.status === "pass").length;
-        return (
-          <Stack key={group} gap={12}>
-            <H2>
-              {GROUP_LABELS[group] ?? group} ({groupPass}/{groupScenarios.length} pass)
-            </H2>
-            {groupScenarios.map(([id, scenario]) => (
-              <ScenarioSection key={id} id={id} scenario={scenario} theme={theme} />
-            ))}
-          </Stack>
-        );
-      })}
+      <Callout tone="info" title="Structure">
+        G0 founders → Ana (c1/c2/c3) vs Bob (d1) → Mark hub with E1, Vik (single-parent child + spouse),
+        Ben → gen 4–5 leaves. Look for interleaved cousin columns under Ana’s wide fan.
+      </Callout>
     </Stack>
   );
 }

@@ -84,9 +84,10 @@ export function shouldPackMultiUnionChildrenAsSiblings(
   structure: FamilyStructure,
   options: { hasNestedChildBranches?: boolean } = {},
 ): boolean {
+  if (childIds.length <= 1) return false
+  if (hasHalfSiblingChildrenOnHub(childIds, memberIds, structure)) return true
   if (!hasMultiUnionHubOnRow(memberIds, structure)) return false
   if (options.hasNestedChildBranches) return false
-  if (childIds.length <= 1) return false
   return hasMultipleTwoParentUnionsAmongChildren(childIds, memberIds, structure)
 }
 

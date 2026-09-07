@@ -20,13 +20,13 @@ Always run `npm run check` before committing. Run `npm run check:full` before de
 
 - **Vitest only** — do not add `node:test` files.
 - Tests live beside source: `src/**/*.test.ts`, `tests/rules/`, `tests/e2e/`.
-- Slow layout tests use `testTimeout: 60_000` in `vite.config.ts`; keep Aguilar perf test under 20s interactive.
+- Slow layout tests use `testTimeout: 60_000` in `vite.config.ts`; keep large-tree perf test under 20s interactive.
 - **Playwright** uses port `5180` (not 5173) so E2E does not attach to another Vite app on the default port.
 
 ## Fixtures
 
 - Mini graphs: `src/test/fixtures/family.ts` (`person`, `spouse`, `parentChild`, `TEST_FAMILY_ID`).
-- Large pedigree: `src/features/tree/layout/aguilar-graph.fixture.json`.
+- Scenario graphs: `src/test/fixtures/*-scenario.ts`, `three-gen-layout-contract.ts`.
 - Use fixtures — do not inline 50-line graph setup in every test.
 
 ## Coverage by area
@@ -49,7 +49,7 @@ Edge cases:
 - Birth year changes **must** change structure key (sibling order)
 - Collapsed unions retain union nodes
 - Component shelf-packing (no overlap)
-- Aguilar: width/centering bounds in `layout-invariants.test.ts`
+- Wide-fan / narrow-cousin bounds in `layout-invariants.test.ts`
 
 ### Drafts & display (`person-drafts`, `apply-display-patches`)
 
@@ -72,7 +72,7 @@ Prefer rules tests + command plan unit tests. Repository integration only when e
 ## Layout performance regression
 
 `layout-performance.test.ts` guards:
-- Aguilar interactive layout &lt; 20s
+- Large synthetic tree interactive layout &lt; 20s
 - Structure key stable on rename
 
 Do not remove these when optimizing — update thresholds with evidence.

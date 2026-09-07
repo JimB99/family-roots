@@ -100,7 +100,11 @@ describe('join-parent contract reference layout', () => {
     expect(gen1Order(layout)).toEqual(['a1', 'a', 'b', 'a3', 'b1', 'b3'])
     const a3 = layout.find((p) => p.id === 'a3')!
     const b1 = layout.find((p) => p.id === 'b1')!
-    expect(b1.leftEdge - a3.rightEdge).toBe(FAMILY_GAP)
+    const b3 = layout.find((p) => p.id === 'b3')!
+    const bf = layout.find((p) => p.id === 'bf')!
+    const bm = layout.find((p) => p.id === 'bm')!
+    const bSiblingCenter = (b1.leftEdge + b3.rightEdge) / 2
+    expect((bf.cx + bm.cx) / 2).toBe(bSiblingCenter)
   })
 
   it('join-s5-ext-child-young — B-bro shifted right for AB child clearance', () => {

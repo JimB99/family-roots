@@ -185,6 +185,38 @@ describe('shouldPackMultiUnionChildrenAsSiblings', () => {
     expect(shouldPackMultiUnionChildrenAsSiblings(members, childIds, structure)).toBe(true)
   })
 
+  it('returns true for half-sibling hub even when a child has nested descendants', () => {
+    const people = [
+      person('carmen', 'Carmen'),
+      person('markus', 'Markus'),
+      person('nadja', 'Nadja', { birth: { year: 1990, precision: 'year' } }),
+      person('viktoria', 'Viktoria', { birth: { year: 1991, precision: 'year' } }),
+      person('benjamin', 'Benjamin', { birth: { year: 1995, precision: 'year' } }),
+      person('gc', 'GC'),
+    ]
+    const relationships = [
+      spouse('carmen', 'markus'),
+      parentChild('carmen', 'nadja'),
+      parentChild('markus', 'nadja'),
+      parentChild('markus', 'viktoria'),
+      parentChild('carmen', 'benjamin'),
+      parentChild('markus', 'benjamin'),
+      parentChild('viktoria', 'gc'),
+    ]
+    const model = projectFamilyGraph(buildFamilyGraph(TEST_FAMILY_ID, people, relationships))
+    const structure = buildStructure(
+      model.edges,
+      new Map(model.nodes.map((node) => [node.id, node.kind])),
+    )
+    const members = ['person:carmen', 'person:markus']
+    const childIds = ['person:nadja', 'person:viktoria', 'person:benjamin']
+    expect(
+      shouldPackMultiUnionChildrenAsSiblings(members, childIds, structure, {
+        hasNestedChildBranches: true,
+      }),
+    ).toBe(true)
+  })
+
   it('returns false when a direct child has nested descendants', () => {
     const people = [
       person('gp', 'GP'),

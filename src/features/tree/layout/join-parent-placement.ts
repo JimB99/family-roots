@@ -161,17 +161,44 @@ function shiftJoinCouple(
   targetLeft: number,
   y: number,
   structure: FamilyStructure,
+  nodeById: Map<string, PositionedNode>,
 ) {
+  const coupleIds = expandWithRowSpouses([idA, idB], y, structure, nodeById)
   const moving = new Set<string>()
-  for (const id of [idA, idB]) {
+  for (const id of coupleIds) {
     moving.add(id)
     for (const descendant of downwardSet([id], structure)) moving.add(descendant)
   }
-  const cluster = interval(nodes, [idA, idB])
+  const cluster = interval(nodes, coupleIds)
   const dx = targetLeft - cluster.left
   if (Math.abs(dx) >= 0.5) translateIds(nodes, moving, dx)
-  const nodeById = new Map(nodes.map((node) => [node.id, node]))
   placeChain([idA, idB], targetLeft, y, nodeById)
+}
+
+export function joinRowBloodRelatives(rowPersonIds: string[], structure: FamilyStructure): string[] {
+  return rowPersonIds.filter(
+    (id) =>
+      (structure.parentsOfPerson.get(id) ?? []).length > 0 ||
+      (structure.childrenOfPerson.get(id) ?? []).length > 0,
+  )
+}
+
+function expandWithRowSpouses(
+  ids: string[],
+  y: number,
+  structure: FamilyStructure,
+  nodeById: Map<string, PositionedNode>,
+): string[] {
+  const expanded = new Set(ids)
+  for (const id of ids) {
+    for (const [a, b] of structure.spouseLinks) {
+      const partner = a === id ? b : b === id ? a : null
+      if (partner == null) continue
+      const node = nodeById.get(partner)
+      if (node != null && Math.abs(node.y - y) < 0.5) expanded.add(partner)
+    }
+  }
+  return [...expanded]
 }
 
 function shiftCluster(
@@ -182,22 +209,23 @@ function shiftCluster(
   structure: FamilyStructure,
   nodeById: Map<string, PositionedNode>,
 ) {
-  const cluster = interval(nodes, ids)
+  const clusterIds = expandWithRowSpouses(ids, y, structure, nodeById)
+  const cluster = interval(nodes, clusterIds)
   const dx = targetLeft - cluster.left
   if (Math.abs(dx) < 0.5) {
-    for (const id of ids) {
+    for (const id of clusterIds) {
       const node = nodeById.get(id)
       if (node) node.y = y
     }
     return
   }
   const moving = new Set<string>()
-  for (const id of ids) {
+  for (const id of clusterIds) {
     moving.add(id)
     for (const descendant of downwardSet([id], structure)) moving.add(descendant)
   }
   translateIds(nodes, moving, dx)
-  for (const id of ids) {
+  for (const id of clusterIds) {
     const node = nodeById.get(id)
     if (node) node.y = y
   }
@@ -276,18 +304,45 @@ function analyzeJoinRow(
     }
   } else if (
     natalRuns.length >= 2 &&
-    natalRuns.every((run) => run.ids.length >= 1) &&
-    isMiddleChild(brideId, rowSet, structure, nodeById) &&
-    !isMiddleChild(groomId, rowSet, structure, nodeById)
+    isMiddleChild(brideId, rowSet, structure, nodeById)
   ) {
-    mode = 'bride-anchored'
+    const brideParentCount = rowPersonIds.filter(
+      (id) => parentKey(id, structure) === parentKey(brideId, structure),
+    ).length
+    const groomIsMiddle = isMiddleChild(groomId, rowSet, structure, nodeById)
+    if (brideParentCount >= 4 || !groomIsMiddle) {
+      mode = 'bride-anchored'
+    } else if (sharedChildIds.length > 0) {
+      const groomKey = parentKey(groomId, structure)
+      const bSideSiblings =
+        natalRuns.find((run) => run.key === groomKey)?.ids.filter((id) => id !== groomId) ?? []
+      if (bSideSiblings.length === 1) {
+        const groomBirth = nodeById.get(groomId)?.birthYear ?? Infinity
+        const bRun = natalRuns.find((run) => run.key === groomKey)
+        const groomOlderThanAllBroSibs = (bRun?.ids ?? []).every(
+          (id) => groomBirth < (nodeById.get(id)?.birthYear ?? Infinity),
+        )
+        mode = groomOlderThanAllBroSibs ? 'extended-joint-old' : 'extended-joint-young'
+      } else {
+        mode = 'standard-two-runs'
+      }
+    } else {
+      mode = 'standard-two-runs'
+    }
   } else if (sharedChildIds.length > 0 && natalRuns.length >= 2) {
-    const groomBirth = nodeById.get(groomId)?.birthYear ?? Infinity
-    const bRun = natalRuns.find((run) => run.key === parentKey(groomId, structure))
-    const groomOlderThanAllBroSibs = (bRun?.ids ?? []).every(
-      (id) => groomBirth < (nodeById.get(id)?.birthYear ?? Infinity),
-    )
-    mode = groomOlderThanAllBroSibs ? 'extended-joint-old' : 'extended-joint-young'
+    const groomKey = parentKey(groomId, structure)
+    const bSideSiblings =
+      natalRuns.find((run) => run.key === groomKey)?.ids.filter((id) => id !== groomId) ?? []
+    if (bSideSiblings.length === 1) {
+      const groomBirth = nodeById.get(groomId)?.birthYear ?? Infinity
+      const bRun = natalRuns.find((run) => run.key === groomKey)
+      const groomOlderThanAllBroSibs = (bRun?.ids ?? []).every(
+        (id) => groomBirth < (nodeById.get(id)?.birthYear ?? Infinity),
+      )
+      mode = groomOlderThanAllBroSibs ? 'extended-joint-old' : 'extended-joint-young'
+    } else {
+      mode = 'standard-two-runs'
+    }
   } else if (natalRuns.length === 1) {
     mode = 'single-natal-run'
   } else if (natalRuns.length >= 2) {
@@ -332,25 +387,43 @@ function repositionJoinCoupleFromAnchor(
   targetLeft: number,
   y: number,
   structure: FamilyStructure,
+  nodeById: Map<string, PositionedNode>,
 ) {
+  const coupleIds = expandWithRowSpouses([idA, idB], y, structure, nodeById)
   const moving = new Set<string>()
-  for (const id of [idA, idB]) {
+  for (const id of coupleIds) {
     moving.add(id)
     for (const descendant of downwardSet([id], structure)) moving.add(descendant)
   }
   const dx = targetLeft - anchorLeft
   if (Math.abs(dx) >= 0.5) translateIds(nodes, moving, dx)
-  const nodeById = new Map(nodes.map((node) => [node.id, node]))
   placeChain([idA, idB], targetLeft, y, nodeById)
+}
+
+function rowClusterInterval(
+  nodes: PositionedNode[],
+  ids: string[],
+  y: number,
+  structure: FamilyStructure,
+  nodeById: Map<string, PositionedNode>,
+): Interval {
+  return interval(nodes, expandWithRowSpouses(ids, y, structure, nodeById))
 }
 
 function isolateJoinCouple(
   analysis: JoinRowAnalysis,
   nodes: PositionedNode[],
   y: number,
+  structure: FamilyStructure,
   nodeById: Map<string, PositionedNode>,
 ): number {
-  const anchorLeft = interval(nodes, [analysis.joinA, analysis.joinB]).left
+  const anchorLeft = rowClusterInterval(
+    nodes,
+    [analysis.joinA, analysis.joinB],
+    y,
+    structure,
+    nodeById,
+  ).left
   parkJoinCoupleCoupleOnly(analysis.joinA, analysis.joinB, y, nodeById)
   return anchorLeft
 }
@@ -362,22 +435,39 @@ function packStandardTwoRuns(
   structure: FamilyStructure,
   nodeById: Map<string, PositionedNode>,
 ) {
-  const coupleAnchor = isolateJoinCouple(analysis, nodes, y, nodeById)
+  const coupleAnchor = isolateJoinCouple(analysis, nodes, y, structure, nodeById)
   const leftRun = analysis.leftRun!
   const rightRun = analysis.rightRun!
   let cursor = 0
   for (let i = 0; i < leftRun.ids.length; i++) {
-    if (i > 0) cursor = interval(nodes, [leftRun.ids[i - 1]!]).right + SIBLING_GAP
+    if (i > 0) {
+      cursor =
+        rowClusterInterval(nodes, [leftRun.ids[i - 1]!], y, structure, nodeById).right + SIBLING_GAP
+    }
     shiftCluster(nodes, [leftRun.ids[i]!], cursor, y, structure, nodeById)
-    cursor = interval(nodes, [leftRun.ids[i]!]).right
+    cursor = rowClusterInterval(nodes, [leftRun.ids[i]!], y, structure, nodeById).right
   }
-  cursor = interval(nodes, leftRun.ids).right + SIBLING_GAP
-  repositionJoinCoupleFromAnchor(nodes, analysis.joinA, analysis.joinB, coupleAnchor, cursor, y, structure)
-  cursor = interval(nodes, [analysis.joinA, analysis.joinB]).right + SIBLING_GAP
+  cursor = rowClusterInterval(nodes, leftRun.ids, y, structure, nodeById).right + SIBLING_GAP
+  repositionJoinCoupleFromAnchor(
+    nodes,
+    analysis.joinA,
+    analysis.joinB,
+    coupleAnchor,
+    cursor,
+    y,
+    structure,
+    nodeById,
+  )
+  cursor =
+    rowClusterInterval(nodes, [analysis.joinA, analysis.joinB], y, structure, nodeById).right +
+    SIBLING_GAP
   for (let i = 0; i < rightRun.ids.length; i++) {
-    if (i > 0) cursor = interval(nodes, [rightRun.ids[i - 1]!]).right + SIBLING_GAP
+    if (i > 0) {
+      cursor =
+        rowClusterInterval(nodes, [rightRun.ids[i - 1]!], y, structure, nodeById).right + SIBLING_GAP
+    }
     shiftCluster(nodes, [rightRun.ids[i]!], cursor, y, structure, nodeById)
-    cursor = interval(nodes, [rightRun.ids[i]!]).right
+    cursor = rowClusterInterval(nodes, [rightRun.ids[i]!], y, structure, nodeById).right
   }
 }
 
@@ -388,7 +478,7 @@ function packSingleNatalRun(
   structure: FamilyStructure,
   nodeById: Map<string, PositionedNode>,
 ) {
-  shiftJoinCouple(nodes, analysis.joinA, analysis.joinB, 0, y, structure)
+  shiftJoinCouple(nodes, analysis.joinA, analysis.joinB, 0, y, structure, nodeById)
   const run = analysis.singleRun!
   let cursor = interval(nodes, [analysis.joinA, analysis.joinB]).right + SIBLING_GAP
   for (let i = 0; i < run.ids.length; i++) {
@@ -405,7 +495,7 @@ function packBrideAnchoredRow(
   structure: FamilyStructure,
   nodeById: Map<string, PositionedNode>,
 ) {
-  const coupleAnchor = isolateJoinCouple(analysis, nodes, y, nodeById)
+  const coupleAnchor = isolateJoinCouple(analysis, nodes, y, structure, nodeById)
   const brideKey = parentKey(analysis.brideId, structure)
   const groomKey = parentKey(analysis.groomId, structure)
 
@@ -433,13 +523,24 @@ function packBrideAnchoredRow(
   let cursor = 0
   for (const id of beforeA) {
     shiftCluster(nodes, [id], cursor, y, structure, nodeById)
-    cursor = interval(nodes, [id]).right + SIBLING_GAP
+    cursor = rowClusterInterval(nodes, [id], y, structure, nodeById).right + SIBLING_GAP
   }
-  repositionJoinCoupleFromAnchor(nodes, analysis.brideId, analysis.groomId, coupleAnchor, cursor, y, structure)
-  cursor = interval(nodes, [analysis.brideId, analysis.groomId]).right + SIBLING_GAP
+  repositionJoinCoupleFromAnchor(
+    nodes,
+    analysis.brideId,
+    analysis.groomId,
+    coupleAnchor,
+    cursor,
+    y,
+    structure,
+    nodeById,
+  )
+  cursor =
+    rowClusterInterval(nodes, [analysis.brideId, analysis.groomId], y, structure, nodeById).right +
+    SIBLING_GAP
   for (const id of afterA) {
     shiftCluster(nodes, [id], cursor, y, structure, nodeById)
-    cursor = interval(nodes, [id]).right + SIBLING_GAP
+    cursor = rowClusterInterval(nodes, [id], y, structure, nodeById).right + SIBLING_GAP
   }
 
   const manSiblings = nodes
@@ -456,9 +557,12 @@ function packBrideAnchoredRow(
   if (manSiblings.length > 0) {
     cursor = cursor - SIBLING_GAP + FAMILY_GAP
     for (let i = 0; i < manSiblings.length; i++) {
-      if (i > 0) cursor = interval(nodes, [manSiblings[i - 1]!]).right + SIBLING_GAP
+      if (i > 0) {
+        cursor =
+          rowClusterInterval(nodes, [manSiblings[i - 1]!], y, structure, nodeById).right + SIBLING_GAP
+      }
       shiftCluster(nodes, [manSiblings[i]!], cursor, y, structure, nodeById)
-      cursor = interval(nodes, [manSiblings[i]!]).right
+      cursor = rowClusterInterval(nodes, [manSiblings[i]!], y, structure, nodeById).right
     }
   }
 }
@@ -652,7 +756,8 @@ function placeJoinParents(
           (node) =>
             node.kind === 'person' &&
             (generations.get(node.id) ?? 0) === analysis.row &&
-            parentKey(node.id, structure) === brideParentKey,
+            parentKey(node.id, structure) === brideParentKey &&
+            node.id !== analysis.groomId,
         )
         .map((node) => node.id)
       const groomRowIds = nodes
@@ -694,6 +799,18 @@ function placeJoinParents(
   }
 }
 
+/** Classify join-parent packing for a generation row (null when join-parent does not apply). */
+export function joinRowPlacementMode(
+  row: number,
+  rowPersonIds: string[],
+  structure: FamilyStructure,
+  generations: Map<string, number>,
+  nodeById: Map<string, PositionedNode>,
+): JoinParentMode | null {
+  const bloodIds = joinRowBloodRelatives(rowPersonIds, structure)
+  return analyzeJoinRow(row, bloodIds, structure, generations, nodeById)?.mode ?? null
+}
+
 /** Returns true when any join-parent rules were applied on this component. */
 export function applyJoinParentPlacement(
   nodes: PositionedNode[],
@@ -710,9 +827,8 @@ export function applyJoinParentPlacement(
 
   for (const row of rows) {
     const rowPersonIds = personIds.filter((id) => (generations.get(id) ?? 0) === row)
-    // Join-parent canvas rules target small rows; large pedigree rows stay branch-packed.
-    if (rowPersonIds.length > 16) continue
-    const analysis = analyzeJoinRow(row, rowPersonIds, structure, generations, nodeById)
+    const bloodIds = joinRowBloodRelatives(rowPersonIds, structure)
+    const analysis = analyzeJoinRow(row, bloodIds, structure, generations, nodeById)
     if (!analysis) continue
     applied = true
     analyses.push(analysis)
@@ -730,4 +846,24 @@ export function applyJoinParentPlacement(
   }
 
   return applied
+}
+
+/** Re-center join-parent couples over their current child spans without re-packing the join row. */
+export function reapplyJoinParentCentering(
+  nodes: PositionedNode[],
+  structure: FamilyStructure,
+  generations: Map<string, number>,
+): void {
+  const personIds = nodes.filter((node) => node.kind === 'person').map((node) => node.id)
+  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const personHeight = nodes.find((node) => node.kind === 'person')?.height ?? PERSON_H
+  const rows = [...new Set(personIds.map((id) => generations.get(id) ?? 0))].sort((a, b) => a - b)
+
+  for (const row of rows) {
+    const rowPersonIds = personIds.filter((id) => (generations.get(id) ?? 0) === row)
+    const bloodIds = joinRowBloodRelatives(rowPersonIds, structure)
+    const analysis = analyzeJoinRow(row, bloodIds, structure, generations, nodeById)
+    if (!analysis) continue
+    placeJoinParents(analysis, nodes, structure, generations, personHeight, nodeById)
+  }
 }

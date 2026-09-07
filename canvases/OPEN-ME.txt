@@ -1,20 +1,38 @@
-Layout canvases (engine output)
-===============================
+Layout canvases — how to see the VISUAL preview
+================================================
 
-Open from your repo — these files are copied here on each export:
+IMPORTANT: npm open scripts do NOT work here. The `cursor` CLI on your machine
+opens your WORK Cursor, not this private one.
 
-  Private/canvases/layout-scenario-gallery.canvas.tsx
-  Private/canvases/cousin-layout-decisions.canvas.tsx
+Also: double-clicking a .canvas.tsx file always shows SOURCE CODE. That is normal.
+Cursor does not have a markdown-style Preview button for canvases yet.
 
-In Cursor: Ctrl+P → type "layout-scenario-gallery" → Enter.
+Do this IN YOUR PRIVATE CURSOR (this window, Private workspace):
 
-If it opens as a normal tab, use the Canvas / open beside chat control on the tab.
+1. Open workspace file (once):
+   File → Open Workspace from File → Private/Private.code-workspace
+   You should see a sidebar folder "Layout canvases (rendered preview)".
 
-Refresh data:
+2. Open the rendered canvas (pick ONE):
+   A) Ctrl+Shift+P → type "Open Canvas" → choose
+      deep-cousin-column-scenario.canvas.tsx
+      join-deep-cousin-scenario.canvas.tsx
+      (This is the most reliable method.)
 
-  cd family-roots
-  npm run export:layout-canvas
+   B) In the "Layout canvases" folder: RIGHT-CLICK the file → Open
+      (Do NOT double-click — that opens raw TSX.)
 
-Or open directly:
+3. Use Editor / IDE layout, not Agents-only layout.
+   Canvas preview is not available in Agents-only view.
 
-  npm run open:layout-gallery
+Canvas files live at:
+  %USERPROFILE%\.cursor\projects\c-Users-JimBuisman-Desktop-Private\canvases\
+
+Refresh after layout engine changes:
+  cd family-roots && npm run export:layout-canvas
+
+Files:
+  deep-cousin-column-scenario.canvas.tsx   DCC regression scenario
+  join-deep-cousin-scenario.canvas.tsx     JDC join + deep cousin stress
+  layout-scenario-gallery.canvas.tsx       all layout test scenarios
+  cousin-layout-decisions.canvas.tsx

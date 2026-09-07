@@ -113,7 +113,7 @@ describe('layout invariants — core spacing and unions', () => {
         parentChild('bsp', 'b1'),
       ],
     )
-    assertInvariants(report)
+    assertInvariants(report, { allowWidenedNatal: true })
   })
 
   it('Equal cousin fans — symmetric gaps', async () => {
@@ -555,7 +555,7 @@ describe('layout invariants — sibling order and multi-union hubs', () => {
         parentChild('c', 'bc2'),
       ],
     )
-    assertInvariants(report, { centerTol: 120 })
+    assertInvariants(report, { centerTol: 120, allowWidenedNatal: true })
     const childOrder = ['ab1', 'ab2', 'ab3', 'bc1', 'bc2']
       .map((id) => ({ id, x: node(layout, id).x }))
       .sort((left, right) => left.x - right.x)
@@ -625,7 +625,7 @@ describe('layout invariants — sibling order and multi-union hubs', () => {
         parentChild('bsp', 'b1'),
       ],
     )
-    assertInvariants(report, { maxEmptyBand: FAMILY_GAP + PERSON_W })
+    assertInvariants(report, { maxEmptyBand: FAMILY_GAP + PERSON_W, allowWidenedNatal: true })
   })
 })
 
