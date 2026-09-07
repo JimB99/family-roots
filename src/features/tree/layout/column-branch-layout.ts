@@ -403,6 +403,24 @@ function shiftDirectChildHorizontally(
   }
 }
 
+function requiredDirectChildGapAtRow(
+  parent: Branch,
+  packingRowY: number,
+  leftNested: Branch | undefined,
+  rightNested: Branch | undefined,
+  ctx: ColumnLayoutContext,
+): number {
+  const hubRowY = rowY(parent.row + 1, ctx.personHeight)
+  if (Math.abs(packingRowY - hubRowY) < 0.5) {
+    if (hasHalfSiblingChildrenOnHub(parent.directChildIds, parent.members, ctx.structure)) {
+      return SIBLING_GAP
+    }
+  }
+  return branchOpensDescendantColumn(leftNested) && branchOpensDescendantColumn(rightNested)
+    ? FAMILY_GAP
+    : SIBLING_GAP
+}
+
 function enforceDirectChildrenRowGaps(
   parent: Branch,
   packingRowY: number,
@@ -423,10 +441,7 @@ function enforceDirectChildrenRowGaps(
 
     const leftNested = childBranchForDirectChild(parent, leftId)
     const rightNested = childBranchForDirectChild(parent, rightId)
-    const requiredGap =
-      branchOpensDescendantColumn(leftNested) && branchOpensDescendantColumn(rightNested)
-        ? FAMILY_GAP
-        : SIBLING_GAP
+    const requiredGap = requiredDirectChildGapAtRow(parent, packingRowY, leftNested, rightNested, ctx)
     const gap = rightBox.left - leftBox.right
     if (mode === 'resolveOverlap') {
       const overlap =
@@ -701,8 +716,12 @@ function centerSiblingRowHubs(
     let targetCenter: number | null = null
     if (leftNeighbor && rightNeighbor) {
       const leftHub = interval(ctx.nodes, leftNeighbor.members)
-      const rightHub = interval(ctx.nodes, rightNeighbor.members)
-      targetCenter = (centerOf(leftHub) + centerOf(rightHub)) / 2
+      if (options?.childlessBetweenNeighborsOnly) {
+        targetCenter = leftHub.right + SIBLING_GAP + width / 2
+      } else {
+        const rightHub = interval(ctx.nodes, rightNeighbor.members)
+        targetCenter = (centerOf(leftHub) + centerOf(rightHub)) / 2
+      }
     } else if (leftNeighbor) {
       const leftHub = interval(ctx.nodes, leftNeighbor.members)
       targetCenter = leftHub.right + SIBLING_GAP + width / 2
@@ -802,12 +821,28 @@ function recenterBranchSubtree(
     }
   }
   if (branches.length === 0) return
+  if (branchesFormNatalSiblingRow(branches, parentRowMembers, ctx)) {
+    centerSiblingRowHubs(branches, branches[0]!.row, ctx, parentRowMembers, options)
+    repackNatalSiblingRowBranches(
+      branches,
+      ctx,
+      parentRowMembers.length > 0 ? parentRowMembers : null,
+    )
+    return
+  }
   centerSiblingRowHubs(branches, branches[0]!.row, ctx, parentRowMembers, options)
 }
 
 function centerTopLevelBranchesByParentScope(forest: BranchForest, ctx: ColumnLayoutContext) {
   for (const group of partitionBranchesBySiblingRow(forest.branches, ctx.structure, ctx.nodeById)) {
     const parentRowMembers = parentRowMembersForBranch(group[0]!, ctx.structure, ctx.nodeById)
+    if (shouldRepackForestSiblingRowGroup(group, ctx)) {
+      centerSiblingRowHubs(group, forest.branchGen, ctx, parentRowMembers, {
+        childlessBetweenNeighborsOnly: true,
+      })
+      repackNatalSiblingRowBranches(group, ctx, parentRowMembers)
+      continue
+    }
     centerSiblingRowHubs(group, forest.branchGen, ctx, parentRowMembers, {
       childlessBetweenNeighborsOnly: true,
     })
@@ -892,6 +927,82 @@ function enforceSiblingGapsRow(
   }
 }
 
+function forestUsesColumnGaps(forest: BranchForest): boolean {
+  const columnBranches = forest.branches.filter((branch) => branchOpensDescendantColumn(branch))
+  return columnBranches.length >= 2 && forest.maxGen > forest.branchGen + 1
+}
+
+/** Minimum SIBLING_GAP between adjacent hub marriage clusters on a natal sibling row. */
+function enforceNatalHubSiblingGapsRow(branches: Branch[], ctx: ColumnLayoutContext) {
+  for (let i = 0; i < branches.length - 1; i++) {
+    const leftBranch = branches[i]!
+    const rightBranch = branches[i + 1]!
+    const memberGap =
+      interval(ctx.nodes, rightBranch.members).left - interval(ctx.nodes, leftBranch.members).right
+    if (memberGap + 0.5 >= SIBLING_GAP) continue
+    const delta = SIBLING_GAP - memberGap
+    for (let j = i + 1; j < branches.length; j++) {
+      shiftBranch(ctx.nodes, branches[j]!, ctx.structure, delta)
+    }
+  }
+}
+
+function branchesFormNatalSiblingRow(
+  branches: Branch[],
+  parentRowMembers: string[],
+  ctx: ColumnLayoutContext,
+): boolean {
+  if (branches.length < 2) return false
+
+  const childIds = branches.map((entry) => entry.anchorId)
+  if (hasHalfSiblingChildrenOnHub(childIds, parentRowMembers, ctx.structure)) return true
+  if (
+    shouldPackMultiUnionChildrenAsSiblings(parentRowMembers, childIds, ctx.structure, {
+      hasNestedChildBranches: true,
+    })
+  ) {
+    return true
+  }
+
+  const columnBranches = branches.filter((child) => branchOpensDescendantColumn(child))
+  if (columnBranches.length >= 2) return false
+  if (columnBranches.length !== 1) return false
+
+  const parentKeys = new Set(
+    branches.map((child) =>
+      [...(ctx.structure.parentsOfPerson.get(child.anchorId) ?? [])].sort().join('|'),
+    ),
+  )
+  return parentKeys.size === 1
+}
+
+function childBranchesShareSiblingRow(branch: Branch, ctx: ColumnLayoutContext): boolean {
+  return branchesFormNatalSiblingRow(branch.childBranches, branch.members, ctx)
+}
+
+function shouldRepackForestSiblingRowGroup(group: Branch[], ctx: ColumnLayoutContext): boolean {
+  const rowMembers = parentRowMembersForBranch(group[0]!, ctx.structure, ctx.nodeById)
+  return branchesFormNatalSiblingRow(group, rowMembers, ctx)
+}
+
+function repackNatalSiblingRowBranches(
+  branches: Branch[],
+  ctx: ColumnLayoutContext,
+  parentRowMembers: string[] | null,
+) {
+  if (branches.length < 2) return
+  const ordered = orderSiblingBranches(branches, ctx, parentRowMembers)
+  let cursor = interval(ctx.nodes, ordered[0]!.members).left
+  for (let i = 0; i < ordered.length; i++) {
+    const branch = ordered[i]!
+    if (i > 0) cursor += SIBLING_GAP
+    const hubSpan = interval(ctx.nodes, branch.members)
+    const dx = cursor - hubSpan.left
+    if (Math.abs(dx) > 0.5) shiftBranch(ctx.nodes, branch, ctx.structure, dx)
+    cursor = interval(ctx.nodes, branch.members).right
+  }
+}
+
 /** Post-order: lay out nested branches and pack child rows (centering runs once at forest end). */
 export function layoutBranchColumn(branch: Branch, ctx: ColumnLayoutContext): ColumnInterval {
   for (const child of branch.childBranches) {
@@ -908,7 +1019,11 @@ export function layoutBranchColumn(branch: Branch, ctx: ColumnLayoutContext): Co
 
   packSiblingChildrenRow(branch, ctx)
   if (branch.childBranches.length > 1) {
-    enforceSiblingGapsRow(branch.childBranches, ctx, true)
+    if (childBranchesShareSiblingRow(branch, ctx)) {
+      enforceNatalHubSiblingGapsRow(branch.childBranches, ctx)
+    } else {
+      enforceSiblingGapsRow(branch.childBranches, ctx, true)
+    }
   }
   alignChildGroupsUnderUnions(branch, ctx)
   centerParentsRow([branch], branch.row, ctx)
@@ -1248,8 +1363,7 @@ export function finalizeForestColumnLayout(
     cursor = packSiblingBranches(sorted, forest.branchGen + 1, ctx, cursor)
   }
 
-  const personCount = ctx.nodes.filter((node) => node.kind === 'person').length
-  const useColumnGaps = forest.maxGen > 2 || personCount > 30
+  const useColumnGaps = forestUsesColumnGaps(forest)
   const rootGroups = partitionBranchesByParentScope(forest.branches, ctx.structure)
   for (const group of rootGroups) {
     if (group.length > 1) enforceSiblingGapsRow(group, ctx, useColumnGaps)
@@ -1298,8 +1412,19 @@ export function finalizeForestColumnLayout(
 }
 
 function repairSiblingRowGapsAfterRecenter(forest: BranchForest, ctx: ColumnLayoutContext) {
-  const personCount = ctx.nodes.filter((node) => node.kind === 'person').length
-  const useColumnGaps = forest.maxGen > 2 || personCount > 30
+  for (const branch of forest.branches) {
+    walkBranches(branch, (entry) => {
+      if (!childBranchesShareSiblingRow(entry, ctx)) return
+      repackNatalSiblingRowBranches(entry.childBranches, ctx, entry.members)
+    })
+  }
+  const useColumnGaps = forestUsesColumnGaps(forest)
+  for (const group of partitionBranchesBySiblingRow(forest.branches, ctx.structure, ctx.nodeById)) {
+    if (group.length <= 1 || !shouldRepackForestSiblingRowGroup(group, ctx)) continue
+    const rowMembers = parentRowMembersForBranch(group[0]!, ctx.structure, ctx.nodeById)
+    centerSiblingRowHubs(group, group[0]!.row, ctx, rowMembers, { childlessBetweenNeighborsOnly: true })
+    repackNatalSiblingRowBranches(group, ctx, rowMembers)
+  }
   for (const group of partitionBranchesByParentScope(forest.branches, ctx.structure)) {
     if (group.length <= 1) continue
     const sorted = [...group].sort(

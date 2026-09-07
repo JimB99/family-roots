@@ -8,10 +8,102 @@ import { cousinGroupOrderViolations } from './layout-invariants'
 import { generalizedContractViolations } from './generalized-contract-assertions'
 import { computeTreeLayout } from './compute-tree-layout'
 import { projectFamilyGraph } from './project-family-graph'
+import { FAMILY_GAP, SIBLING_GAP } from './layout-spacing'
+import type { Person, Relationship } from '../../../types'
 
-function layoutPeople(people: ReturnType<typeof person>[], relationships: ReturnType<typeof spouse>[]) {
+function layoutPeople(people: Person[], relationships: Relationship[]) {
   const model = projectFamilyGraph(buildFamilyGraph(TEST_FAMILY_ID, people, relationships))
   return computeTreeLayout(model)
+}
+
+function clusterRight(
+  layout: Awaited<ReturnType<typeof computeTreeLayout>>,
+  ids: string[],
+  node: (id: string) => { x: number; width: number },
+) {
+  return Math.max(...ids.map((id) => node(id).x + node(id).width))
+}
+
+function clusterLeft(
+  layout: Awaited<ReturnType<typeof computeTreeLayout>>,
+  ids: string[],
+  node: (id: string) => { x: number; width: number },
+) {
+  return Math.min(...ids.map((id) => node(id).x))
+}
+
+function siblingClusterGap(
+  layout: Awaited<ReturnType<typeof computeTreeLayout>>,
+  leftIds: string[],
+  rightIds: string[],
+  node: (id: string) => { x: number; width: number },
+) {
+  return clusterLeft(layout, rightIds, node) - clusterRight(layout, leftIds, node)
+}
+
+function markusHalfSiblingFamily(): { people: Person[]; relationships: Relationship[] } {
+  const antonio = person('antonio', 'Antonio', { birth: { year: 1930, precision: 'year' } })
+  const josefa = person('josefa', 'Josefa', { birth: { year: 1932, precision: 'year' } })
+  const carmen = person('carmen', 'Carmen', { birth: { year: 1957, precision: 'year' } })
+  const markus = person('markus', 'Markus', { birth: { year: 1962, precision: 'year' } })
+  const nadja = person('nadja', 'Nadja', { birth: { year: 1990, precision: 'year' } })
+  const steven = person('steven', 'Steven', { birth: { year: 1991, precision: 'year' } })
+  const viktoria = person('viktoria', 'Viktoria', { birth: { year: 1991, precision: 'year' } })
+  const christian = person('christian', 'Christian', { birth: { year: 1988, precision: 'year' } })
+  const benjamin = person('benjamin', 'Benjamin', { birth: { year: 1995, precision: 'year' } })
+  const sarah = person('sarah', 'Sarah', { birth: { year: 1996, precision: 'year' } })
+  const matthias = person('matthias', 'Matthias', { birth: { year: 1997, precision: 'year' } })
+  const jim = person('jim', 'Jim', { birth: { year: 1999, precision: 'year' } })
+  const johanna = person('johanna', 'Johanna', { birth: { year: 2003, precision: 'year' } })
+  const lotte = person('lotte', 'Lotte', { birth: { year: 2023, precision: 'year' } })
+  const ida = person('ida', 'Ida', { birth: { year: 2021, precision: 'year' } })
+  const elena = person('elena', 'Elena', { birth: { year: 2026, precision: 'year' } })
+  return {
+    people: [
+      antonio,
+      josefa,
+      carmen,
+      markus,
+      nadja,
+      steven,
+      viktoria,
+      christian,
+      benjamin,
+      sarah,
+      matthias,
+      jim,
+      johanna,
+      lotte,
+      ida,
+      elena,
+    ],
+    relationships: [
+      spouse('antonio', 'josefa'),
+      parentChild('antonio', 'carmen'),
+      parentChild('josefa', 'carmen'),
+      spouse('carmen', 'markus'),
+      spouse('nadja', 'steven'),
+      spouse('viktoria', 'christian'),
+      spouse('benjamin', 'sarah'),
+      parentChild('carmen', 'nadja'),
+      parentChild('markus', 'nadja'),
+      parentChild('markus', 'viktoria'),
+      parentChild('carmen', 'benjamin'),
+      parentChild('markus', 'benjamin'),
+      parentChild('carmen', 'matthias'),
+      parentChild('markus', 'matthias'),
+      parentChild('carmen', 'jim'),
+      parentChild('markus', 'jim'),
+      parentChild('carmen', 'johanna'),
+      parentChild('markus', 'johanna'),
+      parentChild('viktoria', 'lotte'),
+      parentChild('christian', 'lotte'),
+      parentChild('viktoria', 'ida'),
+      parentChild('christian', 'ida'),
+      parentChild('nadja', 'elena'),
+      parentChild('steven', 'elena'),
+    ],
+  }
 }
 
 describe('generalized branch contract layout', () => {
@@ -106,69 +198,8 @@ describe('generalized branch contract layout', () => {
   })
 
   it('keeps Markus half-sibling Viktoria between Nadja and Benjamin on the child row', async () => {
-    const antonio = person('antonio', 'Antonio', { birth: { year: 1930, precision: 'year' } })
-    const josefa = person('josefa', 'Josefa', { birth: { year: 1932, precision: 'year' } })
-    const carmen = person('carmen', 'Carmen', { birth: { year: 1957, precision: 'year' } })
-    const markus = person('markus', 'Markus', { birth: { year: 1962, precision: 'year' } })
-    const nadja = person('nadja', 'Nadja', { birth: { year: 1990, precision: 'year' } })
-    const steven = person('steven', 'Steven', { birth: { year: 1991, precision: 'year' } })
-    const viktoria = person('viktoria', 'Viktoria', { birth: { year: 1991, precision: 'year' } })
-    const christian = person('christian', 'Christian', { birth: { year: 1988, precision: 'year' } })
-    const benjamin = person('benjamin', 'Benjamin', { birth: { year: 1995, precision: 'year' } })
-    const sarah = person('sarah', 'Sarah', { birth: { year: 1996, precision: 'year' } })
-    const matthias = person('matthias', 'Matthias', { birth: { year: 1997, precision: 'year' } })
-    const jim = person('jim', 'Jim', { birth: { year: 1999, precision: 'year' } })
-    const johanna = person('johanna', 'Johanna', { birth: { year: 2003, precision: 'year' } })
-    const lotte = person('lotte', 'Lotte', { birth: { year: 2023, precision: 'year' } })
-    const ida = person('ida', 'Ida', { birth: { year: 2021, precision: 'year' } })
-    const elena = person('elena', 'Elena', { birth: { year: 2026, precision: 'year' } })
-
-    const layout = await layoutPeople(
-      [
-        antonio,
-        josefa,
-        carmen,
-        markus,
-        nadja,
-        steven,
-        viktoria,
-        christian,
-        benjamin,
-        sarah,
-        matthias,
-        jim,
-        johanna,
-        lotte,
-        ida,
-        elena,
-      ],
-      [
-        spouse('antonio', 'josefa'),
-        parentChild('antonio', 'carmen'),
-        parentChild('josefa', 'carmen'),
-        spouse('carmen', 'markus'),
-        spouse('nadja', 'steven'),
-        spouse('viktoria', 'christian'),
-        spouse('benjamin', 'sarah'),
-        parentChild('carmen', 'nadja'),
-        parentChild('markus', 'nadja'),
-        parentChild('markus', 'viktoria'),
-        parentChild('carmen', 'benjamin'),
-        parentChild('markus', 'benjamin'),
-        parentChild('carmen', 'matthias'),
-        parentChild('markus', 'matthias'),
-        parentChild('carmen', 'jim'),
-        parentChild('markus', 'jim'),
-        parentChild('carmen', 'johanna'),
-        parentChild('markus', 'johanna'),
-        parentChild('viktoria', 'lotte'),
-        parentChild('christian', 'lotte'),
-        parentChild('viktoria', 'ida'),
-        parentChild('christian', 'ida'),
-        parentChild('nadja', 'elena'),
-        parentChild('steven', 'elena'),
-      ],
-    )
+    const { people, relationships } = markusHalfSiblingFamily()
+    const layout = await layoutPeople(people, relationships)
 
     const node = (id: string) => {
       const found = layout.nodes.find((entry) => entry.personId === id)
@@ -179,12 +210,172 @@ describe('generalized branch contract layout', () => {
     const nadjaX = node('nadja').x
     const viktoriaX = node('viktoria').x
     const benjaminX = node('benjamin').x
+    const johannaX = node('johanna').x
 
     expect(viktoriaX, `nadja=${nadjaX} viktoria=${viktoriaX} benjamin=${benjaminX}`).toBeGreaterThan(
       nadjaX,
     )
     expect(viktoriaX).toBeLessThan(benjaminX)
-    expect(viktoriaX).toBeGreaterThan(0)
+    expect(viktoriaX).toBeLessThan(johannaX)
+
+    expect(siblingClusterGap(layout, ['nadja', 'steven'], ['viktoria', 'christian'], node)).toBe(
+      SIBLING_GAP,
+    )
+    expect(siblingClusterGap(layout, ['viktoria', 'christian'], ['benjamin', 'sarah'], node)).toBe(
+      SIBLING_GAP,
+    )
+    expect(
+      siblingClusterGap(layout, ['viktoria', 'christian'], ['benjamin', 'sarah'], node),
+    ).toBeLessThan(FAMILY_GAP)
+
+    const ordered = ['nadja', 'viktoria', 'benjamin', 'matthias', 'jim', 'johanna']
+    const clusters: string[][] = [
+      ['nadja', 'steven'],
+      ['viktoria', 'christian'],
+      ['benjamin', 'sarah'],
+      ['matthias'],
+      ['jim'],
+      ['johanna'],
+    ]
+    for (let i = 0; i < clusters.length - 1; i++) {
+      const gap = siblingClusterGap(layout, clusters[i]!, clusters[i + 1]!, node)
+      expect(gap, `gap ${ordered[i]}→${ordered[i + 1]} was ${gap}`).toBeLessThanOrEqual(SIBLING_GAP + 1)
+    }
+  })
+
+  it('keeps Markus half-sibling spacing unchanged in a large connected tree', async () => {
+    const family = markusHalfSiblingFamily()
+    const gp = person('gp-pad', 'GP Pad', { birth: { year: 1900, precision: 'year' } })
+    const padding = Array.from({ length: 40 }, (_, index) =>
+      person(`pad${index}`, `Pad ${index}`, { birth: { year: 1940 + index, precision: 'year' } }),
+    )
+    const paddingRels = padding.flatMap((entry) => [
+      parentChild('gp-pad', entry.id.replace('person:', '')),
+    ])
+    const layout = await layoutPeople(
+      [gp, ...family.people, ...padding],
+      [parentChild('gp-pad', 'antonio'), parentChild('gp-pad', 'josefa'), ...paddingRels, ...family.relationships],
+    )
+
+    const node = (id: string) => {
+      const found = layout.nodes.find((entry) => entry.personId === id)
+      if (!found) throw new Error(`missing ${id}`)
+      return found
+    }
+
+    expect(node('viktoria').x).toBeGreaterThan(node('nadja').x)
+    expect(node('viktoria').x).toBeLessThan(node('benjamin').x)
+    expect(node('viktoria').x).toBeLessThan(node('johanna').x)
+    expect(siblingClusterGap(layout, ['viktoria', 'christian'], ['benjamin', 'sarah'], node)).toBe(
+      SIBLING_GAP,
+    )
+  })
+
+  it('packs Aguilar gen1 siblings in birth order with German after Ana and Peter', async () => {
+    const family = markusHalfSiblingFamily()
+    const ana = person('ana', 'Ana', { birth: { year: 1959, precision: 'year' } })
+    const peter = person('peter', 'Peter', { birth: { year: 1956, precision: 'year' } })
+    const german = person('german', 'Germán', { birth: { year: 1968, precision: 'year' } })
+    const layout = await layoutPeople(
+      [...family.people, ana, peter, german],
+      [
+        ...family.relationships,
+        spouse('ana', 'peter'),
+        parentChild('antonio', 'ana'),
+        parentChild('josefa', 'ana'),
+        parentChild('antonio', 'german'),
+        parentChild('josefa', 'german'),
+      ],
+    )
+
+    const node = (id: string) => {
+      const found = layout.nodes.find((entry) => entry.personId === id)
+      if (!found) throw new Error(`missing ${id}`)
+      return found
+    }
+
+    expect(node('carmen').x).toBeLessThan(node('ana').x)
+    expect(node('ana').x).toBeLessThan(node('german').x)
+    expect(siblingClusterGap(layout, ['ana', 'peter'], ['german'], node)).toBe(SIBLING_GAP)
+    expect(node('german').x).toBeGreaterThan(node('ana').x)
+    expect(node('german').x).toBeGreaterThan(node('peter').x)
+  })
+
+  function aguilarWithGrandparent(): {
+    gp: Person
+    people: Person[]
+    relationships: Relationship[]
+  } {
+    const family = markusHalfSiblingFamily()
+    const gp = person('gp', 'Grandparent', { birth: { year: 1900, precision: 'year' } })
+    const gpSp = person('gp-sp', 'Grandparent Spouse', { birth: { year: 1902, precision: 'year' } })
+    const ana = person('ana', 'Ana', { birth: { year: 1959, precision: 'year' } })
+    const peter = person('peter', 'Peter', { birth: { year: 1956, precision: 'year' } })
+    const german = person('german', 'Germán', { birth: { year: 1968, precision: 'year' } })
+    return {
+      gp,
+      people: [gp, gpSp, ...family.people, ana, peter, german],
+      relationships: [
+        spouse('gp', 'gp-sp'),
+        parentChild('gp', 'antonio'),
+        parentChild('gp-sp', 'antonio'),
+        parentChild('gp', 'josefa'),
+        parentChild('gp-sp', 'josefa'),
+        ...family.relationships,
+        spouse('ana', 'peter'),
+        parentChild('antonio', 'ana'),
+        parentChild('josefa', 'ana'),
+        parentChild('antonio', 'german'),
+        parentChild('josefa', 'german'),
+      ],
+    }
+  }
+
+  it('packs nested gen1 siblings in birth order with German rightmost when GP is root', async () => {
+    const { people, relationships } = aguilarWithGrandparent()
+    const layout = await layoutPeople(people, relationships)
+
+    const node = (id: string) => {
+      const found = layout.nodes.find((entry) => entry.personId === id)
+      if (!found) throw new Error(`missing ${id}`)
+      return found
+    }
+
+    expect(node('carmen').x).toBeLessThan(node('ana').x)
+    expect(node('ana').x).toBeLessThan(node('german').x)
+    expect(clusterLeft(layout, ['german'], node)).toBeGreaterThan(clusterRight(layout, ['carmen', 'markus'], node))
+    expect(clusterLeft(layout, ['german'], node)).toBeGreaterThan(clusterRight(layout, ['ana', 'peter'], node))
+    expect(siblingClusterGap(layout, ['ana', 'peter'], ['german'], node)).toBe(SIBLING_GAP)
+  })
+
+  it('keeps Viktoria between Nadja and Benjamin when GP is root', async () => {
+    const { people, relationships } = aguilarWithGrandparent()
+    const layout = await layoutPeople(people, relationships)
+
+    const node = (id: string) => {
+      const found = layout.nodes.find((entry) => entry.personId === id)
+      if (!found) throw new Error(`missing ${id}`)
+      return found
+    }
+
+    expect(node('viktoria').x).toBeGreaterThan(node('nadja').x)
+    expect(node('viktoria').x).toBeLessThan(node('benjamin').x)
+    expect(node('viktoria').x).toBeLessThan(node('johanna').x)
+
+    const clusters: string[][] = [
+      ['nadja', 'steven'],
+      ['viktoria', 'christian'],
+      ['benjamin', 'sarah'],
+      ['matthias'],
+      ['jim'],
+      ['johanna'],
+    ]
+    for (let i = 0; i < clusters.length - 1; i++) {
+      const gap = siblingClusterGap(layout, clusters[i]!, clusters[i + 1]!, node)
+      expect(gap, `gap ${clusters[i]!.join(',')}→${clusters[i + 1]!.join(',')} was ${gap}`).toBeLessThanOrEqual(
+        SIBLING_GAP + 1,
+      )
+    }
   })
 
   it('places Jose branch after the full Diego branch (Aguilar Diego/Jose shape)', async () => {
