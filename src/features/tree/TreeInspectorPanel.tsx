@@ -24,6 +24,7 @@ interface TreeInspectorPanelProps {
   onDisconnectRelationship: (relationshipId: string) => Promise<void>
   onOpenProfile: () => void
   onSelectPerson: (personId: string) => void
+  onExplainRelationship?: () => void
   onClear: () => void
   onDisconnect: () => void
   onChangeType: (type: 'spouse' | 'parent_child') => void
@@ -48,6 +49,7 @@ export const TreeInspectorPanel = memo(function TreeInspectorPanel({
   onDisconnectRelationship,
   onOpenProfile,
   onSelectPerson,
+  onExplainRelationship,
   onClear,
   onDisconnect,
   onChangeType,
@@ -91,6 +93,7 @@ export const TreeInspectorPanel = memo(function TreeInspectorPanel({
         onDisconnectRelationship={onDisconnectRelationship}
         onOpenProfile={onOpenProfile}
         onSelectPerson={onSelectPerson}
+        onExplainRelationship={onExplainRelationship}
         onClear={onClear}
       />
     )

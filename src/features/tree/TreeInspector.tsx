@@ -32,6 +32,7 @@ interface PersonInspectorProps {
   onDisconnectRelationship?: (relationshipId: string) => Promise<void>
   onOpenProfile: () => void
   onSelectPerson: (personId: string) => void
+  onExplainRelationship?: () => void
   onClear: () => void
 }
 
@@ -58,6 +59,7 @@ export function PersonInspector({
   onDisconnectRelationship,
   onOpenProfile,
   onSelectPerson,
+  onExplainRelationship,
   onClear,
 }: PersonInspectorProps) {
   const span = lifespan(person)
@@ -152,6 +154,12 @@ export function PersonInspector({
             Drag one person onto another, or use Connect to search for someone already in the tree.
           </p>
         </section>
+      )}
+
+      {onExplainRelationship && (
+        <Button variant="secondary" size="sm" onClick={onExplainRelationship} className="w-full">
+          Explain relationship with…
+        </Button>
       )}
 
       {!showInlineEdit && (

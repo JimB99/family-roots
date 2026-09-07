@@ -50,6 +50,11 @@ interface TreeWorkspaceProps {
   matchedPersonIds: Set<string> | null
   focusPersonId: string | null
   connectBusy: boolean
+  explainPickAnchorId?: string | null
+  explainPickAnchorName?: string | null
+  onExplainPickTarget?: (personId: string) => void
+  onExplainPickCancel?: () => void
+  onExplainPickSearch?: () => void
   onSelectionChange: (selection: TreeSelection) => void
   onOpenPerson: (personId: string) => void
   onConnect: (
@@ -80,6 +85,11 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   matchedPersonIds,
   focusPersonId,
   connectBusy,
+  explainPickAnchorId = null,
+  explainPickAnchorName = null,
+  onExplainPickTarget,
+  onExplainPickCancel,
+  onExplainPickSearch,
   onSelectionChange,
   onOpenPerson,
   onConnect,
@@ -378,10 +388,25 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       if (event.button !== 0) return
       setMenu(null)
 
+      if (
+        explainPickAnchorId &&
+        personId !== explainPickAnchorId &&
+        onExplainPickTarget
+      ) {
+        event.stopPropagation()
+        onExplainPickTarget(personId)
+        return
+      }
+
       if (!editMode) {
         event.stopPropagation()
         onSelectionChange({ kind: 'person', personId })
         startPan(event)
+        return
+      }
+
+      if (explainPickAnchorId) {
+        event.stopPropagation()
         return
       }
 
@@ -475,7 +500,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onCancel)
     },
-    [editMode, graph, displayPeopleById, moveGhost, dropTargetAt, onConnectDropMiss, onSelectionChange, toWorld],
+    [editMode, explainPickAnchorId, graph, displayPeopleById, moveGhost, dropTargetAt, onConnectDropMiss, onExplainPickTarget, onSelectionChange, toWorld, startPan],
   )
 
   const onKeyDown = useCallback(
@@ -520,10 +545,14 @@ export const TreeWorkspace = memo(function TreeWorkspace({
           break
         case 'Escape':
           setMenu(null)
+          if (explainPickAnchorId && onExplainPickCancel) {
+            event.preventDefault()
+            onExplainPickCancel()
+          }
           break
       }
     },
-    [pan, commit, zoomAtCenter, fit, layout.bounds],
+    [pan, commit, zoomAtCenter, fit, layout.bounds, explainPickAnchorId, onExplainPickCancel],
   )
 
   const handleChoose = useCallback(
@@ -595,8 +624,18 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   )
 
   const handleSelectPerson = useCallback(
-    (personId: string) => onSelectionChange({ kind: 'person', personId }),
-    [onSelectionChange],
+    (personId: string) => {
+      if (
+        explainPickAnchorId &&
+        personId !== explainPickAnchorId &&
+        onExplainPickTarget
+      ) {
+        onExplainPickTarget(personId)
+        return
+      }
+      onSelectionChange({ kind: 'person', personId })
+    },
+    [explainPickAnchorId, onExplainPickTarget, onSelectionChange],
   )
 
   const compact = viewport.scale < COMPACT_SCALE_THRESHOLD
@@ -630,13 +669,49 @@ export const TreeWorkspace = memo(function TreeWorkspace({
     <div
       ref={containerRef}
       className="tree-canvas relative h-full w-full overflow-hidden"
-      style={{ touchAction: 'none', cursor: 'grab' }}
+      style={{
+        touchAction: 'none',
+        cursor: explainPickAnchorId ? 'crosshair' : 'grab',
+      }}
       onPointerDown={onCanvasPointerDown}
       onKeyDown={onKeyDown}
       tabIndex={0}
       role="application"
-      aria-label="Family tree canvas. Click a person for details, drag empty space to pan, scroll to zoom."
+      aria-label={
+        explainPickAnchorId
+          ? `Family tree canvas. Click a person to compare with ${explainPickAnchorName ?? 'the selected person'}.`
+          : 'Family tree canvas. Click a person for details, drag empty space to pan, scroll to zoom.'
+      }
     >
+      {explainPickAnchorId && explainPickAnchorName && (
+        <div
+          className="pointer-events-auto absolute top-3 left-1/2 z-20 flex max-w-[min(100%-1.5rem,36rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--surface-overlay)]/95 px-4 py-2.5 text-sm text-[var(--text-primary)] shadow-lg backdrop-blur"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <span>
+            Click someone on the tree to compare with{' '}
+            <span className="font-semibold">{explainPickAnchorName}</span>
+          </span>
+          {onExplainPickSearch && (
+            <button
+              type="button"
+              onClick={onExplainPickSearch}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
+            >
+              Search by name
+            </button>
+          )}
+          {onExplainPickCancel && (
+            <button
+              type="button"
+              onClick={onExplainPickCancel}
+              className="rounded-lg px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
       <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5">
         <div
           className="pointer-events-auto flex gap-1.5"
@@ -829,10 +904,13 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                 <PersonNode
                   key={node.id}
                   node={node}
-                  selected={selection?.kind === 'person' && selection.personId === personId}
-                  dimmed={dimmedFor(personId)}
+                  selected={
+                    selection?.kind === 'person' && selection.personId === personId
+                  }
+                  dimmed={dimmedFor(personId) && !explainPickAnchorId}
                   highlighted={
                     dragTargetId === personId ||
+                    personId === explainPickAnchorId ||
                     Boolean(
                       lineagePeople &&
                         lineagePeople.has(personId) &&

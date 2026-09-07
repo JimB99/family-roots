@@ -39,6 +39,7 @@ import { useEditHistory } from '../features/tree/history/use-edit-history'
 import { parsePersonDraft, livingDraftEntries } from '../features/tree/person-drafts'
 import { TreeInspectorPanel } from '../features/tree/TreeInspectorPanel'
 import { ConnectPersonDialog } from '../features/tree/connect/ConnectPersonDialog'
+import { ExplainRelationshipDialog } from '../features/tree/relation/ExplainRelationshipDialog'
 import { TreeWorkspace, type TreeSelection } from '../features/tree/TreeWorkspace'
 import { usePersonDrafts } from '../features/tree/use-person-drafts'
 import { matchedPersonIdsForQuery, filterPeopleByQuery } from '../lib/person-search'
@@ -69,6 +70,11 @@ export function TreePage() {
   const [savingDrafts, setSavingDrafts] = useState(false)
   const [formRevision, setFormRevision] = useState(0)
   const [connectOpen, setConnectOpen] = useState(false)
+  const [explainSession, setExplainSession] = useState<{
+    anchorId: string
+    targetId: string | null
+  } | null>(null)
+  const [explainSearchOpen, setExplainSearchOpen] = useState(false)
   const [connectHint, setConnectHint] = useState<string | null>(null)
   const pendingActionRef = useRef<(() => void) | null>(null)
 
@@ -100,6 +106,14 @@ export function TreePage() {
   )
 
   const selectedPersonId = selection?.kind === 'person' ? selection.personId : null
+
+  const explainAnchorPerson = explainSession
+    ? displayPeople.find((p) => p.id === explainSession.anchorId) ?? null
+    : null
+  const explainPickActive = Boolean(explainSession && !explainSession.targetId && !explainSearchOpen)
+  const explainDialogOpen = Boolean(
+    explainSession && (explainSession.targetId !== null || explainSearchOpen),
+  )
   const selectedPerson = selectedPersonId ? people.find((p) => p.id === selectedPersonId) ?? null : null
   const selectedPersonDisplay = selectedPersonId
     ? displayPeople.find((p) => p.id === selectedPersonId) ?? null
@@ -488,6 +502,11 @@ export function TreePage() {
         requestLeave(() => navigate(`/families/${slug}/person/${selectedPerson.id}`))
       }
       onSelectPerson={selectPerson}
+      onExplainRelationship={() => {
+        if (!selectedPersonId) return
+        setExplainSearchOpen(false)
+        setExplainSession({ anchorId: selectedPersonId, targetId: null })
+      }}
       onClear={() => setSelection(null)}
       onDisconnect={() => void handleDisconnect()}
       onChangeType={(type) => void handleChangeType(type)}
@@ -732,6 +751,20 @@ export function TreePage() {
               matchedPersonIds={canvasMatchedPersonIds}
               focusPersonId={focusPersonId}
               connectBusy={mutation.pending}
+              explainPickAnchorId={explainPickActive ? explainSession?.anchorId ?? null : null}
+              explainPickAnchorName={
+                explainPickActive && explainAnchorPerson ? displayName(explainAnchorPerson) : null
+              }
+              onExplainPickTarget={(targetId) => {
+                if (!explainSession || targetId === explainSession.anchorId) return
+                setExplainSearchOpen(false)
+                setExplainSession({ ...explainSession, targetId })
+              }}
+              onExplainPickCancel={() => {
+                setExplainSession(null)
+                setExplainSearchOpen(false)
+              }}
+              onExplainPickSearch={() => setExplainSearchOpen(true)}
               onSelectionChange={handleSelectionChange}
               onOpenPerson={(id) =>
                 requestLeave(() => navigate(`/families/${slug}/person/${id}`))
@@ -771,6 +804,24 @@ export function TreePage() {
         busy={mutation.pending}
         onClose={() => setConnectOpen(false)}
         onConnect={handleConnectRequest}
+      />
+
+      <ExplainRelationshipDialog
+        open={explainDialogOpen}
+        anchor={explainAnchorPerson ?? selectedPersonDisplay}
+        targetId={explainSession?.targetId ?? null}
+        people={displayPeople}
+        graph={graph}
+        onTargetChange={(targetId) => {
+          if (!explainSession) return
+          setExplainSession({ ...explainSession, targetId })
+          if (targetId) setExplainSearchOpen(false)
+        }}
+        onClose={() => {
+          setExplainSession(null)
+          setExplainSearchOpen(false)
+        }}
+        onSelectPerson={selectPerson}
       />
     </Layout>
   )
