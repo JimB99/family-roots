@@ -1,5 +1,5 @@
 import { buildBranchForest, crossFamilyCouplesAtRow } from './branch-tree'
-import { layoutColumnForest, spreadColumnsAfterJoin } from './column-branch-layout'
+import { layoutColumnForest, spreadColumnsAfterJoin, repairGenRowHubSiblingGaps } from './column-branch-layout'
 import { assignGenerations, type FamilyStructure } from './family-structure'
 import { applyJoinParentPlacement, joinRowBloodRelatives, joinRowPlacementMode, reapplyJoinParentCentering } from './join-parent-placement'
 import type { PositionedNode } from './layout-model'
@@ -95,6 +95,7 @@ function applyStep(step: ContractPackStep, ctx: LayoutContext) {
       if (ctx.deferHorizontalPack) {
         spreadColumnsAfterJoin(ctx.forest, columnCtx(ctx))
         reapplyJoinParentCentering(ctx.nodes, ctx.structure, ctx.generations)
+        repairGenRowHubSiblingGaps(ctx.forest, columnCtx(ctx))
       }
       break
     }

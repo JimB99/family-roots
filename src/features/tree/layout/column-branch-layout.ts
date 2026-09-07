@@ -1380,6 +1380,94 @@ export function spreadColumnsAfterJoin(
   repackAllNatalSiblingRows(forest, ctx)
 }
 
+function shiftPersonCluster(
+  nodes: PositionedNode[],
+  ids: string[],
+  structure: FamilyStructure,
+  dx: number,
+) {
+  if (Math.abs(dx) < 0.5) return
+  const moving = new Set<string>()
+  for (const id of ids) {
+    moving.add(id)
+    for (const descendant of downwardSet([id], structure)) moving.add(descendant)
+  }
+  translateIds(nodes, moving, dx)
+}
+
+/** Enforce SIBLING_GAP between adjacent marriage clusters on one person row. */
+function repairMarriageClusterRowGaps(
+  nodes: PositionedNode[],
+  structure: FamilyStructure,
+  rowY: number,
+) {
+  const rowNodes = nodes.filter(
+    (node) => node.kind === 'person' && Math.abs(node.y - rowY) < 0.5,
+  )
+  if (rowNodes.length === 0) return
+
+  const parent = new Map<string, string>()
+  const find = (id: string): string => {
+    const current = parent.get(id)
+    if (current === undefined) {
+      parent.set(id, id)
+      return id
+    }
+    if (current === id) return id
+    const root = find(current)
+    parent.set(id, root)
+    return root
+  }
+  const union = (a: string, b: string) => {
+    const rootA = find(a)
+    const rootB = find(b)
+    if (rootA === rootB) return
+    parent.set(rootB, rootA)
+  }
+
+  for (const node of rowNodes) find(node.id)
+  for (const [a, b] of structure.spouseLinks) {
+    const left = nodes.find((entry) => entry.id === a)
+    const right = nodes.find((entry) => entry.id === b)
+    if (!left || !right || left.kind !== 'person' || right.kind !== 'person') continue
+    if (Math.abs(left.y - rowY) >= 0.5 || Math.abs(right.y - rowY) >= 0.5) continue
+    union(a, b)
+  }
+
+  const clusters = new Map<string, string[]>()
+  for (const node of rowNodes) {
+    const root = find(node.id)
+    const list = clusters.get(root) ?? []
+    list.push(node.id)
+    clusters.set(root, list)
+  }
+
+  const ordered = [...clusters.values()].sort(
+    (left, right) => interval(nodes, left).left - interval(nodes, right).left,
+  )
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const left = interval(nodes, ordered[i]!)
+    const right = interval(nodes, ordered[i + 1]!)
+    const gap = right.left - left.right
+    if (gap + 0.5 >= SIBLING_GAP) continue
+    const delta = SIBLING_GAP - gap
+    for (let j = i + 1; j < ordered.length; j++) {
+      shiftPersonCluster(nodes, ordered[j]!, structure, delta)
+    }
+  }
+}
+
+/** Shift later gen-row hubs right when marriage clusters (incl. row spouses) are tighter than SIBLING_GAP. */
+export function repairGenRowHubSiblingGaps(_forest: BranchForest, ctx: ColumnLayoutContext) {
+  const rowYs = new Set<number>()
+  for (const node of ctx.nodes) {
+    if (node.kind === 'person') rowYs.add(node.y)
+  }
+  for (const rowY of rowYs) {
+    repairMarriageClusterRowGaps(ctx.nodes, ctx.structure, rowY)
+  }
+}
+
 /** Horizontal cousin packing and centering after branch interiors (and optional join-parent). */
 export function finalizeForestColumnLayout(
   forest: BranchForest,
