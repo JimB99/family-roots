@@ -6,7 +6,6 @@
   "notEditor": "Du bist angemeldet, aber kein Bearbeiter für diesen Stammbaum.",
   "askInvite": "Bitte den Inhaber, {{email}} einzuladen.",
   "yourTrees": "Deine Stammbäume",
-  "allPublished": "Alle veröffentlichten Stammbäume",
   "create": {
     "title": "Neuen Stammbaum erstellen",
     "description": "Wähle einen Anzeigenamen und eine URL. Du wirst Inhaber und kannst später Bearbeiter einladen.",
@@ -67,14 +66,39 @@
       "parentChild": "Elternteil → Kind"
     }
   },
+  "access": {
+    "viewLinkTitle": "Ansichtslink teilen",
+    "viewLinkDescription": "Jede Person mit diesem Link kann den Stammbaum ohne Anmeldung ansehen. Halte ihn privat.",
+    "viewLinkAria": "Ansichtslink-URL",
+    "generateViewLink": "Ansichtslink erzeugen",
+    "copyViewLink": "Ansichtslink kopieren",
+    "viewLinkCopied": "Ansichtslink kopiert.",
+    "regenerateViewLink": "Ansichtslink neu erzeugen",
+    "viewLinkRotated": "Ansichtslink neu erzeugt. Alte Links funktionieren nicht mehr.",
+    "viewLinkFailed": "Ansichtslink konnte nicht aktualisiert werden",
+    "copyFailed": "Konnte nicht in die Zwischenablage kopieren"
+  },
   "invites": {
-    "title": "Mitwirkenden einladen",
-    "description": "Wenn die Person ein Konto mit dieser E-Mail erstellt, wird sie automatisch Bearbeiter.",
-    "emailAria": "Einzuladende E-Mail-Adresse",
+    "title": "Bearbeiter einladen",
+    "description": "Erstelle einen Beitrittslink. Wähle einen offenen Link oder beschränke ihn auf eine E-Mail-Adresse.",
+    "typeOpen": "Offener Link",
+    "typeEmail": "E-Mail-gebundener Link",
+    "typeLabel": "Einladungstyp",
+    "typeOpenHint": "Jede Person mit dem Link kann sich anmelden und Bearbeiter werden.",
+    "typeEmailHint": "Nur die eingeladene E-Mail-Adresse kann diesen Link annehmen.",
+    "emailAria": "E-Mail-Adresse für die Einladung",
     "emailPlaceholder": "name@beispiel.at",
-    "send": "Einladung senden",
-    "success": "{{email}} eingeladen. Bearbeitungszugriff sobald sich die Person mit dieser E-Mail registriert.",
+    "emailRequired": "Gib eine E-Mail-Adresse für eine E-Mail-gebundene Einladung ein.",
+    "createLink": "Einladungslink erstellen",
+    "created": "Einladungslink erstellt.",
+    "linkAria": "Einladungslink-URL",
+    "copyLink": "Einladungslink kopieren",
+    "linkCopied": "Einladungslink kopiert.",
     "failed": "Einladung fehlgeschlagen",
-    "pending": "Ausstehende Einladungen"
+    "pending": "Ausstehende Einladungslinks",
+    "pendingOpen": "Offene Einladung",
+    "pendingEmail": "Einladung für {{email}}",
+    "revoke": "Widerrufen",
+    "legacyPending": "Legacy-E-Mail-Einladungen"
   }
 }

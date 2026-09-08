@@ -4,15 +4,22 @@
  */
 export {
   listFamilies,
+  listFamiliesForEditor,
   getFamilyBySlug,
   getFamilyById,
   createFamily,
   renameFamily,
   addPendingInvite,
   revokePendingInvite,
+  createInvite,
+  revokeInvite,
   claimInvite,
+  claimInviteToken,
+  regenerateViewKey,
+  ensureViewKey,
   removeEditor,
   transferOwnership,
+  syncUserFamilyIndex,
 } from '../data/firestore/family-repository'
 
 export {

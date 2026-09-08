@@ -11,11 +11,22 @@ export type Gender = 'male' | 'female' | 'inter' | 'unknown'
 export type RelationshipType = 'spouse' | 'parent_child'
 export type RelationshipConfidence = 'imported' | 'manual' | 'low'
 
+export type InviteType = 'open' | 'email'
+
+export interface PendingInvite {
+  type: InviteType
+  email?: string
+  createdAt?: string
+  expiresAt?: string
+}
+
 export interface Family {
   id: string
   name: string
   slug: string
+  viewKey: string
   editorUids: string[]
+  pendingInvites: Record<string, PendingInvite>
   pendingInviteEmails: string[]
   ownerUid?: string
   createdAt?: string

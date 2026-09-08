@@ -6,6 +6,7 @@ import { PersonForm } from '../components/PersonForm'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { ensureViewKey } from '../data/firestore/family-repository'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import {
@@ -41,6 +42,11 @@ export function FamilyAdminPage() {
     personAId: '',
     personBId: '',
   })
+
+  useEffect(() => {
+    if (!family?.id || !isEditor || family.viewKey) return
+    void ensureViewKey(family.id).then(() => reload())
+  }, [family?.id, family?.viewKey, isEditor, reload])
 
   useEffect(() => {
     if (!family) return

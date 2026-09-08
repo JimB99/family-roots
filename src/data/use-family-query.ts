@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Family, Person, Relationship } from '../types'
-import { claimInvite, getFamilyBySlug } from './firestore/family-repository'
+import { claimInvite, getFamilyBySlug, syncUserFamilyIndex } from './firestore/family-repository'
 import { listPeopleForFamily } from './firestore/person-repository'
 import { listRelationshipsForFamily } from './firestore/relationship-repository'
 
@@ -43,8 +43,12 @@ export function useFamilyQuery(
         return
       }
 
-      if (userEmail && userId) {
-        await claimInvite(fam.id, userId, userEmail)
+      if (userEmail && userId && fam.pendingInviteEmails.includes(userEmail.trim().toLowerCase())) {
+        try {
+          await claimInvite(fam.id, userId, userEmail)
+        } catch {
+          /* claim may fail if already claimed or rules reject; load continues */
+        }
       }
 
       const [p, r] = await Promise.all([
@@ -54,7 +58,11 @@ export function useFamilyQuery(
       if (id !== requestId.current) return
 
       const refreshedFamily = await getFamilyBySlug(slug)
-      setFamily(refreshedFamily ?? fam)
+      const loadedFamily = refreshedFamily ?? fam
+      if (userId && loadedFamily.editorUids.includes(userId)) {
+        void syncUserFamilyIndex(userId, loadedFamily.slug)
+      }
+      setFamily(loadedFamily)
       setPeople(p)
       setRelationships(r)
       setStatus(p.length === 0 ? 'empty' : 'ready')

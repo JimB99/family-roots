@@ -1,12 +1,45 @@
 import type { DocumentData } from 'firebase/firestore'
-import type { Family, Person, PersonInput, Relationship } from '../../types'
+import type { Family, PendingInvite, Person, PersonInput, Relationship } from '../../types'
+
+function pendingInvitesFromDoc(data: DocumentData): Record<string, PendingInvite> {
+  const raw = data.pendingInvites
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const invites: Record<string, PendingInvite> = {}
+  for (const [token, value] of Object.entries(raw)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+    const invite = value as Record<string, unknown>
+    const type = invite.type === 'email' ? 'email' : invite.type === 'open' ? 'open' : null
+    if (!type) continue
+    invites[token] = {
+      type,
+      email: typeof invite.email === 'string' ? invite.email : undefined,
+      createdAt:
+        invite.createdAt != null &&
+        typeof invite.createdAt === 'object' &&
+        'toDate' in invite.createdAt &&
+        typeof invite.createdAt.toDate === 'function'
+          ? invite.createdAt.toDate().toISOString()
+          : undefined,
+      expiresAt:
+        invite.expiresAt != null &&
+        typeof invite.expiresAt === 'object' &&
+        'toDate' in invite.expiresAt &&
+        typeof invite.expiresAt.toDate === 'function'
+          ? invite.expiresAt.toDate().toISOString()
+          : undefined,
+    }
+  }
+  return invites
+}
 
 export function familyFromDoc(id: string, data: DocumentData): Family {
   return {
     id,
     name: String(data.name ?? ''),
     slug: String(data.slug ?? id),
+    viewKey: typeof data.viewKey === 'string' ? data.viewKey : '',
     editorUids: Array.isArray(data.editorUids) ? [...data.editorUids] : [],
+    pendingInvites: pendingInvitesFromDoc(data),
     pendingInviteEmails: Array.isArray(data.pendingInviteEmails)
       ? [...data.pendingInviteEmails]
       : [],

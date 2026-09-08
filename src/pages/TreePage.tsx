@@ -7,8 +7,10 @@ import { Sheet } from '../components/ui/Sheet'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { ToastRegion } from '../components/ui/ToastRegion'
 import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog'
+import { ViewAccessGate } from '../components/ViewAccessGate'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { useViewAccess } from '../hooks/useViewAccess'
 import { useFamilyMutation } from '../data/use-family-mutation'
 import { auditFamily } from '../domain/audit-family'
 import { actionableIssueCount } from '../features/health/issue-presentation'
@@ -58,6 +60,7 @@ export function TreePage() {
     user?.email ?? null,
     user?.uid ?? null,
   )
+  const { canView } = useViewAccess(family, isEditor)
   const mutation = useFamilyMutation()
   const personDrafts = usePersonDrafts(people)
   const { displayPeople, unsavedCount, hasUnsaved, getDraftForPerson, updateDraft, discardOne, discardAll, removePerson, drafts } =
@@ -467,9 +470,9 @@ export function TreePage() {
 
   if (loading) {
     return (
-      <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading')}</p>
-      </Layout>
+      <ViewAccessGate slug={slug} canView={false} loading>
+        {null}
+      </ViewAccessGate>
     )
   }
 
@@ -531,12 +534,13 @@ export function TreePage() {
   ) : null
 
   return (
-    <Layout
-      familyName={family.name}
-      slug={slug}
-      isEditor={isEditor}
-      adminHref={`/families/${slug}/admin`}
-    >
+    <ViewAccessGate familyName={family.name} slug={slug} canView={canView}>
+      <Layout
+        familyName={family.name}
+        slug={slug}
+        isEditor={isEditor}
+        adminHref={`/families/${slug}/admin`}
+      >
       <ToastRegion
         message={mutation.error ?? connectHint ?? mutation.success}
         tone={mutation.error ? 'error' : 'success'}
@@ -839,5 +843,6 @@ export function TreePage() {
         onSelectPerson={selectPerson}
       />
     </Layout>
+    </ViewAccessGate>
   )
 }

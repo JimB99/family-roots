@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { YourTreesList } from '../components/YourTreesList'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Field, inputClass } from '../components/ui/Field'
 import { useAuth } from '../hooks/useAuth'
-import { createFamily, listFamilies } from '../lib/firestore'
+import { createFamily, listFamiliesForEditor } from '../lib/firestore'
 import { slugify } from '../lib/slug'
 import type { Family } from '../types'
 
@@ -21,11 +22,25 @@ export function AdminHomePage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = () => listFamilies().then(setFamilies)
+  const reload = () => {
+    if (!user) return Promise.resolve()
+    setError(null)
+    return listFamiliesForEditor(user.uid)
+      .then(setFamilies)
+      .catch((err) => {
+        setFamilies([])
+        setError(err instanceof Error ? err.message : t('home.loadFailed', { ns: 'app' }))
+      })
+  }
 
   useEffect(() => {
+    if (!user) {
+      setFamilies([])
+      setLoading(false)
+      return
+    }
     void reload().finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   const handleNameChange = (value: string) => {
     setName(value)
@@ -74,41 +89,20 @@ export function AdminHomePage() {
     )
   }
 
-  const editableFamilies = families.filter((f) => f.editorUids.includes(user.uid))
-
   return (
-    <Layout isEditor={editableFamilies.length > 0}>
+    <Layout isEditor={families.length > 0}>
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('manageTitle', { ns: 'admin' })}</h1>
           <p className="mt-1 text-[var(--text-secondary)]">{t('signedInAs', { ns: 'admin', email: user.email })}</p>
         </div>
 
-        {editableFamilies.length > 0 && (
-          <Card title={t('yourTrees', { ns: 'admin' })}>
-            <ul className="divide-y divide-[var(--border-subtle)]">
-              {editableFamilies.map((family) => (
-                <li
-                  key={family.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
-                >
-                  <span className="font-medium">{family.name}</span>
-                  <div className="flex gap-1">
-                    <Link to={`/families/${family.slug}`}>
-                      <Button variant="ghost" size="sm">
-                        {t('actions.view', { ns: 'common' })}
-                      </Button>
-                    </Link>
-                    <Link to={`/families/${family.slug}/admin`}>
-                      <Button variant="secondary" size="sm">
-                        {t('nav.manage', { ns: 'common' })}
-                      </Button>
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
+        {families.length > 0 && <YourTreesList families={families} />}
+
+        {error && families.length === 0 && (
+          <p className="text-sm text-[var(--color-bloom-600)] dark:text-[var(--color-bloom-400)]" role="alert">
+            {error}
+          </p>
         )}
 
         <Card
@@ -144,23 +138,6 @@ export function AdminHomePage() {
             </Button>
           </form>
         </Card>
-
-        {families.length > editableFamilies.length && (
-          <Card title={t('allPublished', { ns: 'admin' })}>
-            <ul className="space-y-1 text-sm">
-              {families.map((family) => (
-                <li key={family.id}>
-                  <Link
-                    to={`/families/${family.slug}`}
-                    className="text-[var(--accent-strong)] hover:underline"
-                  >
-                    {family.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
       </div>
     </Layout>
   )

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { PasswordInput } from '../components/PasswordInput'
@@ -14,6 +14,11 @@ export function LoginPage() {
   const { t } = useTranslation(['app', 'common', 'errors'])
   const { user, signIn, signUp } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnTo = useMemo(() => {
+    const value = searchParams.get('returnTo')
+    return value && value.startsWith('/') ? value : '/admin'
+  }, [searchParams])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -21,8 +26,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) navigate('/admin', { replace: true })
-  }, [user, navigate])
+    if (user) navigate(returnTo, { replace: true })
+  }, [user, navigate, returnTo])
 
   if (user) return null
 
@@ -33,7 +38,7 @@ export function LoginPage() {
     try {
       if (mode === 'signin') await signIn(email, password)
       else await signUp(email, password)
-      navigate('/admin')
+      navigate(returnTo)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('authFailed', { ns: 'errors' })
       setError(translateFirebaseAuthError(message, t))

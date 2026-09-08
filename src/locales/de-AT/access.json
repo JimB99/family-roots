@@ -1,0 +1,20 @@
+{
+  "viewGate": {
+    "title": "Privater Stammbaum",
+    "description": "Du brauchst den vollständigen Ansichtslink vom Eigentümer, um diesen Stammbaum zu öffnen.",
+    "home": "Zur Startseite"
+  },
+  "join": {
+    "title": "Als Bearbeiter beitreten",
+    "signInDescription": "Melde dich an oder erstelle ein Konto, um diese Einladung anzunehmen und den Stammbaum zu bearbeiten.",
+    "invalidTitle": "Einladung nicht gefunden",
+    "invalidDescription": "Dieser Einladungslink ist ungültig oder wurde bereits verwendet.",
+    "alreadyEditor": "Du hast bereits Bearbeitungszugriff auf diesen Stammbaum.",
+    "openTree": "Stammbaum öffnen",
+    "emailMismatchTitle": "Falsches Konto für diese Einladung",
+    "emailMismatchDescription": "Diese Einladung ist für eine andere E-Mail-Adresse. Du bist angemeldet als {{email}}.",
+    "claiming": "Du wirst als Bearbeiter hinzugefügt…",
+    "working": "Zugriff wird vorbereitet…",
+    "failed": "Einladung konnte nicht angenommen werden"
+  }
+}

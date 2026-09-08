@@ -1,0 +1,20 @@
+{
+  "viewGate": {
+    "title": "Private family tree",
+    "description": "You need the full view link from the family owner to open this tree.",
+    "home": "Back to home"
+  },
+  "join": {
+    "title": "Join as editor",
+    "signInDescription": "Sign in or create an account to accept this invite and edit the family tree.",
+    "invalidTitle": "Invite not found",
+    "invalidDescription": "This invite link is invalid or has already been used.",
+    "alreadyEditor": "You already have edit access to this family tree.",
+    "openTree": "Open tree",
+    "emailMismatchTitle": "Wrong account for this invite",
+    "emailMismatchDescription": "This invite is for a different email address. You are signed in as {{email}}.",
+    "claiming": "Adding you as an editor…",
+    "working": "Preparing your access…",
+    "failed": "Could not accept invite"
+  }
+}

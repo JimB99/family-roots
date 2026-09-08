@@ -2,7 +2,12 @@
   "title": "Roots Atlas",
   "home": {
     "heading": "Family trees",
-    "subtitle": "Browse a family tree, or sign in to build your own.",
+    "subtitle": "Use a private view link to browse a family tree, or sign in to build your own.",
+    "signedInSubtitle": "Open a tree you edit, or create another from manage.",
+    "noTreesYet": "You are signed in but have no family trees yet.",
+    "createFirstTree": "Create your first tree",
+    "createAnother": "Create another tree",
+    "loadFailed": "Could not load your family trees.",
     "emptyTitle": "No family trees yet",
     "emptyDescription": "Sign in to create the first family tree and start adding people.",
     "signInToCreate": "Sign in to create one",

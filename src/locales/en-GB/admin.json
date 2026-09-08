@@ -6,7 +6,6 @@
   "notEditor": "You are signed in but not an editor for this family tree.",
   "askInvite": "Ask the owner to invite {{email}}.",
   "yourTrees": "Your trees",
-  "allPublished": "All published trees",
   "create": {
     "title": "Create a new family tree",
     "description": "Choose a display name and a URL. You become the owner and can invite editors later.",
@@ -67,14 +66,39 @@
       "parentChild": "Parent → child"
     }
   },
+  "access": {
+    "viewLinkTitle": "Share view link",
+    "viewLinkDescription": "Anyone with this link can view the tree without signing in. Keep it private.",
+    "viewLinkAria": "View link URL",
+    "generateViewLink": "Generate view link",
+    "copyViewLink": "Copy view link",
+    "viewLinkCopied": "View link copied.",
+    "regenerateViewLink": "Regenerate view link",
+    "viewLinkRotated": "View link regenerated. Old links no longer work.",
+    "viewLinkFailed": "Could not update view link",
+    "copyFailed": "Could not copy to clipboard"
+  },
   "invites": {
-    "title": "Invite a contributor",
-    "description": "When they create an account with this email, they automatically become an editor.",
-    "emailAria": "Email address to invite",
+    "title": "Invite an editor",
+    "description": "Create a join link. Choose an open link or restrict it to one email address.",
+    "typeOpen": "Open link",
+    "typeEmail": "Email-bound link",
+    "typeLabel": "Invite type",
+    "typeOpenHint": "Anyone with the link can sign in and become an editor.",
+    "typeEmailHint": "Only the invited email address can accept this link.",
+    "emailAria": "Email address for invite",
     "emailPlaceholder": "name@example.com",
-    "send": "Send invite",
-    "success": "Invited {{email}}. They get edit access as soon as they sign up with that email.",
+    "emailRequired": "Enter an email address for an email-bound invite.",
+    "createLink": "Create invite link",
+    "created": "Invite link created.",
+    "linkAria": "Invite link URL",
+    "copyLink": "Copy invite link",
+    "linkCopied": "Invite link copied.",
     "failed": "Invite failed",
-    "pending": "Pending invites"
+    "pending": "Pending invite links",
+    "pendingOpen": "Open invite",
+    "pendingEmail": "Invite for {{email}}",
+    "revoke": "Revoke",
+    "legacyPending": "Legacy email invites"
   }
 }

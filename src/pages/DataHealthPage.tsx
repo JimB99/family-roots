@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
+import { ViewAccessGate } from '../components/ViewAccessGate'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { useViewAccess } from '../hooks/useViewAccess'
 import { auditFamily } from '../domain/audit-family'
 import {
   filtersForCompletenessIssueCode,
@@ -33,6 +35,7 @@ export function DataHealthPage() {
     user?.email ?? null,
     user?.uid ?? null,
   )
+  const { canView } = useViewAccess(family, isEditor)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const report = useMemo(
@@ -50,9 +53,9 @@ export function DataHealthPage() {
 
   if (loading) {
     return (
-      <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading', { ns: 'tree' })}</p>
-      </Layout>
+      <ViewAccessGate slug={slug} canView={false} loading>
+        {null}
+      </ViewAccessGate>
     )
   }
 
@@ -65,7 +68,8 @@ export function DataHealthPage() {
   }
 
   return (
-    <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
+    <ViewAccessGate familyName={family.name} slug={slug} canView={canView}>
+      <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('title', { ns: 'health' })}</h1>
@@ -188,5 +192,6 @@ export function DataHealthPage() {
         </Link>
       </div>
     </Layout>
+    </ViewAccessGate>
   )
 }

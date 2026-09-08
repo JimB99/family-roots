@@ -30,7 +30,7 @@ void i18n
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: [...APP_LOCALES],
     nonExplicitSupportedLngs: false,
-    ns: ['common', 'app', 'person', 'tree', 'people', 'health', 'admin', 'errors', 'kinship'],
+    ns: ['common', 'app', 'person', 'tree', 'people', 'health', 'admin', 'access', 'errors', 'kinship'],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
     detection: {

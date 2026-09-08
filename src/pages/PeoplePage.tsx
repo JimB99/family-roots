@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { Layout } from '../components/Layout'
+import { ViewAccessGate } from '../components/ViewAccessGate'
 import { PeopleToolbar } from '../components/PeopleToolbar'
 import { PersonTile } from '../components/PersonTile'
 import { EmptyState } from '../components/ui/EmptyState'
 import { filterPeople, type PeopleFilters } from '../domain/person-filters'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { useViewAccess } from '../hooks/useViewAccess'
 import { filtersToSearchParams, searchParamsToFilters } from '../lib/people-filter-params'
 import { personNavigationState } from '../lib/person-navigation'
 import {
@@ -39,6 +41,7 @@ export function PeoplePage() {
     user?.email ?? null,
     user?.uid ?? null,
   )
+  const { canView } = useViewAccess(family, isEditor)
 
   const filters = useMemo(() => searchParamsToFilters(searchParams), [searchParams])
   const setFilters = (next: PeopleFilters) => {
@@ -117,9 +120,9 @@ export function PeoplePage() {
 
   if (loading) {
     return (
-      <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading', { ns: 'people' })}</p>
-      </Layout>
+      <ViewAccessGate slug={slug} canView={false} loading>
+        {null}
+      </ViewAccessGate>
     )
   }
 
@@ -134,7 +137,8 @@ export function PeoplePage() {
   }
 
   return (
-    <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
+    <ViewAccessGate familyName={family.name} slug={slug} canView={canView}>
+      <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
       <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
         <PeopleToolbar
           filters={filters}
@@ -192,5 +196,6 @@ export function PeoplePage() {
         </div>
       </div>
     </Layout>
+    </ViewAccessGate>
   )
 }

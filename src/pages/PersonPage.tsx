@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
+import { ViewAccessGate } from '../components/ViewAccessGate'
 import { PersonCard } from '../components/PersonCard'
 import { PersonEditPanel } from '../components/PersonEditPanel'
 import { deletePersonWithRelationships, saveValidatedPerson } from '../data/firestore/family-mutations'
 import { getPersonById } from '../data/firestore/person-repository'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { useViewAccess } from '../hooks/useViewAccess'
 import { readPersonReturn, type PersonNavigationState } from '../lib/person-navigation'
 import type { Person, PersonInput } from '../types'
 
@@ -22,6 +24,7 @@ export function PersonPage() {
     user?.email ?? null,
     user?.uid ?? null,
   )
+  const { canView } = useViewAccess(family, isEditor)
   const [editing, setEditing] = useState(false)
   const [person, setPerson] = useState<Person | null>(null)
   const [personLoading, setPersonLoading] = useState(true)
@@ -100,9 +103,17 @@ export function PersonPage() {
 
   if (loading || personLoading) {
     return (
-      <Layout familyName={family?.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
-        <p className="p-10 text-center text-[var(--text-secondary)]">{t('actions.loading', { ns: 'common' })}</p>
-      </Layout>
+      <ViewAccessGate slug={slug} canView={false} loading familyName={family?.name}>
+        {null}
+      </ViewAccessGate>
+    )
+  }
+
+  if (!canView) {
+    return (
+      <ViewAccessGate slug={slug} canView={false} familyName={family?.name}>
+        {null}
+      </ViewAccessGate>
     )
   }
 

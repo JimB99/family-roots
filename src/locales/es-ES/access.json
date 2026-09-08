@@ -1,0 +1,20 @@
+{
+  "viewGate": {
+    "title": "Árbol familiar privado",
+    "description": "Necesitas el enlace completo del propietario para abrir este árbol.",
+    "home": "Volver al inicio"
+  },
+  "join": {
+    "title": "Unirse como editor",
+    "signInDescription": "Inicia sesión o crea una cuenta para aceptar esta invitación y editar el árbol familiar.",
+    "invalidTitle": "Invitación no encontrada",
+    "invalidDescription": "Este enlace de invitación no es válido o ya se ha usado.",
+    "alreadyEditor": "Ya tienes acceso de edición a este árbol familiar.",
+    "openTree": "Abrir árbol",
+    "emailMismatchTitle": "Cuenta incorrecta para esta invitación",
+    "emailMismatchDescription": "Esta invitación es para otro correo. Has iniciado sesión como {{email}}.",
+    "claiming": "Añadiéndote como editor…",
+    "working": "Preparando tu acceso…",
+    "failed": "No se pudo aceptar la invitación"
+  }
+}

@@ -6,7 +6,6 @@
   "notEditor": "Has iniciado sesión, pero no eres editor de este árbol familiar.",
   "askInvite": "Pide al propietario que invite a {{email}}.",
   "yourTrees": "Tus árboles",
-  "allPublished": "Todos los árboles publicados",
   "create": {
     "title": "Crear un árbol familiar nuevo",
     "description": "Elige un nombre visible y una URL. Serás el propietario y podrás invitar editores después.",
@@ -67,14 +66,39 @@
       "parentChild": "Progenitor → hijo/a"
     }
   },
+  "access": {
+    "viewLinkTitle": "Compartir enlace de vista",
+    "viewLinkDescription": "Cualquiera con este enlace puede ver el árbol sin iniciar sesión. Mantenlo privado.",
+    "viewLinkAria": "URL del enlace de vista",
+    "generateViewLink": "Generar enlace de vista",
+    "copyViewLink": "Copiar enlace de vista",
+    "viewLinkCopied": "Enlace de vista copiado.",
+    "regenerateViewLink": "Regenerar enlace de vista",
+    "viewLinkRotated": "Enlace de vista regenerado. Los enlaces antiguos ya no funcionan.",
+    "viewLinkFailed": "No se pudo actualizar el enlace de vista",
+    "copyFailed": "No se pudo copiar al portapapeles"
+  },
   "invites": {
-    "title": "Invitar a un colaborador",
-    "description": "Cuando cree una cuenta con este correo, se convertirá automáticamente en editor.",
-    "emailAria": "Correo electrónico a invitar",
+    "title": "Invitar a un editor",
+    "description": "Crea un enlace de unión. Elige un enlace abierto o restríngelo a un correo electrónico.",
+    "typeOpen": "Enlace abierto",
+    "typeEmail": "Enlace ligado al correo",
+    "typeLabel": "Tipo de invitación",
+    "typeOpenHint": "Cualquiera con el enlace puede iniciar sesión y convertirse en editor.",
+    "typeEmailHint": "Solo el correo invitado puede aceptar este enlace.",
+    "emailAria": "Correo electrónico para la invitación",
     "emailPlaceholder": "nombre@ejemplo.com",
-    "send": "Enviar invitación",
-    "success": "Invitado {{email}}. Tendrá acceso de edición en cuanto se registre con ese correo.",
+    "emailRequired": "Introduce un correo para una invitación ligada al correo.",
+    "createLink": "Crear enlace de invitación",
+    "created": "Enlace de invitación creado.",
+    "linkAria": "URL del enlace de invitación",
+    "copyLink": "Copiar enlace de invitación",
+    "linkCopied": "Enlace de invitación copiado.",
     "failed": "Error al invitar",
-    "pending": "Invitaciones pendientes"
+    "pending": "Enlaces de invitación pendientes",
+    "pendingOpen": "Invitación abierta",
+    "pendingEmail": "Invitación para {{email}}",
+    "revoke": "Revocar",
+    "legacyPending": "Invitaciones por correo heredadas"
   }
 }

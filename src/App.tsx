@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router-dom'
+import { JoinPage } from './pages/JoinPage'
 import { AdminHomePage } from './pages/AdminHomePage'
 import { FamilyAdminPage } from './pages/FamilyAdminPage'
 import { HomePage } from './pages/HomePage'
@@ -15,6 +16,7 @@ function SearchRedirect() {
 
 const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
+  { path: '/families/:slug/join/:token', element: <JoinPage /> },
   { path: '/families/:slug/health', element: <DataHealthPage /> },
   { path: '/families/:slug', element: <TreePage /> },
   { path: '/families/:slug/people', element: <PeoplePage /> },

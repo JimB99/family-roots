@@ -2,7 +2,12 @@
   "title": "Roots Atlas",
   "home": {
     "heading": "Stammbäume",
-    "subtitle": "Einen Stammbaum durchsuchen oder anmelden, um den eigenen zu erstellen.",
+    "subtitle": "Mit einem privaten Ansichtslink einen Stammbaum öffnen oder anmelden, um den eigenen zu erstellen.",
+    "signedInSubtitle": "Öffne einen Stammbaum, den du bearbeitest, oder erstelle einen weiteren.",
+    "noTreesYet": "Du bist angemeldet, hast aber noch keine Stammbäume.",
+    "createFirstTree": "Ersten Stammbaum erstellen",
+    "createAnother": "Weiteren Stammbaum erstellen",
+    "loadFailed": "Deine Stammbäume konnten nicht geladen werden.",
     "emptyTitle": "Noch keine Stammbäume",
     "emptyDescription": "Melde dich an, um den ersten Stammbaum zu erstellen und Personen hinzuzufügen.",
     "signInToCreate": "Anmelden, um einen zu erstellen",
