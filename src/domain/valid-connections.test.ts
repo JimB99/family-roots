@@ -61,14 +61,14 @@ describe('getConnectionOptions', () => {
     const option = optionFor([parent, child], [parentChild('parent', 'child')], 'child', 'parent', 'child')
 
     expect(option.available).toBe(false)
-    expect(option.reason).toMatch(/already exists/i)
+    expect(option.reasonCode).toBe('DUPLICATE_RELATIONSHIP')
   })
 
   it('blocks reversing an existing parent-child direction', () => {
     const option = optionFor([parent, child], [parentChild('parent', 'child')], 'parent', 'child', 'child')
 
     expect(option.available).toBe(false)
-    expect(option.reason).toMatch(/opposite|cycle/i)
+    expect(option.reasonCode).toBe('CONFLICTING_DIRECTION')
   })
 
   it('blocks a link that would create an ancestry cycle', () => {
@@ -79,7 +79,7 @@ describe('getConnectionOptions', () => {
     const option = optionFor(people, relationships, 'gp', 'child', 'child')
 
     expect(option.available).toBe(false)
-    expect(option.reason).toMatch(/cycle/i)
+    expect(option.reasonCode).toBe('ANCESTRY_CYCLE')
   })
 
   it('blocks a biologically implausible parent-child link', () => {
@@ -89,14 +89,14 @@ describe('getConnectionOptions', () => {
     const option = optionFor([younger, older], [], 'younger', 'older', 'parent')
 
     expect(option.available).toBe(false)
-    expect(option.reason).toMatch(/implausible/i)
+    expect(option.reasonCode).toBe('BIOLOGICALLY_IMPLAUSIBLE_DATE')
   })
 
   it('blocks sibling when the target has no recorded parents', () => {
     const option = optionFor([parent, other], [], 'other', 'parent', 'sibling')
 
     expect(option.available).toBe(false)
-    expect(option.reason).toMatch(/no parents/i)
+    expect(option.reasonCode).toBe('NO_PARENTS_FOR_SIBLING')
   })
 
   it('creates one parent link per parent of the target for siblings', () => {

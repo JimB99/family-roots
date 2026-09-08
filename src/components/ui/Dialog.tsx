@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface DialogProps {
   open: boolean
@@ -11,6 +12,7 @@ interface DialogProps {
 }
 
 export function Dialog({ open, title, description, onClose, children, wide = false }: DialogProps) {
+  const { t } = useTranslation('common')
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -48,7 +50,7 @@ export function Dialog({ open, title, description, onClose, children, wide = fal
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close dialog"
+          aria-label={t('closeDialog')}
           className="-mr-1 rounded-lg p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
         >
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   explainRelationship,
   targetGender,
 } from '../../../domain/kinship/explain-relationship'
-import { formatKinshipLabel } from '../../../domain/kinship/kinship-labels-en'
+import { formatKinshipLabel } from '../../../domain/kinship/kinship-labels'
 import type { FamilyGraph } from '../../../domain/types'
 import { filterPeopleByQuery } from '../../../lib/person-search'
 import { displayName } from '../../../lib/tree'
@@ -33,6 +34,7 @@ export function ExplainRelationshipDialog({
   onClose,
   onSelectPerson,
 }: ExplainRelationshipDialogProps) {
+  const { t, i18n } = useTranslation(['tree', 'common'])
   const [query, setQuery] = useState('')
 
   const target = useMemo(
@@ -57,14 +59,15 @@ export function ExplainRelationshipDialog({
   if (!anchor) return null
 
   const anchorName = displayName(anchor)
+  const locale = i18n.language
 
   const targetLabel =
     explanation && graph && target
-      ? formatKinshipLabel(explanation.fromTo, targetGender(graph, target.id))
+      ? formatKinshipLabel(explanation.fromTo, targetGender(graph, target.id), locale)
       : null
   const anchorLabel =
     explanation && graph
-      ? formatKinshipLabel(explanation.toFrom, targetGender(graph, anchor.id))
+      ? formatKinshipLabel(explanation.toFrom, targetGender(graph, anchor.id), locale)
       : null
 
   const handleClose = () => {
@@ -80,11 +83,15 @@ export function ExplainRelationshipDialog({
   return (
     <Dialog
       open={open}
-      title="Explain relationship"
+      title={t('explain.title', { ns: 'tree' })}
       description={
         target
-          ? `Relationship between ${anchorName} and ${displayName(target)}`
-          : `Search for someone to compare with ${anchorName}, or click a person on the tree.`
+          ? t('explain.between', {
+              ns: 'tree',
+              anchor: anchorName,
+              target: displayName(target),
+            })
+          : t('explain.searchPrompt', { ns: 'tree', anchor: anchorName })
       }
       onClose={handleClose}
       wide
@@ -92,18 +99,18 @@ export function ExplainRelationshipDialog({
       {!target ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            Click another person on the tree, or search below.
+            {t('explain.clickOrSearch', { ns: 'tree' })}
           </p>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or place…"
-            aria-label="Search people to compare"
+            placeholder={t('explain.searchPlaceholder', { ns: 'tree' })}
+            aria-label={t('explain.searchAria', { ns: 'tree' })}
             autoFocus
             className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
           />
           {query.trim() && results.length === 0 && (
-            <p className="text-sm text-[var(--text-muted)]">No matches.</p>
+            <p className="text-sm text-[var(--text-muted)]">{t('empty.noMatches', { ns: 'common' })}</p>
           )}
           {results.length > 0 && (
             <ul className="max-h-64 overflow-y-auto rounded-lg border border-[var(--border-subtle)]">
@@ -120,9 +127,9 @@ export function ExplainRelationshipDialog({
                     <span className="truncate font-medium text-[var(--text-primary)]">
                       {displayName(person)}
                     </span>
-                    {formatPartialDate(person.birth) && (
+                    {formatPartialDate(person.birth, locale) && (
                       <span className="shrink-0 text-[var(--text-muted)]">
-                        {formatPartialDate(person.birth)}
+                        {formatPartialDate(person.birth, locale)}
                       </span>
                     )}
                   </button>
@@ -140,37 +147,41 @@ export function ExplainRelationshipDialog({
               <span className="font-medium text-[var(--text-primary)]">{displayName(target)}</span>
             </p>
             <Button variant="ghost" size="sm" onClick={handleChangeTarget}>
-              Change
+              {t('actions.change', { ns: 'common' })}
             </Button>
           </div>
 
           {explanation && targetLabel && anchorLabel && (
             <div className="space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)]/40 p-4">
               <p className="text-sm text-[var(--text-primary)]">
-                <span className="font-semibold">{displayName(target)}</span>
-                {' is '}
-                <span className="font-semibold">{anchorName}</span>
-                {"'s "}
-                <span className="font-semibold text-[var(--accent-strong)]">{targetLabel}</span>
+                {t('explain.fromTo', {
+                  ns: 'tree',
+                  target: displayName(target),
+                  anchor: anchorName,
+                  label: targetLabel,
+                })}
               </p>
               <p className="text-sm text-[var(--text-primary)]">
-                <span className="font-semibold">{anchorName}</span>
-                {' is '}
-                <span className="font-semibold">{displayName(target)}</span>
-                {"'s "}
-                <span className="font-semibold text-[var(--accent-strong)]">{anchorLabel}</span>
+                {t('explain.fromTo', {
+                  ns: 'tree',
+                  target: anchorName,
+                  anchor: displayName(target),
+                  label: anchorLabel,
+                })}
               </p>
               {explanation.fromTo.category === 'cousin' && (
                 <p className="text-xs text-[var(--text-muted)]">
-                  {formatKinshipLabel(explanation.fromTo, 'unknown')}
+                  {formatKinshipLabel(explanation.fromTo, 'unknown', locale)}
                 </p>
               )}
               {explanation.alternates && explanation.alternates.length > 0 && (
                 <p className="text-xs text-[var(--text-muted)]">
-                  Also related as{' '}
-                  {explanation.alternates
-                    .map((alt) => formatKinshipLabel(alt, targetGender(graph!, target.id)))
-                    .join(', ')}
+                  {t('explain.alsoRelated', {
+                    ns: 'tree',
+                    labels: explanation.alternates
+                      .map((alt) => formatKinshipLabel(alt, targetGender(graph!, target.id), locale))
+                      .join(', '),
+                  })}
                 </p>
               )}
             </div>
@@ -185,7 +196,7 @@ export function ExplainRelationshipDialog({
                 handleClose()
               }}
             >
-              Select {displayName(target)} on tree
+              {t('explain.selectOnTree', { ns: 'tree', name: displayName(target) })}
             </Button>
           )}
         </div>
@@ -193,7 +204,7 @@ export function ExplainRelationshipDialog({
 
       <div className="mt-5">
         <Button variant="secondary" onClick={handleClose}>
-          Close
+          {t('actions.close', { ns: 'common' })}
         </Button>
       </div>
     </Dialog>

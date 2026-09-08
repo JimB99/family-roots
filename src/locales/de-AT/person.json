@@ -1,0 +1,57 @@
+{
+  "fields": {
+    "givenNames": "Vornamen",
+    "familyName": "Familienname",
+    "maidenName": "Geburtsname",
+    "gender": "Geschlecht",
+    "birthDate": "Geburtsdatum",
+    "birthPlace": "Geburtsort",
+    "deathDate": "Sterbedatum",
+    "deathPlace": "Sterbeort",
+    "livingStatus": "Lebensstatus",
+    "photo": "Foto",
+    "notes": "Notizen"
+  },
+  "gender": {
+    "male": "Männlich",
+    "female": "Weiblich",
+    "inter": "Inter",
+    "unknown": "Unbekannt",
+    "deceased": "Verstorben",
+    "ariaGroup": "Geschlecht"
+  },
+  "form": {
+    "sections": {
+      "name": "Name",
+      "gender": "Geschlecht",
+      "life": "Leben",
+      "more": "Mehr"
+    },
+    "hints": {
+      "birthDate": "Verwende 1956, 07.1956 oder 16.07.1956",
+      "deathDate": "Leer lassen, wenn unbekannt"
+    },
+    "savePerson": "Person speichern",
+    "revert": "Zurücksetzen",
+    "revertChanges": "Änderungen zurücksetzen",
+    "removePhoto": "Foto entfernen",
+    "newPerson": "Neue Person"
+  },
+  "relations": {
+    "parents": "Eltern",
+    "partners": "Partner",
+    "children": "Kinder"
+  },
+  "profile": {
+    "editPerson": "Person bearbeiten",
+    "openFullProfile": "Vollständiges Profil öffnen",
+    "deletePerson": "Person löschen",
+    "deleteTitle": "Person löschen",
+    "deleteDescription": "Dies kann nicht rückgängig gemacht werden.",
+    "deleteConfirm": "{{name}} und {{count}} verbundene Beziehung löschen?",
+    "deleteConfirm_other": "{{name}} und {{count}} verbundene Beziehungen löschen?"
+  },
+  "marriage": "Ehe",
+  "parentChild": "Elternteil und Kind",
+  "maidenNameLabel": "geb. {{name}}"
+}

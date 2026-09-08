@@ -1,0 +1,80 @@
+{
+  "manageTitle": "Manage family trees",
+  "signedInAs": "Signed in as {{email}}",
+  "signInToManage": "Sign in to manage family trees.",
+  "signInToManageFamily": "Sign in to manage this family tree.",
+  "notEditor": "You are signed in but not an editor for this family tree.",
+  "askInvite": "Ask the owner to invite {{email}}.",
+  "yourTrees": "Your trees",
+  "allPublished": "All published trees",
+  "create": {
+    "title": "Create a new family tree",
+    "description": "Choose a display name and a URL. You become the owner and can invite editors later.",
+    "displayName": "Display name",
+    "displayPlaceholder": "e.g. The Miller family",
+    "url": "URL",
+    "urlPlaceholder": "miller-family",
+    "button": "Create family tree",
+    "invalidName": "Please enter a valid family name.",
+    "failed": "Could not create family tree"
+  },
+  "family": {
+    "subtitle": "Manage people, links and access.",
+    "overview": "Overview",
+    "viewHealth": "View data health",
+    "stats": {
+      "people": "People",
+      "connections": "Connections",
+      "connectedGroups": "Connected groups",
+      "largestGroup": "Largest group",
+      "largestGroupValue": "{{count}} people",
+      "outsideMain": "Outside main group",
+      "outsideMainValue": "{{count}} people",
+      "uncertainLinks": "Uncertain links"
+    },
+    "peopleCard": {
+      "title": "People",
+      "description": "Add someone new to this family.",
+      "addPerson": "Add person",
+      "closeForm": "Close form"
+    },
+    "connectionCard": {
+      "title": "Add a connection",
+      "description": "For most edits it is quicker to drag one person onto another in the tree.",
+      "typeAria": "Connection type",
+      "parentChild": "Parent → child",
+      "marriage": "Marriage",
+      "firstPersonAria": "First person",
+      "secondPersonAria": "Second person",
+      "partner": "Partner",
+      "parent": "Parent",
+      "child": "Child",
+      "addButton": "Add connection",
+      "failed": "Could not add relationship"
+    },
+    "reviewCard": {
+      "title": "Imported links to review",
+      "description": "Links that came from an import and have not been confirmed yet.",
+      "acceptAll": "Accept all {{count}}",
+      "nothing": "Nothing to review.",
+      "show": "Show",
+      "hide": "Hide",
+      "link_one": "{{count}} link",
+      "link_other": "{{count}} links",
+      "confirm": "Confirm",
+      "delete": "Delete",
+      "marriage": "Marriage",
+      "parentChild": "Parent → child"
+    }
+  },
+  "invites": {
+    "title": "Invite a contributor",
+    "description": "When they create an account with this email, they automatically become an editor.",
+    "emailAria": "Email address to invite",
+    "emailPlaceholder": "name@example.com",
+    "send": "Send invite",
+    "success": "Invited {{email}}. They get edit access as soon as they sign up with that email.",
+    "failed": "Invite failed",
+    "pending": "Pending invites"
+  }
+}

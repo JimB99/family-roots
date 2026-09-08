@@ -1,0 +1,157 @@
+{
+  "loading": "Loading family tree…",
+  "loadingPeople": "Loading people…",
+  "loadingHealth": "Loading data health…",
+  "noPeopleYet": "No people in this family yet.",
+  "layingOut": "Laying out tree…",
+  "layoutFailed": "Could not lay out tree.",
+  "canvasLabel": "Family tree canvas",
+  "canvasHint": "Click a person for details, drag empty space to pan, scroll to zoom.",
+  "explainPickBanner": "Click someone on the tree to compare with {{name}}",
+  "explainPickCanvas": "Click a person to compare with {{name}}.",
+  "search": {
+    "placeholder": "Search people…",
+    "aria": "Search people",
+    "clear": "Clear search"
+  },
+  "edit": {
+    "done": "Done editing",
+    "dropHint": "Drop on a person card to connect"
+  },
+  "menu": {
+    "browseCards": "Browse as cards",
+    "exportSvg": "Export as SVG",
+    "exportPng": "Export as PNG",
+    "downloadBackup": "Download backup",
+    "restoreBackup": "Restore backup…"
+  },
+  "viewport": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitToScreen": "Fit to screen",
+    "resetView": "Reset view",
+    "showAllBranches": "Show all branches"
+  },
+  "inspector": {
+    "linkExisting": "Link existing people",
+    "connectExisting": "Connect to existing person…",
+    "addRelative": "Add a new relative",
+    "parent": "Parent",
+    "partner": "Partner",
+    "child": "Child",
+    "sibling": "Sibling",
+    "addParentFirst": "Add a parent first",
+    "dragHint": "Drag one person onto another, or use Connect to search for someone already in the tree.",
+    "explainRelationship": "Explain relationship with…",
+    "removeLink": "Remove link to {{name}}",
+    "removeConnection": "Remove connection",
+    "removeConnectionDescription": "This only removes the relationship link.",
+    "remove": "Remove",
+    "disconnect": "Disconnect"
+  },
+  "connect": {
+    "title": "Connect to existing person",
+    "startingFrom": "Starting from {{name}}",
+    "searchPlaceholder": "Search by name or place…",
+    "searchAria": "Search people to connect",
+    "isLabel": "{{source}} is…",
+    "dialogAria": "Connect {{source}} to {{target}}",
+    "connectHeader": "Connect",
+    "noValidConnection": "No valid connection between these two people.",
+    "alreadyConnected": "Already connected",
+    "overwriteReplaceParent": "Replace a parent… ({{label}})",
+    "overwriteFixLink": "Fix link… ({{label}})",
+    "overwriteAddMissing": "Add missing links… ({{label}})"
+  },
+  "overwrite": {
+    "replaceParentTitle": "Replace a parent link",
+    "fixConflictTitle": "Fix conflicting link",
+    "completeSiblingTitle": "Complete sibling links",
+    "replaceParentBody": "This person already has two parents. Choose which parent link to remove before adding {{name}} as a parent.",
+    "replaceParentLegend": "Parent link to replace",
+    "removeLabel": "Remove {{name}}",
+    "fixConflictBody": "{{description}}. Remove the existing link and create {{label}}?",
+    "completeSiblingBody": "Some sibling parent links already exist. Add only the missing parent links for {{name}}?"
+  },
+  "unsaved": {
+    "title": "Unsaved changes",
+    "badge": "Unsaved changes",
+    "onePerson": "1 person has unsaved changes",
+    "manyPeople": "{{count}} people have unsaved changes",
+    "body": "Save your edits before leaving, or discard them.",
+    "discardChanges": "Discard changes"
+  },
+  "toast": {
+    "personAdded": "Person added",
+    "personDeleted": "Person deleted",
+    "connected": "Connected",
+    "connectedWith": "Connected: {{label}}",
+    "connectionRemoved": "Connection removed",
+    "connectionUpdated": "Connection updated",
+    "oneSaved": "1 person saved",
+    "manySaved": "{{count}} people saved",
+    "addParent": "Add parent",
+    "addPartner": "Add partner",
+    "addChild": "Add child",
+    "addSibling": "Add sibling",
+    "connectPeople": "Connect people",
+    "disconnect": "Disconnect",
+    "changeConnectionType": "Change connection type"
+  },
+  "mutation": {
+    "operationFailed": "Operation failed",
+    "saveFailed": "Save failed",
+    "deleteFailed": "Delete failed",
+    "removeFailed": "Remove failed",
+    "photoUploadFailed": "Photo upload failed",
+    "layoutFailed": "Tree layout failed",
+    "mergeFailed": "Merge failed",
+    "restoreFailed": "Restore failed"
+  },
+  "explain": {
+    "title": "Explain relationship",
+    "between": "Relationship between {{anchor}} and {{target}}",
+    "searchPrompt": "Search for someone to compare with {{anchor}}, or click a person on the tree.",
+    "clickOrSearch": "Click another person on the tree, or search below.",
+    "searchPlaceholder": "Search by name or place…",
+    "searchAria": "Search people to compare",
+    "fromTo": "{{target}} is {{anchor}}'s {{label}}",
+    "alsoRelated": "Also related as {{labels}}",
+    "selectOnTree": "Select {{name}} on tree"
+  },
+  "backup": {
+    "title": "Restore a backup",
+    "description": "Upload a JSON backup exported from this family.",
+    "fileAria": "Backup file",
+    "summary": "{{people}} people, {{connections}} connections",
+    "exportedAt": "Exported {{date}}",
+    "howApplied": "How should it be applied?",
+    "mergeTitle": "Merge",
+    "mergeDescription": "Update people that already exist and add the rest.",
+    "replaceTitle": "Replace everything",
+    "replaceDescription": "Delete all current people and connections first. This cannot be undone.",
+    "mergeButton": "Merge backup",
+    "replaceButton": "Replace and restore",
+    "wrongFamily": "This backup belongs to a different family.",
+    "invalidFile": "That file could not be read as a backup."
+  },
+  "merge": {
+    "title": "Merge duplicate people",
+    "description": "Pick the record to keep. The other one is removed and its connections move across.",
+    "keepThis": "Keep this one"
+  },
+  "connection": {
+    "childOf": "Child of {{name}}",
+    "parentOf": "Parent of {{name}}",
+    "marriedTo": "Married to {{name}}",
+    "siblingOf": "Sibling of {{name}}"
+  },
+  "relationship": {
+    "importedUnconfirmed": "This link came from an import and has not been confirmed yet.",
+    "changeToMarriage": "Change to marriage",
+    "changeToParentChild": "Change to parent and child",
+    "removeThisConnection": "Remove this connection",
+    "editToChange": "Turn on editing to change this connection.",
+    "removeBetween": "Remove the link between {{name}} and this person?"
+  }
+}

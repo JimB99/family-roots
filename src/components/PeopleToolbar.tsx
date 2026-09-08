@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FieldPresenceFilter, PeopleFilters } from '../domain/person-filters'
 import type { PersonCompletenessField } from '../domain/person-completeness'
 import type { ConnectedComponent, PeopleSortKey } from '../lib/tree'
@@ -109,6 +110,7 @@ export function PeopleToolbar({
   onGenerationChange,
   generationOptions,
 }: PeopleToolbarProps) {
+  const { t } = useTranslation(['people', 'common'])
   const [showMoreFilters, setShowMoreFilters] = useState(false)
   const notesPresence = filters.notesPresence
 
@@ -119,8 +121,8 @@ export function PeopleToolbar({
           <input
             value={filters.text ?? ''}
             onChange={(e) => onFiltersChange({ ...filters, text: e.target.value || undefined })}
-            placeholder="Search names, places, notes…"
-            aria-label="Search names, places, and notes"
+            placeholder={t('toolbar.searchPlaceholder', { ns: 'people' })}
+            aria-label={t('toolbar.searchAria', { ns: 'people' })}
             className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] py-2 pr-3 pl-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition focus:border-[var(--accent)] focus:outline-none"
           />
           <svg
@@ -138,23 +140,23 @@ export function PeopleToolbar({
         <select
           value={sortKey}
           onChange={(e) => onSortChange(e.target.value as PeopleSortKey)}
-          aria-label="Sort people"
+          aria-label={t('toolbar.sortAria', { ns: 'people' })}
           className={selectClass}
         >
-          <option value="name-asc">Name A–Z</option>
-          <option value="birth-year-asc">Birth year (oldest first)</option>
-          <option value="birth-year-desc">Birth year (newest first)</option>
+          <option value="name-asc">{t('toolbar.sortNameAsc', { ns: 'people' })}</option>
+          <option value="birth-year-asc">{t('toolbar.sortBirthAsc', { ns: 'people' })}</option>
+          <option value="birth-year-desc">{t('toolbar.sortBirthDesc', { ns: 'people' })}</option>
         </select>
         <select
           value={branchFilter}
           onChange={(e) => onBranchFilterChange(e.target.value)}
-          aria-label="Filter by connected group"
+          aria-label={t('toolbar.branchAria', { ns: 'people' })}
           className={`${selectClass} max-w-xs`}
         >
-          <option value="all">All groups</option>
+          <option value="all">{t('toolbar.allGroups', { ns: 'people' })}</option>
           {components.map((component, index) => (
             <option key={component.representativeId} value={component.representativeId}>
-              Group {index + 1} ({component.size})
+              {t('counts.group', { ns: 'common', index: index + 1, size: component.size })}
             </option>
           ))}
         </select>
@@ -162,8 +164,8 @@ export function PeopleToolbar({
           value={progenitorId}
           onChange={(e) => onProgenitorChange(e.target.value)}
           className={`${selectClass} max-w-xs`}
-          aria-label="Ancestor used for generation numbering"
-          title="Ancestor used for generation numbering"
+          aria-label={t('toolbar.progenitorAria', { ns: 'people' })}
+          title={t('toolbar.progenitorAria', { ns: 'people' })}
         >
           {people.map((person) => (
             <option key={person.id} value={person.id}>
@@ -177,7 +179,7 @@ export function PeopleToolbar({
           aria-expanded={showMoreFilters}
           className={chipClass(showMoreFilters)}
         >
-          More filters
+          {t('toolbar.moreFilters', { ns: 'people' })}
         </button>
       </div>
 
@@ -186,14 +188,14 @@ export function PeopleToolbar({
           <div className="grid gap-3 sm:grid-cols-2">
             <fieldset className="space-y-2">
               <legend className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                Birth year
+                {t('toolbar.birthYear', { ns: 'people' })}
               </legend>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="From"
-                  aria-label="Birth year from"
+                  placeholder={t('from', { ns: 'common' })}
+                  aria-label={t('toolbar.birthYearFrom', { ns: 'people' })}
                   value={formatYearInput(filters.birthYear?.from)}
                   onChange={(e) =>
                     onFiltersChange(
@@ -207,8 +209,8 @@ export function PeopleToolbar({
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="To"
-                  aria-label="Birth year to"
+                  placeholder={t('to', { ns: 'common' })}
+                  aria-label={t('toolbar.birthYearTo', { ns: 'people' })}
                   value={formatYearInput(filters.birthYear?.to)}
                   onChange={(e) =>
                     onFiltersChange(
@@ -230,20 +232,20 @@ export function PeopleToolbar({
                     )
                   }
                 />
-                Include unknown birth year
+                {t('toolbar.includeUnknownBirth', { ns: 'people' })}
               </label>
             </fieldset>
 
             <fieldset className="space-y-2">
               <legend className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                Death year
+                {t('toolbar.deathYear', { ns: 'people' })}
               </legend>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="From"
-                  aria-label="Death year from"
+                  placeholder={t('from', { ns: 'common' })}
+                  aria-label={t('toolbar.deathYearFrom', { ns: 'people' })}
                   value={formatYearInput(filters.deathYear?.from)}
                   onChange={(e) =>
                     onFiltersChange(
@@ -257,8 +259,8 @@ export function PeopleToolbar({
                 <input
                   type="number"
                   inputMode="numeric"
-                  placeholder="To"
-                  aria-label="Death year to"
+                  placeholder={t('to', { ns: 'common' })}
+                  aria-label={t('toolbar.deathYearTo', { ns: 'people' })}
                   value={formatYearInput(filters.deathYear?.to)}
                   onChange={(e) =>
                     onFiltersChange(
@@ -280,14 +282,14 @@ export function PeopleToolbar({
                     )
                   }
                 />
-                Include unknown death year
+                {t('toolbar.includeUnknownDeath', { ns: 'people' })}
               </label>
             </fieldset>
           </div>
 
           <div className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-              Notes
+              {t('toolbar.notes', { ns: 'people' })}
             </span>
             <div className="flex flex-wrap gap-2">
               <button
@@ -296,7 +298,7 @@ export function PeopleToolbar({
                 aria-pressed={notesPresence === 'has'}
                 className={chipClass(notesPresence === 'has')}
               >
-                Has notes
+                {t('toolbar.hasNotes', { ns: 'people' })}
               </button>
               <button
                 type="button"
@@ -304,14 +306,14 @@ export function PeopleToolbar({
                 aria-pressed={notesPresence === 'missing'}
                 className={chipClass(notesPresence === 'missing')}
               >
-                No notes
+                {t('toolbar.noNotes', { ns: 'people' })}
               </button>
             </div>
           </div>
 
           <div className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-              Data completeness
+              {t('toolbar.dataCompleteness', { ns: 'people' })}
             </span>
             <div className="flex flex-wrap gap-2">
               <button
@@ -320,7 +322,7 @@ export function PeopleToolbar({
                 aria-pressed={hasMissingFieldFilter(filters, 'familyName')}
                 className={chipClass(hasMissingFieldFilter(filters, 'familyName'))}
               >
-                Missing last name
+                {t('toolbar.missingLastName', { ns: 'people' })}
               </button>
               <button
                 type="button"
@@ -328,7 +330,7 @@ export function PeopleToolbar({
                 aria-pressed={hasMissingFieldFilter(filters, 'birth')}
                 className={chipClass(hasMissingFieldFilter(filters, 'birth'))}
               >
-                Missing birth date
+                {t('toolbar.missingBirthDate', { ns: 'people' })}
               </button>
               <button
                 type="button"
@@ -336,7 +338,7 @@ export function PeopleToolbar({
                 aria-pressed={hasMissingFieldFilter(filters, 'maidenName')}
                 className={chipClass(hasMissingFieldFilter(filters, 'maidenName'))}
               >
-                Missing maiden name
+                {t('toolbar.missingMaidenName', { ns: 'people' })}
               </button>
               <button
                 type="button"
@@ -344,7 +346,7 @@ export function PeopleToolbar({
                 aria-pressed={hasMissingFieldFilter(filters, 'birthPlace')}
                 className={chipClass(hasMissingFieldFilter(filters, 'birthPlace'))}
               >
-                Missing birth place
+                {t('toolbar.missingBirthPlace', { ns: 'people' })}
               </button>
             </div>
           </div>
@@ -359,7 +361,7 @@ export function PeopleToolbar({
             aria-pressed={generation === 'all'}
             className={chipClass(generation === 'all')}
           >
-            All generations
+            {t('toolbar.allGenerations', { ns: 'people' })}
           </button>
           {generationOptions.map((gen) => (
             <button
@@ -369,7 +371,7 @@ export function PeopleToolbar({
               aria-pressed={generation === gen}
               className={chipClass(generation === gen)}
             >
-              Gen {gen + 1}
+              {t('toolbar.generation', { ns: 'people', number: gen + 1 })}
             </button>
           ))}
         </div>

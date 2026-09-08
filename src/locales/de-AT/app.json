@@ -1,0 +1,21 @@
+{
+  "title": "Roots Atlas",
+  "home": {
+    "heading": "Stammbäume",
+    "subtitle": "Einen Stammbaum durchsuchen oder anmelden, um den eigenen zu erstellen.",
+    "emptyTitle": "Noch keine Stammbäume",
+    "emptyDescription": "Melde dich an, um den ersten Stammbaum zu erstellen und Personen hinzuzufügen.",
+    "signInToCreate": "Anmelden, um einen zu erstellen",
+    "viewTree": "Stammbaum ansehen"
+  },
+  "login": {
+    "welcomeBack": "Willkommen zurück",
+    "createAccount": "Konto erstellen",
+    "signInSubtitle": "Melde dich an, um deine Stammbäume zu bearbeiten.",
+    "signUpSubtitle": "Beginne, deine Familiengeschichte aufzubauen und zu teilen.",
+    "firebaseHint": "Kopiere .env.example nach .env.local und füge deine Firebase-Schlüssel hinzu.",
+    "createAccountButton": "Konto erstellen",
+    "toggleToSignUp": "Noch kein Konto? Registrieren",
+    "toggleToSignIn": "Bereits ein Konto? Anmelden"
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
@@ -10,6 +11,7 @@ import { slugify } from '../lib/slug'
 import type { Family } from '../types'
 
 export function AdminHomePage() {
+  const { t } = useTranslation(['admin', 'common', 'app'])
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [families, setFamilies] = useState<Family[]>([])
@@ -37,12 +39,12 @@ export function AdminHomePage() {
     setError(null)
     try {
       const finalSlug = slugify(slug || name)
-      if (!finalSlug) throw new Error('Please enter a valid family name.')
+      if (!finalSlug) throw new Error(t('create.invalidName', { ns: 'admin' }))
       await createFamily(name.trim(), finalSlug, user.uid)
       await reload()
       navigate(`/families/${finalSlug}/admin`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create family tree')
+      setError(err instanceof Error ? err.message : t('create.failed', { ns: 'admin' }))
     } finally {
       setCreating(false)
     }
@@ -51,7 +53,7 @@ export function AdminHomePage() {
   if (authLoading || loading) {
     return (
       <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('actions.loading', { ns: 'common' })}</p>
       </Layout>
     )
   }
@@ -60,12 +62,12 @@ export function AdminHomePage() {
     return (
       <Layout>
         <div className="mx-auto max-w-md p-10 text-center">
-          <p>Sign in to manage family trees.</p>
+          <p>{t('signInToManage', { ns: 'admin' })}</p>
           <Link
             to="/login"
             className="mt-4 inline-block text-[var(--accent-strong)] hover:underline"
           >
-            Sign in
+            {t('auth.signIn', { ns: 'common' })}
           </Link>
         </div>
       </Layout>
@@ -78,12 +80,12 @@ export function AdminHomePage() {
     <Layout isEditor={editableFamilies.length > 0}>
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Manage family trees</h1>
-          <p className="mt-1 text-[var(--text-secondary)]">Signed in as {user.email}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('manageTitle', { ns: 'admin' })}</h1>
+          <p className="mt-1 text-[var(--text-secondary)]">{t('signedInAs', { ns: 'admin', email: user.email })}</p>
         </div>
 
         {editableFamilies.length > 0 && (
-          <Card title="Your trees">
+          <Card title={t('yourTrees', { ns: 'admin' })}>
             <ul className="divide-y divide-[var(--border-subtle)]">
               {editableFamilies.map((family) => (
                 <li
@@ -94,12 +96,12 @@ export function AdminHomePage() {
                   <div className="flex gap-1">
                     <Link to={`/families/${family.slug}`}>
                       <Button variant="ghost" size="sm">
-                        View
+                        {t('actions.view', { ns: 'common' })}
                       </Button>
                     </Link>
                     <Link to={`/families/${family.slug}/admin`}>
                       <Button variant="secondary" size="sm">
-                        Manage
+                        {t('nav.manage', { ns: 'common' })}
                       </Button>
                     </Link>
                   </div>
@@ -110,8 +112,8 @@ export function AdminHomePage() {
         )}
 
         <Card
-          title="Create a new family tree"
-          description="Choose a display name and a URL. You become the owner and can invite editors later."
+          title={t('create.title', { ns: 'admin' })}
+          description={t('create.description', { ns: 'admin' })}
         >
           <form onSubmit={(e) => void createTree(e)} className="space-y-4">
             {error && (
@@ -119,32 +121,32 @@ export function AdminHomePage() {
                 {error}
               </p>
             )}
-            <Field label="Display name">
+            <Field label={t('create.displayName', { ns: 'admin' })}>
               <input
                 required
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="e.g. The Miller family"
+                placeholder={t('create.displayPlaceholder', { ns: 'admin' })}
                 className={inputClass}
               />
             </Field>
-            <Field label="URL" hint={slug ? `/families/${slug}` : undefined}>
+            <Field label={t('create.url', { ns: 'admin' })} hint={slug ? `/families/${slug}` : undefined}>
               <input
                 required
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
-                placeholder="miller-family"
+                placeholder={t('create.urlPlaceholder', { ns: 'admin' })}
                 className={inputClass}
               />
             </Field>
             <Button type="submit" disabled={creating}>
-              {creating ? 'Creating…' : 'Create family tree'}
+              {creating ? t('actions.creating', { ns: 'common' }) : t('create.button', { ns: 'admin' })}
             </Button>
           </form>
         </Card>
 
         {families.length > editableFamilies.length && (
-          <Card title="All published trees">
+          <Card title={t('allPublished', { ns: 'admin' })}>
             <ul className="space-y-1 text-sm">
               {families.map((family) => (
                 <li key={family.id}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FamilyGraph } from '../../../domain/types'
 import {
   getConnectionOptions,
@@ -37,6 +38,7 @@ export function ConnectPersonDialog({
   onClose,
   onConnect,
 }: ConnectPersonDialogProps) {
+  const { t, i18n } = useTranslation(['tree', 'common'])
   const [query, setQuery] = useState('')
   const [target, setTarget] = useState<Person | null>(null)
 
@@ -64,6 +66,7 @@ export function ConnectPersonDialog({
   if (!anchor) return null
 
   const anchorName = displayName(anchor)
+  const locale = i18n.language
 
   const handleChoose = async (option: ConnectionOption) => {
     if (!target) return
@@ -80,8 +83,8 @@ export function ConnectPersonDialog({
   return (
     <Dialog
       open={open}
-      title="Connect to existing person"
-      description={`Starting from ${anchorName}`}
+      title={t('connect.title', { ns: 'tree' })}
+      description={t('connect.startingFrom', { ns: 'tree', name: anchorName })}
       onClose={onClose}
       wide
     >
@@ -90,13 +93,13 @@ export function ConnectPersonDialog({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or place…"
-            aria-label="Search people to connect"
+            placeholder={t('connect.searchPlaceholder', { ns: 'tree' })}
+            aria-label={t('connect.searchAria', { ns: 'tree' })}
             autoFocus
             className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
           />
           {query.trim() && results.length === 0 && (
-            <p className="text-sm text-[var(--text-muted)]">No matches.</p>
+            <p className="text-sm text-[var(--text-muted)]">{t('empty.noMatches', { ns: 'common' })}</p>
           )}
           {results.length > 0 && (
             <ul className="max-h-64 overflow-y-auto rounded-lg border border-[var(--border-subtle)]">
@@ -110,9 +113,9 @@ export function ConnectPersonDialog({
                     <span className="truncate font-medium text-[var(--text-primary)]">
                       {displayName(person)}
                     </span>
-                    {formatPartialDate(person.birth) && (
+                    {formatPartialDate(person.birth, locale) && (
                       <span className="shrink-0 text-[var(--text-muted)]">
-                        {formatPartialDate(person.birth)}
+                        {formatPartialDate(person.birth, locale)}
                       </span>
                     )}
                   </button>
@@ -130,11 +133,11 @@ export function ConnectPersonDialog({
               <span className="font-medium text-[var(--text-primary)]">{displayName(target)}</span>
             </p>
             <Button variant="ghost" size="sm" onClick={() => setTarget(null)}>
-              Change
+              {t('actions.change', { ns: 'common' })}
             </Button>
           </div>
           <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
-            {anchorName} is…
+            {t('connect.isLabel', { ns: 'tree', source: anchorName })}
           </p>
           <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)]">
             <ConnectionOptionList
@@ -152,7 +155,7 @@ export function ConnectPersonDialog({
 
       <div className="mt-5">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {t('actions.cancel', { ns: 'common' })}
         </Button>
       </div>
     </Dialog>

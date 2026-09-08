@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { Layout } from '../components/Layout'
@@ -28,6 +29,7 @@ function getColumnCount() {
 }
 
 export function PeoplePage() {
+  const { t } = useTranslation(['people', 'common'])
   const { slug = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
@@ -116,7 +118,7 @@ export function PeoplePage() {
   if (loading) {
     return (
       <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading people…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading', { ns: 'people' })}</p>
       </Layout>
     )
   }
@@ -125,7 +127,7 @@ export function PeoplePage() {
     return (
       <Layout>
         <div className="mx-auto max-w-xl p-10 text-center">
-          <h1 className="text-2xl font-semibold">Family not found</h1>
+          <h1 className="text-2xl font-semibold">{t('notFound.family', { ns: 'common' })}</h1>
         </div>
       </Layout>
     )
@@ -151,14 +153,14 @@ export function PeoplePage() {
         />
 
         <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-2 text-sm text-[var(--text-secondary)]">
-          {filtered.length} of {people.length} people
+          {t('countBar', { ns: 'people', matched: filtered.length, total: people.length })}
         </div>
 
         <div ref={parentRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {filtered.length === 0 ? (
             <EmptyState
-              title="No people match your filters"
-              description="Try clearing the search or switching back to all groups."
+              title={t('emptyTitle', { ns: 'people' })}
+              description={t('emptyDescription', { ns: 'people' })}
             />
           ) : (
             <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>

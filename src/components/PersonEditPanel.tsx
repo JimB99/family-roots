@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { PersonForm, type PersonFormProps } from './PersonForm'
 import { PersonDeleteButton } from './PersonDeleteButton'
 import type { PersonDraft } from '../features/tree/person-drafts'
@@ -32,6 +33,7 @@ function isDraftMode(props: PersonEditPanelProps): props is PersonEditPanelDraft
 }
 
 export function PersonEditPanel(props: PersonEditPanelProps) {
+  const { t } = useTranslation('tree')
   const { person, familyId } = props
   const allowDelete = !isDraftMode(props) && props.allowDelete
   const onDelete = !isDraftMode(props) ? props.onDelete : undefined
@@ -58,7 +60,7 @@ export function PersonEditPanel(props: PersonEditPanelProps) {
   return (
     <>
       {isDraftMode(props) && props.hasUnsaved && (
-        <p className="mb-2 text-xs font-medium text-[var(--color-bloom-600)]">Unsaved changes</p>
+        <p className="mb-2 text-xs font-medium text-[var(--color-bloom-600)]">{t('unsaved.badge')}</p>
       )}
       <PersonForm
         key={`${person.id}-${isDraftMode(props) ? props.formRevision ?? 0 : 0}`}

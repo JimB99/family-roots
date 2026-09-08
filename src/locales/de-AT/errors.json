@@ -1,0 +1,58 @@
+{
+  "authFailed": "Authentifizierung fehlgeschlagen",
+  "auth": {
+    "invalidEmail": "Ungültige E-Mail-Adresse.",
+    "userDisabled": "Dieses Konto wurde deaktiviert.",
+    "userNotFound": "Kein Konto mit dieser E-Mail gefunden.",
+    "wrongPassword": "Falsches Passwort.",
+    "emailInUse": "Ein Konto mit dieser E-Mail existiert bereits.",
+    "weakPassword": "Das Passwort sollte mindestens 6 Zeichen haben.",
+    "tooManyRequests": "Zu viele Versuche. Bitte später erneut versuchen.",
+    "network": "Netzwerkfehler. Überprüfe deine Verbindung."
+  },
+  "domain": {
+    "SELF_RELATIONSHIP": "Eine Person kann nicht mit sich selbst in Beziehung stehen",
+    "MISSING_PERSON": "Beide Endpunkte der Beziehung müssen existieren",
+    "CROSS_FAMILY": "Beziehungsendpunkte müssen zur gleichen Familie gehören",
+    "DUPLICATE_RELATIONSHIP": "Eine gleichwertige Beziehung existiert bereits",
+    "CONFLICTING_DIRECTION": "Die entgegengesetzte Eltern-Kind-Richtung existiert bereits",
+    "ANCESTRY_CYCLE": "Diese Eltern-Kind-Verbindung würde einen Abstammungszyklus erzeugen",
+    "BIOLOGICALLY_IMPLAUSIBLE_DATE": "Geburtsdaten von Elternteil und Kind sind unplausibel",
+    "INVALID_DATE": "Unbekannte Datumspräzision ist für die Speicherung nicht gültig",
+    "INVALID_DATE_YEAR": "Ungültiges Jahr: {{year}}",
+    "INVALID_DATE_MONTH": "Ungültiger Monat: {{month}}",
+    "INVALID_DATE_DAY": "Ungültiger Tag: {{day}} für {{year}}-{{month}}",
+    "INVALID_DATE_FORMAT": "Unbekanntes Datumsformat: {{value}}",
+    "INVALID_RELATIONSHIP_TYPE": "Diese Verbindung ist nicht erlaubt",
+    "CANNOT_OVERWRITE": "Diese Verbindung kann nicht überschrieben werden",
+    "CHOOSE_PARENT_TO_REPLACE": "Wähle eine bestehende Eltern-Verbindung zum Ersetzen",
+    "ANCHOR_NOT_FOUND": "Ankerperson nicht gefunden",
+    "SIBLING_NO_PARENTS": "Geschwister kann nicht ohne bekannte Eltern hinzugefügt werden",
+    "RELATIONSHIP_NOT_FOUND": "Beziehung nicht gefunden",
+    "MERGE_TARGETS_MISSING": "Zusammenführungsziele müssen existieren",
+    "CANNOT_MOVE_FAMILY": "Beziehung kann nicht in eine andere Familie verschoben werden"
+  },
+  "connection": {
+    "NO_PARENTS_FOR_SIBLING": "Für diese Person sind noch keine Eltern erfasst",
+    "NOT_POSSIBLE": "Für dieses Paar nicht möglich",
+    "DUPLICATE_EXISTS": "Eine gleichwertige Beziehung existiert bereits",
+    "TWO_PARENTS": "Diese Person hat bereits zwei Elternteile",
+    "PARTIAL_SIBLING": "Einige Geschwister-Eltern-Verbindungen existieren bereits",
+    "OPPOSITE_DIRECTION": "Die entgegengesetzte Eltern-Kind-Richtung existiert bereits"
+  },
+  "backup": {
+    "NOT_OBJECT": "Backup ist kein Objekt",
+    "UNSUPPORTED_VERSION": "Nicht unterstützte Backup-Schemaversion",
+    "MISSING_SECTIONS": "Backup enthält fehlende Pflichtabschnitte",
+    "CROSS_FAMILY_PEOPLE": "Backup enthält Personen aus einer anderen Familie",
+    "CROSS_FAMILY_RELATIONSHIPS": "Backup enthält Beziehungen aus einer anderen Familie"
+  },
+  "duplicate": {
+    "reason": "Namen {{percent}}% ähnlich{{birthSuffix}}",
+    "birthClose": ", Geburtsjahre nah beieinander"
+  },
+  "export": {
+    "rasterizeFailed": "Stammbaum konnte nicht rasterisiert werden",
+    "canvasUnavailable": "Zeichenfläche nicht verfügbar"
+  }
+}

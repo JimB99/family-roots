@@ -1,5 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
+import { LanguageSwitcher } from './ui/LanguageSwitcher'
 import { ThemeToggle } from './ui/ThemeToggle'
 import { TreeMark } from './ui/TreeMark'
 
@@ -25,6 +27,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Layout({ children, familyName, slug, isEditor, adminHref = '/admin' }: LayoutProps) {
   const { user, loading, signOut } = useAuth()
+  const { t } = useTranslation('common')
 
   return (
     <div className="flex min-h-svh flex-col bg-[var(--surface-page)] text-[var(--text-primary)]">
@@ -32,7 +35,7 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
         href="#main-content"
         className="sr-only z-50 focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded-lg focus:border focus:border-[var(--border-strong)] focus:bg-[var(--surface-raised)] focus:px-3 focus:py-2"
       >
-        Skip to content
+        {t('skipToContent')}
       </a>
       <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/85 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5">
@@ -42,7 +45,7 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
               className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-[var(--text-primary)]"
             >
               <TreeMark className="h-7 w-7 text-[var(--accent)]" />
-              <span className="hidden sm:inline">Roots Atlas</span>
+              <span className="hidden sm:inline">{t('appName')}</span>
             </Link>
             {familyName && slug && (
               <>
@@ -54,13 +57,13 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
                     {familyName}
                   </span>
                   <NavLink to={`/families/${slug}`} end className={navLinkClass}>
-                    Tree
+                    {t('nav.tree')}
                   </NavLink>
                   <NavLink to={`/families/${slug}/people`} className={navLinkClass}>
-                    People
+                    {t('nav.people')}
                   </NavLink>
                   <NavLink to={`/families/${slug}/health`} className={navLinkClass}>
-                    Health
+                    {t('nav.health')}
                   </NavLink>
                 </nav>
               </>
@@ -69,9 +72,10 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
           <div className="flex shrink-0 items-center gap-1.5 text-sm">
             {isEditor && (
               <Link to={adminHref} className={navLinkClass({ isActive: false })}>
-                Manage
+                {t('nav.manage')}
               </Link>
             )}
+            <LanguageSwitcher />
             <ThemeToggle />
             {loading ? (
               <span className="w-16" aria-hidden />
@@ -81,19 +85,19 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
                   className="hidden text-[var(--text-muted)] sm:inline"
                   title={user.email ?? undefined}
                 >
-                  {user.email ? truncateEmail(user.email) : 'Signed in'}
+                  {user.email ? truncateEmail(user.email) : t('auth.signedIn')}
                 </span>
                 <button
                   type="button"
                   onClick={() => void signOut()}
                   className="rounded-lg px-2.5 py-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
                 >
-                  Sign out
+                  {t('auth.signOut')}
                 </button>
               </>
             ) : (
               <Link to="/login" className={navLinkClass({ isActive: false })}>
-                Sign in
+                {t('auth.signIn')}
               </Link>
             )}
           </div>

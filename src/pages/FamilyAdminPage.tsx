@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { AdminInvites } from '../components/AdminInvites'
 import { PersonForm } from '../components/PersonForm'
@@ -22,6 +23,7 @@ const selectClass =
   'rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm text-[var(--text-primary)] transition focus:border-[var(--accent)] focus:outline-none'
 
 export function FamilyAdminPage() {
+  const { t } = useTranslation(['admin', 'common'])
   const { slug = '' } = useParams()
   const { user, loading: authLoading } = useAuth()
   const { family, people, relationships, loading, isEditor, reload } = useFamily(
@@ -55,7 +57,7 @@ export function FamilyAdminPage() {
   if (authLoading || loading) {
     return (
       <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('actions.loading', { ns: 'common' })}</p>
       </Layout>
     )
   }
@@ -64,9 +66,9 @@ export function FamilyAdminPage() {
     return (
       <Layout>
         <div className="mx-auto max-w-md p-10 text-center">
-          <p>Sign in to manage this family tree.</p>
+          <p>{t('signInToManageFamily', { ns: 'admin' })}</p>
           <Link to="/login" className="mt-3 inline-block text-[var(--accent-strong)] hover:underline">
-            Sign in
+            {t('auth.signIn', { ns: 'common' })}
           </Link>
         </div>
       </Layout>
@@ -77,9 +79,9 @@ export function FamilyAdminPage() {
     return (
       <Layout>
         <div className="mx-auto max-w-xl p-10 text-center">
-          <h1 className="text-2xl font-semibold">Family tree not found</h1>
+          <h1 className="text-2xl font-semibold">{t('notFound.familyTree', { ns: 'common' })}</h1>
           <Link to="/admin" className="mt-4 inline-block text-[var(--accent-strong)] hover:underline">
-            Back to manage
+            {t('back.manage', { ns: 'common' })}
           </Link>
         </div>
       </Layout>
@@ -90,9 +92,9 @@ export function FamilyAdminPage() {
     return (
       <Layout familyName={family.name} slug={slug}>
         <div className="mx-auto max-w-xl p-10 text-center">
-          <p>You are signed in but not an editor for this family tree.</p>
+          <p>{t('notEditor', { ns: 'admin' })}</p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Ask the owner to invite <strong>{user.email}</strong>.
+            {t('askInvite', { ns: 'admin', email: user.email })}
           </p>
         </div>
       </Layout>
@@ -125,17 +127,23 @@ export function FamilyAdminPage() {
       setRelForm({ type: relForm.type, personAId: '', personBId: '' })
       await reload()
     } catch (err) {
-      setRelError(err instanceof Error ? err.message : 'Could not add relationship')
+      setRelError(err instanceof Error ? err.message : t('family.connectionCard.failed', { ns: 'admin' }))
     }
   }
 
   const stats = [
-    { label: 'People', value: `${people.length}` },
-    { label: 'Connections', value: `${relationships.length}` },
-    { label: 'Connected groups', value: `${components.length}` },
-    { label: 'Largest group', value: `${largestBranch} people` },
-    { label: 'Outside main group', value: `${treeStats.orphanCount} people` },
-    { label: 'Uncertain links', value: `${review.length}` },
+    { label: t('family.stats.people', { ns: 'admin' }), value: `${people.length}` },
+    { label: t('family.stats.connections', { ns: 'admin' }), value: `${relationships.length}` },
+    { label: t('family.stats.connectedGroups', { ns: 'admin' }), value: `${components.length}` },
+    {
+      label: t('family.stats.largestGroup', { ns: 'admin' }),
+      value: t('family.stats.largestGroupValue', { ns: 'admin', count: largestBranch }),
+    },
+    {
+      label: t('family.stats.outsideMain', { ns: 'admin' }),
+      value: t('family.stats.outsideMainValue', { ns: 'admin', count: treeStats.orphanCount }),
+    },
+    { label: t('family.stats.uncertainLinks', { ns: 'admin' }), value: `${review.length}` },
   ]
 
   return (
@@ -144,21 +152,21 @@ export function FamilyAdminPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{family.name}</h1>
-            <p className="mt-1 text-[var(--text-secondary)]">Manage people, links and access.</p>
+            <p className="mt-1 text-[var(--text-secondary)]">{t('family.subtitle', { ns: 'admin' })}</p>
           </div>
           <Link to="/admin">
             <Button variant="ghost" size="sm">
-              All family trees
+              {t('back.allFamilies', { ns: 'common' })}
             </Button>
           </Link>
         </div>
 
         <Card
-          title="Overview"
+          title={t('family.overview', { ns: 'admin' })}
           actions={
             <Link to={`/families/${slug}/health`}>
               <Button variant="secondary" size="sm">
-                View data health
+                {t('family.viewHealth', { ns: 'admin' })}
               </Button>
             </Link>
           }
@@ -178,15 +186,17 @@ export function FamilyAdminPage() {
         <AdminInvites family={family} onUpdated={() => void reload()} />
 
         <Card
-          title="People"
-          description="Add someone new to this family."
+          title={t('family.peopleCard.title', { ns: 'admin' })}
+          description={t('family.peopleCard.description', { ns: 'admin' })}
           actions={
             <Button
               variant={showPersonForm ? 'secondary' : 'primary'}
               size="sm"
               onClick={() => setShowPersonForm((v) => !v)}
             >
-              {showPersonForm ? 'Close form' : 'Add person'}
+              {showPersonForm
+                ? t('family.peopleCard.closeForm', { ns: 'admin' })
+                : t('family.peopleCard.addPerson', { ns: 'admin' })}
             </Button>
           }
         >
@@ -200,8 +210,8 @@ export function FamilyAdminPage() {
         </Card>
 
         <Card
-          title="Add a connection"
-          description="For most edits it is quicker to drag one person onto another in the tree."
+          title={t('family.connectionCard.title', { ns: 'admin' })}
+          description={t('family.connectionCard.description', { ns: 'admin' })}
         >
           <form onSubmit={(e) => void addRelationship(e)} className="grid gap-3 sm:grid-cols-3">
             <select
@@ -209,20 +219,25 @@ export function FamilyAdminPage() {
               onChange={(e) =>
                 setRelForm((f) => ({ ...f, type: e.target.value as 'parent_child' | 'spouse' }))
               }
-              aria-label="Connection type"
+              aria-label={t('family.connectionCard.typeAria', { ns: 'admin' })}
               className={selectClass}
             >
-              <option value="parent_child">Parent → child</option>
-              <option value="spouse">Marriage</option>
+              <option value="parent_child">{t('family.connectionCard.parentChild', { ns: 'admin' })}</option>
+              <option value="spouse">{t('family.connectionCard.marriage', { ns: 'admin' })}</option>
             </select>
             <select
               required
               value={relForm.personAId}
               onChange={(e) => setRelForm((f) => ({ ...f, personAId: e.target.value }))}
-              aria-label="First person"
+              aria-label={t('family.connectionCard.firstPersonAria', { ns: 'admin' })}
               className={selectClass}
             >
-              <option value="">{relForm.type === 'spouse' ? 'Partner' : 'Parent'}…</option>
+              <option value="">
+                {relForm.type === 'spouse'
+                  ? t('family.connectionCard.partner', { ns: 'admin' })
+                  : t('family.connectionCard.parent', { ns: 'admin' })}
+                …
+              </option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {displayName(p)}
@@ -233,10 +248,15 @@ export function FamilyAdminPage() {
               required
               value={relForm.personBId}
               onChange={(e) => setRelForm((f) => ({ ...f, personBId: e.target.value }))}
-              aria-label="Second person"
+              aria-label={t('family.connectionCard.secondPersonAria', { ns: 'admin' })}
               className={selectClass}
             >
-              <option value="">{relForm.type === 'spouse' ? 'Partner' : 'Child'}…</option>
+              <option value="">
+                {relForm.type === 'spouse'
+                  ? t('family.connectionCard.partner', { ns: 'admin' })
+                  : t('family.connectionCard.child', { ns: 'admin' })}
+                …
+              </option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
                   {displayName(p)}
@@ -253,15 +273,15 @@ export function FamilyAdminPage() {
             )}
             <div className="sm:col-span-3">
               <Button type="submit" variant="secondary" size="sm">
-                Add connection
+                {t('family.connectionCard.addButton', { ns: 'admin' })}
               </Button>
             </div>
           </form>
         </Card>
 
         <Card
-          title="Imported links to review"
-          description="Links that came from an import and have not been confirmed yet."
+          title={t('family.reviewCard.title', { ns: 'admin' })}
+          description={t('family.reviewCard.description', { ns: 'admin' })}
           actions={
             review.length > 0 ? (
               <Button
@@ -276,17 +296,20 @@ export function FamilyAdminPage() {
                     .finally(() => setConfirmingAll(false))
                 }}
               >
-                {confirmingAll ? 'Accepting…' : `Accept all ${review.length}`}
+                {confirmingAll
+                  ? t('actions.accepting', { ns: 'common' })
+                  : t('family.reviewCard.acceptAll', { ns: 'admin', count: review.length })}
               </Button>
             ) : null
           }
         >
           {review.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">Nothing to review.</p>
+            <p className="text-sm text-[var(--text-muted)]">{t('family.reviewCard.nothing', { ns: 'admin' })}</p>
           ) : (
             <>
               <Button variant="ghost" size="sm" onClick={() => setReviewOpen((v) => !v)}>
-                {reviewOpen ? 'Hide' : 'Show'} {review.length} link{review.length === 1 ? '' : 's'}
+                {reviewOpen ? t('family.reviewCard.hide', { ns: 'admin' }) : t('family.reviewCard.show', { ns: 'admin' })}{' '}
+                {t('family.reviewCard.link', { ns: 'admin', count: review.length })}
               </Button>
               {reviewOpen && (
                 <ul className="mt-3 space-y-2">
@@ -300,7 +323,9 @@ export function FamilyAdminPage() {
                       >
                         <span>
                           <strong className="font-medium">
-                            {rel.type === 'spouse' ? 'Marriage' : 'Parent → child'}
+                            {rel.type === 'spouse'
+                              ? t('family.reviewCard.marriage', { ns: 'admin' })
+                              : t('family.reviewCard.parentChild', { ns: 'admin' })}
                           </strong>
                           {': '}
                           {a ? displayName(a) : rel.personAId} ↔ {b ? displayName(b) : rel.personBId}
@@ -311,14 +336,14 @@ export function FamilyAdminPage() {
                             size="sm"
                             onClick={() => void confirmRelationship(rel.id).then(reload)}
                           >
-                            Confirm
+                            {t('family.reviewCard.confirm', { ns: 'admin' })}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => void deleteRelationship(rel.id).then(reload)}
                           >
-                            Delete
+                            {t('family.reviewCard.delete', { ns: 'admin' })}
                           </Button>
                         </span>
                       </li>

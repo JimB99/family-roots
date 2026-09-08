@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { PasswordInput } from '../components/PasswordInput'
 import { Button } from '../components/ui/Button'
 import { Field, inputClass } from '../components/ui/Field'
 import { TreeMark } from '../components/ui/TreeMark'
 import { useAuth } from '../hooks/useAuth'
+import { translateFirebaseAuthError } from '../i18n/translate-domain'
 import { firebaseReady } from '../lib/firebase'
 
 export function LoginPage() {
+  const { t } = useTranslation(['app', 'common', 'errors'])
   const { user, signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -32,7 +35,8 @@ export function LoginPage() {
       else await signUp(email, password)
       navigate('/admin')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
+      const message = err instanceof Error ? err.message : t('authFailed', { ns: 'errors' })
+      setError(translateFirebaseAuthError(message, t))
     } finally {
       setLoading(false)
     }
@@ -44,19 +48,16 @@ export function LoginPage() {
         <div className="text-center">
           <TreeMark className="mx-auto h-12 w-12 text-[var(--accent)]" />
           <h1 className="mt-4 text-2xl font-semibold">
-            {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+            {mode === 'signin' ? t('login.welcomeBack') : t('login.createAccount')}
           </h1>
           <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-            {mode === 'signin'
-              ? 'Sign in to edit your family trees.'
-              : 'Start building and sharing your family history.'}
+            {mode === 'signin' ? t('login.signInSubtitle') : t('login.signUpSubtitle')}
           </p>
         </div>
 
         {!firebaseReady && (
           <p className="mt-5 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-sunken)] p-3 text-sm text-[var(--text-secondary)]">
-            Copy <code>.env.example</code> to <code>.env.local</code> and add your Firebase web app
-            keys.
+            {t('login.firebaseHint')}
           </p>
         )}
 
@@ -72,7 +73,7 @@ export function LoginPage() {
               {error}
             </p>
           )}
-          <Field label="Email">
+          <Field label={t('auth.email', { ns: 'common' })}>
             <input
               type="email"
               required
@@ -82,11 +83,15 @@ export function LoginPage() {
               className={inputClass}
             />
           </Field>
-          <Field label="Password">
+          <Field label={t('auth.password', { ns: 'common' })}>
             <PasswordInput value={password} onChange={setPassword} required minLength={6} />
           </Field>
           <Button type="submit" disabled={loading || !firebaseReady} className="w-full">
-            {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {loading
+              ? t('actions.pleaseWait', { ns: 'common' })
+              : mode === 'signin'
+                ? t('auth.signIn', { ns: 'common' })
+                : t('login.createAccountButton')}
           </Button>
         </form>
 
@@ -95,7 +100,7 @@ export function LoginPage() {
           onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
           className="mt-4 w-full text-sm text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
         >
-          {mode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+          {mode === 'signin' ? t('login.toggleToSignUp') : t('login.toggleToSignIn')}
         </button>
       </div>
     </Layout>

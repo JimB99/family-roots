@@ -1,0 +1,57 @@
+{
+  "fields": {
+    "givenNames": "Given names",
+    "familyName": "Family name",
+    "maidenName": "Maiden name",
+    "gender": "Gender",
+    "birthDate": "Birth date",
+    "birthPlace": "Birth place",
+    "deathDate": "Death date",
+    "deathPlace": "Death place",
+    "livingStatus": "Living status",
+    "photo": "Photo",
+    "notes": "Notes"
+  },
+  "gender": {
+    "male": "Male",
+    "female": "Female",
+    "inter": "Inter",
+    "unknown": "Unknown",
+    "deceased": "Deceased",
+    "ariaGroup": "Gender"
+  },
+  "form": {
+    "sections": {
+      "name": "Name",
+      "gender": "Gender",
+      "life": "Life",
+      "more": "More"
+    },
+    "hints": {
+      "birthDate": "Use 1956, 07.1956, or 16.07.1956",
+      "deathDate": "Leave empty if unknown"
+    },
+    "savePerson": "Save person",
+    "revert": "Revert",
+    "revertChanges": "Revert changes",
+    "removePhoto": "Remove photo",
+    "newPerson": "New person"
+  },
+  "relations": {
+    "parents": "Parents",
+    "partners": "Partners",
+    "children": "Children"
+  },
+  "profile": {
+    "editPerson": "Edit person",
+    "openFullProfile": "Open full profile",
+    "deletePerson": "Delete person",
+    "deleteTitle": "Delete person",
+    "deleteDescription": "This cannot be undone.",
+    "deleteConfirm": "Delete {{name}} and {{count}} connected relationship?",
+    "deleteConfirm_other": "Delete {{name}} and {{count}} connected relationships?"
+  },
+  "marriage": "Marriage",
+  "parentChild": "Parent and child",
+  "maidenNameLabel": "née {{name}}"
+}

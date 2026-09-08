@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { buildFamilyGraph } from '../../domain/family-graph'
 import {
   childIdsOfUnion,
@@ -95,6 +96,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   onConnect,
   onConnectDropMiss,
 }: TreeWorkspaceProps) {
+  const { t, i18n } = useTranslation(['tree', 'common'])
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<SVGGElement>(null)
   const ghostRef = useRef<SVGGElement>(null)
@@ -166,8 +168,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   }, [structureKey])
 
   const layout = useMemo(
-    () => applyDisplayPatches(structuralLayout, displayPeopleById),
-    [structuralLayout, displayPeopleById],
+    () => applyDisplayPatches(structuralLayout, displayPeopleById, i18n.language),
+    [structuralLayout, displayPeopleById, i18n.language],
   )
   const unionMeta = useMemo(() => {
     const childCountByUnion = new Map<string, number>()
@@ -651,7 +653,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   if (layoutPeople.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-6 text-center text-[var(--text-secondary)]">
-        No people in this family yet.
+        {t('noPeopleYet', { ns: 'tree' })}
       </div>
     )
   }
@@ -659,7 +661,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   if (layout.nodes.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-[var(--text-secondary)]">
-        <p>{layoutError ? 'Could not lay out tree.' : 'Laying out tree…'}</p>
+        <p>{layoutError ? t('layoutFailed', { ns: 'tree' }) : t('layingOut', { ns: 'tree' })}</p>
         {layoutError && <p className="text-sm text-[var(--color-bloom-600)]">{layoutError}</p>}
       </div>
     )
@@ -679,8 +681,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       role="application"
       aria-label={
         explainPickAnchorId
-          ? `Family tree canvas. Click a person to compare with ${explainPickAnchorName ?? 'the selected person'}.`
-          : 'Family tree canvas. Click a person for details, drag empty space to pan, scroll to zoom.'
+          ? `${t('canvasLabel', { ns: 'tree' })} ${t('explainPickCanvas', { ns: 'tree', name: explainPickAnchorName ?? t('unknown', { ns: 'common' }) })}`
+          : `${t('canvasLabel', { ns: 'tree' })} ${t('canvasHint', { ns: 'tree' })}`
       }
     >
       {explainPickAnchorId && explainPickAnchorName && (
@@ -689,8 +691,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
           onPointerDown={(event) => event.stopPropagation()}
         >
           <span>
-            Click someone on the tree to compare with{' '}
-            <span className="font-semibold">{explainPickAnchorName}</span>
+            {t('explainPickBanner', { ns: 'tree', name: explainPickAnchorName })}
           </span>
           {onExplainPickSearch && (
             <button
@@ -698,7 +699,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
               onClick={onExplainPickSearch}
               className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
             >
-              Search by name
+              {t('explain.clickOrSearch', { ns: 'tree' })}
             </button>
           )}
           {onExplainPickCancel && (
@@ -707,7 +708,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
               onClick={onExplainPickCancel}
               className="rounded-lg px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
             >
-              Cancel
+              {t('actions.cancel', { ns: 'common' })}
             </button>
           )}
         </div>
@@ -727,8 +728,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                 containerRef.current?.clientHeight ?? 0,
               )
             }
-            aria-label="Zoom in"
-            title="Zoom in"
+            aria-label={t('viewport.zoomIn', { ns: 'tree' })}
+            title={t('viewport.zoomIn', { ns: 'tree' })}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -744,8 +745,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                 containerRef.current?.clientHeight ?? 0,
               )
             }
-            aria-label="Zoom out"
-            title="Zoom out"
+            aria-label={t('viewport.zoomOut', { ns: 'tree' })}
+            title={t('viewport.zoomOut', { ns: 'tree' })}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M4 10h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -761,8 +762,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                 containerRef.current?.clientHeight ?? 0,
               )
             }
-            aria-label="Fit tree to screen"
-            title="Fit to screen"
+            aria-label={t('viewport.fitToScreen', { ns: 'tree' })}
+            title={t('viewport.fitToScreen', { ns: 'tree' })}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
@@ -774,7 +775,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
               />
             </svg>
           </button>
-          <button type="button" className={controlClass} onClick={reset} aria-label="Reset view" title="Reset view">
+          <button type="button" className={controlClass} onClick={reset} aria-label={t('viewport.resetView', { ns: 'tree' })} title={t('viewport.resetView', { ns: 'tree' })}>
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
                 d="M4 10a6 6 0 106-6M4 4v3.5h3.5"
@@ -790,8 +791,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
               type="button"
               className={controlClass}
               onClick={() => setCollapsedUnionIds(new Set())}
-              aria-label="Show all branches"
-              title="Show all branches"
+              aria-label={t('viewport.showAllBranches', { ns: 'tree' })}
+              title={t('viewport.showAllBranches', { ns: 'tree' })}
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path

@@ -1,0 +1,21 @@
+{
+  "title": "Roots Atlas",
+  "home": {
+    "heading": "Family trees",
+    "subtitle": "Browse a family tree, or sign in to build your own.",
+    "emptyTitle": "No family trees yet",
+    "emptyDescription": "Sign in to create the first family tree and start adding people.",
+    "signInToCreate": "Sign in to create one",
+    "viewTree": "View tree"
+  },
+  "login": {
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create your account",
+    "signInSubtitle": "Sign in to edit your family trees.",
+    "signUpSubtitle": "Start building and sharing your family history.",
+    "firebaseHint": "Copy .env.example to .env.local and add your Firebase web app keys.",
+    "createAccountButton": "Create account",
+    "toggleToSignUp": "Need an account? Sign up",
+    "toggleToSignIn": "Already have an account? Sign in"
+  }
+}

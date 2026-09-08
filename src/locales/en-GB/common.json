@@ -1,0 +1,92 @@
+{
+  "appName": "Roots Atlas",
+  "skipToContent": "Skip to content",
+  "nav": {
+    "tree": "Tree",
+    "people": "People",
+    "health": "Health",
+    "manage": "Manage"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signedIn": "Signed in",
+    "email": "Email",
+    "password": "Password"
+  },
+  "actions": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "change": "Change",
+    "loading": "Loading…",
+    "pleaseWait": "Please wait…",
+    "view": "View",
+    "more": "More",
+    "discard": "Discard",
+    "keepEditing": "Keep editing",
+    "undo": "Undo",
+    "redo": "Redo",
+    "connecting": "Connecting…",
+    "restoring": "Restoring…",
+    "creating": "Creating…",
+    "accepting": "Accepting…"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "theme": {
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "counts": {
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "peopleOf_one": "{{matched}} of {{total}} person",
+    "peopleOf_other": "{{matched}} of {{total}} people",
+    "unsaved_one": "{{count}} unsaved change",
+    "unsaved_other": "{{count}} unsaved changes",
+    "connections_one": "{{count}} connection",
+    "connections_other": "{{count}} connections",
+    "relationships_one": "{{count}} connected relationship",
+    "relationships_other": "{{count}} connected relationships",
+    "toReview_one": "{{count}} to review",
+    "toReview_other": "{{count}} to review",
+    "andMore_one": "and {{count}} more",
+    "andMore_other": "and {{count}} more",
+    "group": "Group {{index}} ({{size}})"
+  },
+  "notFound": {
+    "family": "Family not found",
+    "familyTree": "Family tree not found",
+    "familySlug": "The family \"{{slug}}\" does not exist yet.",
+    "person": "Person not found in this family."
+  },
+  "back": {
+    "tree": "Back to tree",
+    "people": "Back to People",
+    "health": "Back to Health",
+    "manage": "Back to manage",
+    "allFamilies": "All family trees"
+  },
+  "empty": {
+    "noMatches": "No matches."
+  },
+  "from": "From",
+  "to": "To",
+  "unknown": "Unknown",
+  "unknownParent": "Unknown parent",
+  "datesUnknown": "Dates unknown",
+  "deceased": "Deceased",
+  "noneRecorded": "None recorded",
+  "closeMenu": "Close menu",
+  "closeDialog": "Close dialog",
+  "closePanel": "Close panel",
+  "preview": "Preview",
+  "details": "Details"
+}

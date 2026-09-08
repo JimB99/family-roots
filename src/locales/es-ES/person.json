@@ -1,0 +1,57 @@
+{
+  "fields": {
+    "givenNames": "Nombres",
+    "familyName": "Apellidos",
+    "maidenName": "Apellido de soltera",
+    "gender": "Género",
+    "birthDate": "Fecha de nacimiento",
+    "birthPlace": "Lugar de nacimiento",
+    "deathDate": "Fecha de defunción",
+    "deathPlace": "Lugar de defunción",
+    "livingStatus": "Estado vital",
+    "photo": "Foto",
+    "notes": "Notas"
+  },
+  "gender": {
+    "male": "Hombre",
+    "female": "Mujer",
+    "inter": "Inter",
+    "unknown": "Desconocido",
+    "deceased": "Fallecido/a",
+    "ariaGroup": "Género"
+  },
+  "form": {
+    "sections": {
+      "name": "Nombre",
+      "gender": "Género",
+      "life": "Vida",
+      "more": "Más"
+    },
+    "hints": {
+      "birthDate": "Usa 1956, 07.1956 o 16.07.1956",
+      "deathDate": "Déjalo vacío si se desconoce"
+    },
+    "savePerson": "Guardar persona",
+    "revert": "Revertir",
+    "revertChanges": "Revertir cambios",
+    "removePhoto": "Quitar foto",
+    "newPerson": "Nueva persona"
+  },
+  "relations": {
+    "parents": "Progenitores",
+    "partners": "Parejas",
+    "children": "Hijos/as"
+  },
+  "profile": {
+    "editPerson": "Editar persona",
+    "openFullProfile": "Abrir perfil completo",
+    "deletePerson": "Eliminar persona",
+    "deleteTitle": "Eliminar persona",
+    "deleteDescription": "Esta acción no se puede deshacer.",
+    "deleteConfirm": "¿Eliminar a {{name}} y {{count}} relación conectada?",
+    "deleteConfirm_other": "¿Eliminar a {{name}} y {{count}} relaciones conectadas?"
+  },
+  "marriage": "Matrimonio",
+  "parentChild": "Progenitor e hijo/a",
+  "maidenNameLabel": "de soltera {{name}}"
+}

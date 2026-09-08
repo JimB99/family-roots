@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test:a11y": "vitest run src/components/ui",
     "typecheck": "tsc -b --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run test:a11y && npm run test:rules",
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "check": "npm run lint && npm run typecheck && npm run check:i18n && npm run test:unit && npm run test:a11y && npm run test:rules",
     "check:full": "npm run check && npm run test:e2e",
     "generate:join-parent-golden": "tsx scripts/generate-join-parent-golden.mjs",
     "export:layout-canvas": "tsx scripts/export-layout-canvas-data.mjs",
@@ -28,10 +29,13 @@
     "@tanstack/react-virtual": "^3.14.10",
     "elkjs": "^0.10.0",
     "firebase": "^12.18.0",
+    "i18next": "^26.4.2",
+    "i18next-browser-languagedetector": "^8.2.1",
     "lodash": "^4.17.21",
     "lucide-react": "^0.544.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.13",
     "react-router-dom": "^7.18.3"
   },
   "devDependencies": {

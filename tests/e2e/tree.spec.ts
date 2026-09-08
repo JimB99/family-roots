@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('roots-atlas-locale', 'en-GB')
+  })
+})
+
 test.describe('family tree', () => {
   test('aguilar tree renders the canvas after load', async ({ page }) => {
     await page.goto('/families/aguilar')

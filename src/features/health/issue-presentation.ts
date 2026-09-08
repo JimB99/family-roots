@@ -1,129 +1,53 @@
+import type { TFunction } from 'i18next'
 import type { GraphIssue } from '../../domain/types'
 
 export type IssueSeverity = 'error' | 'warning' | 'info'
 
-interface IssuePresentation {
+export interface IssuePresentation {
   title: string
   severity: IssueSeverity
   explanation: string
 }
 
-const PRESENTATION: Record<string, IssuePresentation> = {
-  MISSING_PERSON: {
-    title: 'Connection points at a missing person',
-    severity: 'error',
-    explanation: 'The link refers to someone who is no longer in this family. Remove the link.',
-  },
-  CROSS_FAMILY: {
-    title: 'Connection crosses two families',
-    severity: 'error',
-    explanation: 'Both people in a connection must belong to the same family.',
-  },
-  SELF_RELATIONSHIP: {
-    title: 'Person linked to themselves',
-    severity: 'error',
-    explanation: 'A person cannot be their own parent, child or partner.',
-  },
-  ANCESTRY_CYCLE: {
-    title: 'Circular ancestry',
-    severity: 'error',
-    explanation: 'Someone ends up being their own ancestor. Check the parent links along this line.',
-  },
-  CONFLICTING_DIRECTION: {
-    title: 'Parent and child are reversed somewhere',
-    severity: 'error',
-    explanation: 'The same pair is recorded as parent to child in both directions.',
-  },
-  BIOLOGICALLY_IMPLAUSIBLE_DATE: {
-    title: 'Birth dates do not line up',
-    severity: 'warning',
-    explanation: 'A parent is recorded as born too close to, or after, their child.',
-  },
-  INVALID_DATE: {
-    title: 'Date cannot be read',
-    severity: 'warning',
-    explanation: 'Use a year, year-month or full date, for example 1956-07-16.',
-  },
-  DUPLICATE_RELATIONSHIP: {
-    title: 'Duplicate connection',
-    severity: 'warning',
-    explanation: 'The same connection is recorded more than once. Remove the extra one.',
-  },
-  GENERATION_CONFLICT: {
-    title: 'Generations conflict',
-    severity: 'warning',
-    explanation: 'This person appears in two different generations at once.',
-  },
-  DISCONNECTED_PERSON: {
-    title: 'Not connected to anyone',
-    severity: 'warning',
-    explanation: 'This person has no parents, children or partners yet, so they float on their own.',
-  },
-  UNKNOWN_GENDER: {
-    title: 'Gender not recorded',
-    severity: 'info',
-    explanation: 'Optional, but recording it makes the tree easier to read at a glance.',
-  },
-  MISSING_GIVEN_NAMES: {
-    title: 'Given names missing',
-    severity: 'warning',
-    explanation: 'Add given names so this person can be identified in lists and on the tree.',
-  },
-  MISSING_FAMILY_NAME: {
-    title: 'Family name missing',
-    severity: 'warning',
-    explanation: 'Add a family name (last name) to complete this record.',
-  },
-  MISSING_MAIDEN_NAME: {
-    title: 'Maiden name missing',
-    severity: 'info',
-    explanation: 'Optional, but useful when tracing maternal lines.',
-  },
-  MISSING_BIRTH_DATE: {
-    title: 'Birth date missing',
-    severity: 'warning',
-    explanation: 'Add a birth year or full date to help place this person in time.',
-  },
-  MISSING_DEATH_DATE: {
-    title: 'Death date missing',
-    severity: 'warning',
-    explanation: 'This person is marked deceased but has no death date.',
-  },
-  MISSING_BIRTH_PLACE: {
-    title: 'Birth place missing',
-    severity: 'info',
-    explanation: 'Optional location detail for this person.',
-  },
-  MISSING_DEATH_PLACE: {
-    title: 'Death place missing',
-    severity: 'info',
-    explanation: 'Optional location detail for this person.',
-  },
-  MISSING_LIVING_STATUS: {
-    title: 'Living status missing',
-    severity: 'info',
-    explanation: 'Record whether this person is living or deceased.',
-  },
-  MISSING_PHOTO: {
-    title: 'Photo missing',
-    severity: 'info',
-    explanation: 'Optional portrait for this person.',
-  },
-  MISSING_NOTES: {
-    title: 'Notes missing',
-    severity: 'info',
-    explanation: 'Optional free-text notes for this person.',
-  },
+const SEVERITY_BY_CODE: Record<string, IssueSeverity> = {
+  MISSING_PERSON: 'error',
+  CROSS_FAMILY: 'error',
+  SELF_RELATIONSHIP: 'error',
+  ANCESTRY_CYCLE: 'error',
+  CONFLICTING_DIRECTION: 'error',
+  BIOLOGICALLY_IMPLAUSIBLE_DATE: 'warning',
+  INVALID_DATE: 'warning',
+  DUPLICATE_RELATIONSHIP: 'warning',
+  GENERATION_CONFLICT: 'warning',
+  DISCONNECTED_PERSON: 'warning',
+  UNKNOWN_GENDER: 'info',
+  MISSING_GIVEN_NAMES: 'warning',
+  MISSING_FAMILY_NAME: 'warning',
+  MISSING_MAIDEN_NAME: 'info',
+  MISSING_BIRTH_DATE: 'warning',
+  MISSING_DEATH_DATE: 'warning',
+  MISSING_BIRTH_PLACE: 'info',
+  MISSING_DEATH_PLACE: 'info',
+  MISSING_LIVING_STATUS: 'info',
+  MISSING_PHOTO: 'info',
+  MISSING_NOTES: 'info',
 }
 
-const FALLBACK: IssuePresentation = {
-  title: 'Needs a look',
-  severity: 'warning',
-  explanation: 'Something about this record does not add up.',
-}
-
-export function presentIssue(code: string): IssuePresentation {
-  return PRESENTATION[code] ?? FALLBACK
+export function presentIssue(code: string, t: TFunction): IssuePresentation {
+  const title = t(`issues.${code}.title`, { ns: 'health', defaultValue: '' })
+  const explanation = t(`issues.${code}.explanation`, { ns: 'health', defaultValue: '' })
+  if (title && explanation) {
+    return {
+      title,
+      explanation,
+      severity: SEVERITY_BY_CODE[code] ?? 'warning',
+    }
+  }
+  return {
+    title: t('issues.fallback.title', { ns: 'health' }),
+    explanation: t('issues.fallback.explanation', { ns: 'health' }),
+    severity: 'warning',
+  }
 }
 
 export interface IssueGroup {
@@ -136,7 +60,7 @@ export interface IssueGroup {
 
 const SEVERITY_ORDER: Record<IssueSeverity, number> = { error: 0, warning: 1, info: 2 }
 
-export function groupIssues(issues: GraphIssue[]): IssueGroup[] {
+export function groupIssues(issues: GraphIssue[], t: TFunction): IssueGroup[] {
   const byCode = new Map<string, GraphIssue[]>()
   for (const issue of issues) {
     const list = byCode.get(issue.code)
@@ -146,7 +70,7 @@ export function groupIssues(issues: GraphIssue[]): IssueGroup[] {
 
   return [...byCode.entries()]
     .map(([code, list]) => {
-      const presentation = presentIssue(code)
+      const presentation = presentIssue(code, t)
       return { code, ...presentation, issues: list }
     })
     .sort((a, b) => {
@@ -156,7 +80,6 @@ export function groupIssues(issues: GraphIssue[]): IssueGroup[] {
     })
 }
 
-/** Issues worth surfacing as a call to action, excluding purely optional ones. */
-export function actionableIssueCount(issues: GraphIssue[]): number {
-  return issues.filter((issue) => presentIssue(issue.code).severity !== 'info').length
+export function actionableIssueCount(issues: GraphIssue[], t: TFunction): number {
+  return issues.filter((issue) => presentIssue(issue.code, t).severity !== 'info').length
 }

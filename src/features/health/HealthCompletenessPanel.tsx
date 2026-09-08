@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -11,7 +12,6 @@ import {
   type PeopleFilters,
 } from '../../domain/person-filters'
 import {
-  PERSON_COMPLETENESS_FIELD_LABELS,
   PERSON_COMPLETENESS_FIELDS,
   type PersonCompletenessField,
 } from '../../domain/person-completeness'
@@ -30,71 +30,23 @@ interface HealthCompletenessPanelProps {
 
 type Preset = {
   id: string
-  label: string
+  labelKey: string
   filters: PeopleFilters
 }
 
 const PRESETS: Preset[] = [
-  {
-    id: 'missing-given-names',
-    label: 'Missing given names',
-    filters: filtersForMissingField('givenNames'),
-  },
-  {
-    id: 'missing-family-name',
-    label: 'Missing last name',
-    filters: filtersForMissingField('familyName'),
-  },
-  {
-    id: 'missing-maiden-name',
-    label: 'Missing maiden name',
-    filters: filtersForMissingField('maidenName'),
-  },
-  {
-    id: 'missing-birth',
-    label: 'Missing birth date',
-    filters: filtersForMissingField('birth'),
-  },
-  {
-    id: 'missing-birth-place',
-    label: 'Missing birth place',
-    filters: filtersForMissingField('birthPlace'),
-  },
-  {
-    id: 'missing-death',
-    label: 'Missing death date',
-    filters: filtersForMissingField('death'),
-  },
-  {
-    id: 'missing-death-place',
-    label: 'Missing death place',
-    filters: filtersForMissingField('deathPlace'),
-  },
-  {
-    id: 'missing-living-status',
-    label: 'Missing living status',
-    filters: filtersForMissingField('isLiving'),
-  },
-  {
-    id: 'missing-photo',
-    label: 'Missing photo',
-    filters: filtersForMissingField('photo'),
-  },
-  {
-    id: 'has-notes',
-    label: 'Has notes',
-    filters: { notesPresence: 'has' },
-  },
-  {
-    id: 'no-notes',
-    label: 'No notes',
-    filters: { notesPresence: 'missing' },
-  },
-  {
-    id: 'unknown-gender',
-    label: 'Unknown gender',
-    filters: filtersForMissingField('gender'),
-  },
+  { id: 'missing-given-names', labelKey: 'presets.missingGivenNames', filters: filtersForMissingField('givenNames') },
+  { id: 'missing-family-name', labelKey: 'presets.missingLastName', filters: filtersForMissingField('familyName') },
+  { id: 'missing-maiden-name', labelKey: 'presets.missingMaidenName', filters: filtersForMissingField('maidenName') },
+  { id: 'missing-birth', labelKey: 'presets.missingBirthDate', filters: filtersForMissingField('birth') },
+  { id: 'missing-birth-place', labelKey: 'presets.missingBirthPlace', filters: filtersForMissingField('birthPlace') },
+  { id: 'missing-death', labelKey: 'presets.missingDeathDate', filters: filtersForMissingField('death') },
+  { id: 'missing-death-place', labelKey: 'presets.missingDeathPlace', filters: filtersForMissingField('deathPlace') },
+  { id: 'missing-living-status', labelKey: 'presets.missingLivingStatus', filters: filtersForMissingField('isLiving') },
+  { id: 'missing-photo', labelKey: 'presets.missingPhoto', filters: filtersForMissingField('photo') },
+  { id: 'has-notes', labelKey: 'presets.hasNotes', filters: { notesPresence: 'has' } },
+  { id: 'no-notes', labelKey: 'presets.noNotes', filters: { notesPresence: 'missing' } },
+  { id: 'unknown-gender', labelKey: 'presets.unknownGender', filters: filtersForMissingField('gender') },
 ]
 
 function chipClass(active: boolean): string {
@@ -125,7 +77,22 @@ export function filtersForCompletenessIssueCode(code: string): PeopleFilters | u
   return filtersForMissingField(field)
 }
 
+const FIELD_LABEL_KEYS: Record<PersonCompletenessField, string> = {
+  givenNames: 'fields.givenNames',
+  familyName: 'fields.familyName',
+  maidenName: 'fields.maidenName',
+  gender: 'fields.gender',
+  birth: 'fields.birthDate',
+  death: 'fields.deathDate',
+  birthPlace: 'fields.birthPlace',
+  deathPlace: 'fields.deathPlace',
+  isLiving: 'fields.livingStatus',
+  photo: 'fields.photo',
+  notes: 'fields.notes',
+}
+
 export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPanelProps) {
+  const { t } = useTranslation(['people', 'person', 'common'])
   const navigate = useNavigate()
   const [filters, setFilters] = useState<PeopleFilters>({})
   const [selectedField, setSelectedField] = useState<PersonCompletenessField>('familyName')
@@ -150,13 +117,13 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
 
   return (
     <Card
-      title="Browse incomplete records"
-      description="Filter people by missing or present fields, then open the full People list to edit."
+      title={t('completeness.title', { ns: 'people' })}
+      description={t('completeness.description', { ns: 'people' })}
     >
       <div className="space-y-4">
         <div className="space-y-2">
           <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-            Presets
+            {t('completeness.presetsLabel', { ns: 'people' })}
           </span>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
@@ -167,7 +134,7 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
                 aria-pressed={presetFragmentIsActive(filters, preset.filters)}
                 className={chipClass(presetFragmentIsActive(filters, preset.filters))}
               >
-                {preset.label}
+                {t(preset.labelKey, { ns: 'people' })}
               </button>
             ))}
           </div>
@@ -175,7 +142,7 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
 
         <div className="flex flex-wrap items-end gap-2">
           <label className="min-w-[180px] flex-1 space-y-1 text-sm">
-            <span className="text-[var(--text-secondary)]">Field</span>
+            <span className="text-[var(--text-secondary)]">{t('filter.field', { ns: 'people' })}</span>
             <select
               value={selectedField}
               onChange={(e) => setSelectedField(e.target.value as PersonCompletenessField)}
@@ -183,28 +150,28 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
             >
               {PERSON_COMPLETENESS_FIELDS.map((field) => (
                 <option key={field} value={field}>
-                  {PERSON_COMPLETENESS_FIELD_LABELS[field]}
+                  {t(FIELD_LABEL_KEYS[field], { ns: 'person' })}
                 </option>
               ))}
             </select>
           </label>
           <label className="min-w-[140px] space-y-1 text-sm">
-            <span className="text-[var(--text-secondary)]">State</span>
+            <span className="text-[var(--text-secondary)]">{t('filter.state', { ns: 'people' })}</span>
             <select
               value={fieldState}
               onChange={(e) => setFieldState(e.target.value as 'missing' | 'present')}
               className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             >
-              <option value="missing">Missing</option>
-              <option value="present">Present</option>
+              <option value="missing">{t('filter.missing', { ns: 'people' })}</option>
+              <option value="present">{t('filter.present', { ns: 'people' })}</option>
             </select>
           </label>
           <Button variant="secondary" size="sm" onClick={applyFieldFilter}>
-            Add filter
+            {t('filter.applyFilter', { ns: 'people' })}
           </Button>
           {!isFiltersEmpty(filters) ? (
             <Button variant="ghost" size="sm" onClick={() => setFilters({})}>
-              Clear filters
+              {t('filter.clearFilters', { ns: 'people' })}
             </Button>
           ) : null}
         </div>
@@ -216,12 +183,13 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
                 key={`${entry.field}-${entry.state}`}
                 className="rounded-full border border-[var(--border-subtle)] px-2.5 py-1"
               >
-                {PERSON_COMPLETENESS_FIELD_LABELS[entry.field]} · {entry.state}
+                {t(FIELD_LABEL_KEYS[entry.field], { ns: 'person' })} ·{' '}
+                {t(`filter.${entry.state}`, { ns: 'people' })}
               </li>
             ))}
             {filters.notesPresence ? (
               <li className="rounded-full border border-[var(--border-subtle)] px-2.5 py-1">
-                Notes · {filters.notesPresence}
+                {t('fields.notes', { ns: 'person' })} · {filters.notesPresence}
               </li>
             ) : null}
           </ul>
@@ -229,14 +197,14 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            {matched.length} of {people.length} people match
+            {t('completeness.matchCount', { ns: 'people', matched: matched.length, total: people.length })}
           </p>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => navigate(peopleListHref(slug, filters))}
           >
-            View in People list
+            {t('completeness.openPeopleList', { ns: 'people' })}
           </Button>
         </div>
 
@@ -252,14 +220,14 @@ export function HealthCompletenessPanel({ slug, people }: HealthCompletenessPane
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--text-muted)]">No people match the current filters.</p>
+          <p className="text-sm text-[var(--text-muted)]">{t('completeness.noMatch', { ns: 'people' })}</p>
         )}
 
         {matched.length > 24 ? (
           <p className="text-sm text-[var(--text-muted)]">
-            Showing 24 of {matched.length}.{' '}
+            {t('completeness.showingLimited', { ns: 'people', total: matched.length })}{' '}
             <Link to={peopleListHref(slug, filters)} className="text-[var(--accent-strong)] hover:underline">
-              View all in People list
+              {t('completeness.viewAllInPeople', { ns: 'people' })}
             </Link>
           </p>
         ) : null}

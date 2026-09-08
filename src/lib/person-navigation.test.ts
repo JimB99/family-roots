@@ -5,7 +5,7 @@ describe('person-navigation', () => {
   it('defaults to tree when state is missing', () => {
     expect(readPersonReturn('miller', undefined)).toEqual({
       returnTo: '/families/miller',
-      label: 'Back to tree',
+      labelKey: 'back.tree',
     })
   })
 
@@ -17,7 +17,7 @@ describe('person-navigation', () => {
       }),
     ).toEqual({
       returnTo: '/families/miller/people?missing=birth',
-      label: 'Back to People',
+      labelKey: 'back.people',
     })
   })
 
@@ -29,7 +29,7 @@ describe('person-navigation', () => {
       }),
     ).toEqual({
       returnTo: '/families/miller/health',
-      label: 'Back to Health',
+      labelKey: 'back.health',
     })
   })
 

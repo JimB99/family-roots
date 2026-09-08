@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { PersonCard } from '../components/PersonCard'
 import { PersonEditPanel } from '../components/PersonEditPanel'
@@ -11,6 +12,7 @@ import { readPersonReturn, type PersonNavigationState } from '../lib/person-navi
 import type { Person, PersonInput } from '../types'
 
 export function PersonPage() {
+  const { t } = useTranslation(['common', 'person'])
   const { slug = '', personId = '' } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -99,7 +101,7 @@ export function PersonPage() {
   if (loading || personLoading) {
     return (
       <Layout familyName={family?.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('actions.loading', { ns: 'common' })}</p>
       </Layout>
     )
   }
@@ -108,12 +110,12 @@ export function PersonPage() {
     return (
       <Layout slug={slug} isEditor={isEditor}>
         <div className="p-10 text-center">
-          <p>Person not found in this family.</p>
+          <p>{t('notFound.person', { ns: 'common' })}</p>
           <Link
             to={personReturn.returnTo}
             className="mt-3 inline-block text-[var(--accent-strong)] hover:underline"
           >
-            {personReturn.label}
+            {t(personReturn.labelKey)}
           </Link>
         </div>
       </Layout>
@@ -128,14 +130,14 @@ export function PersonPage() {
             to={personReturn.returnTo}
             className="text-sm text-[var(--accent-strong)] hover:underline"
           >
-            ← {personReturn.label}
+            ← {t(personReturn.labelKey)}
           </Link>
         </div>
       </div>
 
       {editing ? (
         <div className="mx-auto w-full max-w-3xl px-4 py-8">
-          <h1 className="mb-4 text-xl font-semibold">Edit person</h1>
+          <h1 className="mb-4 text-xl font-semibold">{t('profile.editPerson', { ns: 'person' })}</h1>
           <PersonEditPanel
             person={person}
             familyId={family.id}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PersonEditPanel } from '../../components/PersonEditPanel'
 import { PersonDeleteButton } from '../../components/PersonDeleteButton'
 import { PersonDetailsFields } from '../../components/PersonDetailsFields'
@@ -37,8 +38,8 @@ interface PersonInspectorProps {
   onClear: () => void
 }
 
-function lifespan(person: Person): string | null {
-  return formatLifeSpan(person.birth, person.death, person.isLiving) || null
+function lifespan(person: Person, locale?: string): string | null {
+  return formatLifeSpan(person.birth, person.death, person.isLiving, locale) || null
 }
 
 export function PersonInspector({
@@ -63,7 +64,8 @@ export function PersonInspector({
   onExplainRelationship,
   onClear,
 }: PersonInspectorProps) {
-  const span = lifespan(person)
+  const { t, i18n } = useTranslation(['tree', 'person', 'common'])
+  const span = lifespan(person, i18n.language)
   const showInlineEdit = editMode && draft && onDraftChange && familyId
 
   return (
@@ -76,7 +78,7 @@ export function PersonInspector({
           )}
         </div>
         <Button variant="ghost" size="sm" onClick={onClear}>
-          Close
+          {t('actions.close', { ns: 'common' })}
         </Button>
       </div>
 
@@ -100,21 +102,21 @@ export function PersonInspector({
       )}
 
       <RelationSection
-        title="Parents"
+        title={t('relations.parents', { ns: 'person' })}
         links={parentLinks}
         editMode={editMode}
         onSelectPerson={onSelectPerson}
         onDisconnectRelationship={onDisconnectRelationship}
       />
       <RelationSection
-        title="Partners"
+        title={t('relations.partners', { ns: 'person' })}
         links={spouseLinks}
         editMode={editMode}
         onSelectPerson={onSelectPerson}
         onDisconnectRelationship={onDisconnectRelationship}
       />
       <RelationSection
-        title="Children"
+        title={t('relations.children', { ns: 'person' })}
         links={childLinks}
         editMode={editMode}
         onSelectPerson={onSelectPerson}
@@ -124,51 +126,51 @@ export function PersonInspector({
       {editMode && (
         <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)]/40 p-3">
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-            Link existing people
+            {t('inspector.linkExisting', { ns: 'tree' })}
           </h4>
           {onConnectExisting && (
             <Button variant="secondary" size="sm" className="mb-3 w-full" onClick={onConnectExisting}>
-              Connect to existing person…
+              {t('inspector.connectExisting', { ns: 'tree' })}
             </Button>
           )}
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-            Add a new relative
+            {t('inspector.addRelative', { ns: 'tree' })}
           </h4>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="secondary" size="sm" onClick={() => onAddRelative('parent')}>
-              Parent
+              {t('inspector.parent', { ns: 'tree' })}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => onAddRelative('spouse')}>
-              Partner
+              {t('inspector.partner', { ns: 'tree' })}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => onAddRelative('child')}>
-              Child
+              {t('inspector.child', { ns: 'tree' })}
             </Button>
             <Button
               variant="secondary"
               size="sm"
               disabled={parentLinks.length === 0}
-              title={parentLinks.length === 0 ? 'Add a parent first' : undefined}
+              title={parentLinks.length === 0 ? t('inspector.addParentFirst', { ns: 'tree' }) : undefined}
               onClick={() => onAddRelative('sibling')}
             >
-              Sibling
+              {t('inspector.sibling', { ns: 'tree' })}
             </Button>
           </div>
           <p className="mt-2 text-xs text-[var(--text-muted)]">
-            Drag one person onto another, or use Connect to search for someone already in the tree.
+            {t('inspector.dragHint', { ns: 'tree' })}
           </p>
         </section>
       )}
 
       {onExplainRelationship && (
         <Button variant="secondary" size="sm" onClick={onExplainRelationship} className="w-full">
-          Explain relationship with…
+          {t('inspector.explainRelationship', { ns: 'tree' })}
         </Button>
       )}
 
       {!showInlineEdit && (
         <Button variant="secondary" size="sm" onClick={onOpenProfile} className="w-full">
-          Open full profile
+          {t('profile.openFullProfile', { ns: 'person' })}
         </Button>
       )}
 
@@ -196,6 +198,7 @@ function RelationSection({
   onSelectPerson: (personId: string) => void
   onDisconnectRelationship?: (relationshipId: string) => Promise<void>
 }) {
+  const { t, i18n } = useTranslation(['tree', 'common'])
   const [pendingRemove, setPendingRemove] = useState<RelationLink | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
 
@@ -206,7 +209,7 @@ function RelationSection({
       await onDisconnectRelationship(pendingRemove.relationshipId)
       setPendingRemove(null)
     } catch (err) {
-      setRemoveError(err instanceof Error ? err.message : 'Remove failed')
+      setRemoveError(err instanceof Error ? err.message : t('mutation.removeFailed', { ns: 'tree' }))
     }
   }
 
@@ -214,7 +217,7 @@ function RelationSection({
     <section>
       <h4 className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">{title}</h4>
       {links.length === 0 ? (
-        <p className="mt-1 text-sm text-[var(--text-muted)]">None recorded</p>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">{t('noneRecorded', { ns: 'common' })}</p>
       ) : (
         <ul className="mt-1.5 space-y-0.5">
           {links.map((link) => (
@@ -225,9 +228,9 @@ function RelationSection({
                 className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--surface-sunken)]"
               >
                 {displayName(link.person)}
-                {formatPartialDate(link.person.birth) && (
+                {formatPartialDate(link.person.birth, i18n.language) && (
                   <span className="ml-1.5 text-[var(--text-muted)]">
-                    {formatPartialDate(link.person.birth)}
+                    {formatPartialDate(link.person.birth, i18n.language)}
                   </span>
                 )}
               </button>
@@ -235,10 +238,13 @@ function RelationSection({
                 <button
                   type="button"
                   onClick={() => setPendingRemove(link)}
-                  aria-label={`Remove link to ${displayName(link.person)}`}
+                  aria-label={t('inspector.removeLink', {
+                    ns: 'tree',
+                    name: displayName(link.person),
+                  })}
                   className="shrink-0 rounded-md px-2 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--color-bloom-600)]"
                 >
-                  Remove
+                  {t('inspector.remove', { ns: 'tree' })}
                 </button>
               )}
             </li>
@@ -248,8 +254,8 @@ function RelationSection({
 
       <Dialog
         open={pendingRemove !== null}
-        title="Remove connection"
-        description="This only removes the relationship link."
+        title={t('inspector.removeConnection', { ns: 'tree' })}
+        description={t('inspector.removeConnectionDescription', { ns: 'tree' })}
         onClose={() => {
           setPendingRemove(null)
           setRemoveError(null)
@@ -257,7 +263,10 @@ function RelationSection({
       >
         {pendingRemove && (
           <p className="text-sm text-[var(--text-secondary)]">
-            Remove the link between {displayName(pendingRemove.person)} and this person?
+            {t('relationship.removeBetween', {
+              ns: 'tree',
+              name: displayName(pendingRemove.person),
+            })}
           </p>
         )}
         {removeError && (
@@ -267,7 +276,7 @@ function RelationSection({
         )}
         <div className="mt-5 flex gap-2">
           <Button variant="danger" onClick={() => void handleRemove()}>
-            Remove link
+            {t('inspector.disconnect', { ns: 'tree' })}
           </Button>
           <Button
             variant="secondary"
@@ -276,7 +285,7 @@ function RelationSection({
               setRemoveError(null)
             }}
           >
-            Cancel
+            {t('actions.cancel', { ns: 'common' })}
           </Button>
         </div>
       </Dialog>
@@ -303,25 +312,28 @@ export function RelationshipInspector({
   onChangeType,
   onClear,
 }: RelationshipInspectorProps) {
+  const { t } = useTranslation(['tree', 'person', 'common'])
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-[var(--text-primary)]">
-            {relationship.type === 'spouse' ? 'Marriage' : 'Parent and child'}
+            {relationship.type === 'spouse'
+              ? t('marriage', { ns: 'person' })
+              : t('parentChild', { ns: 'person' })}
           </h3>
           <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
             {displayName(personA)} &amp; {displayName(personB)}
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={onClear}>
-          Close
+          {t('actions.close', { ns: 'common' })}
         </Button>
       </div>
 
       {relationship.confidence !== 'manual' && (
         <p className="rounded-lg bg-[var(--surface-sunken)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-          This link came from an import and has not been confirmed yet.
+          {t('relationship.importedUnconfirmed', { ns: 'tree' })}
         </p>
       )}
 
@@ -334,7 +346,7 @@ export function RelationshipInspector({
               className="w-full"
               onClick={() => onChangeType('spouse')}
             >
-              Change to marriage
+              {t('relationship.changeToMarriage', { ns: 'tree' })}
             </Button>
           )}
           {relationship.type !== 'parent_child' && (
@@ -344,15 +356,15 @@ export function RelationshipInspector({
               className="w-full"
               onClick={() => onChangeType('parent_child')}
             >
-              Change to parent and child
+              {t('relationship.changeToParentChild', { ns: 'tree' })}
             </Button>
           )}
           <Button variant="danger" size="sm" className="w-full" onClick={onDisconnect}>
-            Remove this connection
+            {t('relationship.removeThisConnection', { ns: 'tree' })}
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-muted)]">Turn on editing to change this connection.</p>
+        <p className="text-sm text-[var(--text-muted)]">{t('relationship.editToChange', { ns: 'tree' })}</p>
       )}
     </div>
   )

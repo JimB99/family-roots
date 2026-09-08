@@ -10,6 +10,9 @@ describe('dates', () => {
   it('formats and round-trips partial dates', () => {
     const date = { year: 1956, month: 7, day: 16, precision: 'day' as const }
     expect(formatPartialDate(date)).toBe('16.07.1956')
+    expect(formatPartialDate(date, 'de-AT')).toBe('16.07.1956')
+    expect(formatPartialDate(date, 'es-ES')).toBe('16/07/1956')
+    expect(formatPartialDate(date, 'de-AT', '† ')).toBe('† 16.07.1956')
     expect(partialDateToInput(date)).toBe('16.07.1956')
     expect(parsePartialDateInput('16.07.1956')).toEqual(date)
   })

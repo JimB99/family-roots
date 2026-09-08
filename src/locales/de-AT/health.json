@@ -1,0 +1,123 @@
+{
+  "title": "Datenqualität",
+  "subtitle": "Alles, was in {{family}} einen zweiten Blick verdienen könnte.",
+  "healthyTitle": "Alles sieht in Ordnung aus",
+  "healthyDescription": "Keine fehlenden Verbindungen oder widersprüchlichen Daten gefunden.",
+  "filterInPeople": "In der Personenliste filtern",
+  "severity": {
+    "error": "Muss behoben werden",
+    "warning": "Lohnt eine Prüfung",
+    "info": "Optional"
+  },
+  "issues": {
+    "MISSING_PERSON": {
+      "title": "Verbindung verweist auf fehlende Person",
+      "explanation": "Die Verbindung bezieht sich auf jemanden, der nicht mehr in dieser Familie ist. Entferne die Verbindung."
+    },
+    "CROSS_FAMILY": {
+      "title": "Verbindung überschreitet zwei Familien",
+      "explanation": "Beide Personen einer Verbindung müssen zur gleichen Familie gehören."
+    },
+    "SELF_RELATIONSHIP": {
+      "title": "Person mit sich selbst verbunden",
+      "explanation": "Eine Person kann nicht ihr eigener Elternteil, Kind oder Partner sein."
+    },
+    "ANCESTRY_CYCLE": {
+      "title": "Zirkuläre Abstammung",
+      "explanation": "Jemand wird zu seinem eigenen Vorfahren. Prüfe die Eltern-Verbindungen in dieser Linie."
+    },
+    "CONFLICTING_DIRECTION": {
+      "title": "Elternteil und Kind sind irgendwo vertauscht",
+      "explanation": "Das gleiche Paar ist in beide Richtungen als Elternteil-Kind erfasst."
+    },
+    "BIOLOGICALLY_IMPLAUSIBLE_DATE": {
+      "title": "Geburtsdaten passen nicht zusammen",
+      "explanation": "Ein Elternteil ist zu nah am oder nach dem Geburtsdatum des Kindes erfasst."
+    },
+    "INVALID_DATE": {
+      "title": "Datum kann nicht gelesen werden",
+      "explanation": "Verwende ein Jahr, Jahr-Monat oder vollständiges Datum, z. B. 1956-07-16."
+    },
+    "DUPLICATE_RELATIONSHIP": {
+      "title": "Doppelte Verbindung",
+      "explanation": "Die gleiche Verbindung ist mehrfach erfasst. Entferne die überzählige."
+    },
+    "GENERATION_CONFLICT": {
+      "title": "Generationskonflikt",
+      "explanation": "Diese Person erscheint gleichzeitig in zwei verschiedenen Generationen."
+    },
+    "DISCONNECTED_PERSON": {
+      "title": "Mit niemandem verbunden",
+      "explanation": "Diese Person hat noch keine Eltern, Kinder oder Partner und steht isoliert."
+    },
+    "UNKNOWN_GENDER": {
+      "title": "Geschlecht nicht erfasst",
+      "explanation": "Optional, aber die Erfassung erleichtert das Lesen des Stammbaums."
+    },
+    "MISSING_GIVEN_NAMES": {
+      "title": "Vornamen fehlen",
+      "explanation": "Füge Vornamen hinzu, damit diese Person in Listen und im Stammbaum erkennbar ist."
+    },
+    "MISSING_FAMILY_NAME": {
+      "title": "Familienname fehlt",
+      "explanation": "Füge einen Familiennamen hinzu, um diesen Eintrag zu vervollständigen."
+    },
+    "MISSING_MAIDEN_NAME": {
+      "title": "Geburtsname fehlt",
+      "explanation": "Optional, aber nützlich beim Nachverfolgen mütterlicher Linien."
+    },
+    "MISSING_BIRTH_DATE": {
+      "title": "Geburtsdatum fehlt",
+      "explanation": "Füge ein Geburtsjahr oder vollständiges Datum hinzu, um diese Person zeitlich einzuordnen."
+    },
+    "MISSING_DEATH_DATE": {
+      "title": "Sterbedatum fehlt",
+      "explanation": "Diese Person ist als verstorben markiert, hat aber kein Sterbedatum."
+    },
+    "MISSING_BIRTH_PLACE": {
+      "title": "Geburtsort fehlt",
+      "explanation": "Optionaler Ortsdetail für diese Person."
+    },
+    "MISSING_DEATH_PLACE": {
+      "title": "Sterbeort fehlt",
+      "explanation": "Optionaler Ortsdetail für diese Person."
+    },
+    "MISSING_LIVING_STATUS": {
+      "title": "Lebensstatus fehlt",
+      "explanation": "Erfasse, ob diese Person lebt oder verstorben ist."
+    },
+    "MISSING_PHOTO": {
+      "title": "Foto fehlt",
+      "explanation": "Optionales Porträt für diese Person."
+    },
+    "MISSING_NOTES": {
+      "title": "Notizen fehlen",
+      "explanation": "Optionale Freitextnotizen für diese Person."
+    },
+    "fallback": {
+      "title": "Prüfung nötig",
+      "explanation": "Etwas an diesem Eintrag passt nicht zusammen."
+    }
+  },
+  "completenessMessages": {
+    "MISSING_GIVEN_NAMES": "Vornamen fehlen",
+    "MISSING_FAMILY_NAME": "Familienname fehlt",
+    "MISSING_MAIDEN_NAME": "Geburtsname fehlt",
+    "MISSING_BIRTH_DATE": "Geburtsdatum fehlt",
+    "MISSING_DEATH_DATE": "Sterbedatum fehlt",
+    "MISSING_BIRTH_PLACE": "Geburtsort fehlt",
+    "MISSING_DEATH_PLACE": "Sterbeort fehlt",
+    "MISSING_LIVING_STATUS": "Lebensstatus fehlt",
+    "MISSING_PHOTO": "Foto fehlt",
+    "MISSING_NOTES": "Notizen fehlen"
+  },
+  "issueLine": "{{person}}: {{message}}",
+  "graphIssue": {
+    "unknownGender": "{{name}} hat unbekanntes Geschlecht",
+    "missingPerson": "Beziehung {{id}} verweist auf fehlende Person",
+    "crossFamily": "Beziehung {{id}} überschreitet Familien",
+    "selfRelationship": "Selbstbeziehung {{id}}",
+    "duplicateRelationship": "Doppelte Beziehung {{id}}",
+    "disconnected": "{{name}} hat keine Beziehungen"
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "loading": "Stammbaum wird geladen…",
+  "loadingPeople": "Personen werden geladen…",
+  "loadingHealth": "Datenqualität wird geprüft…",
+  "noPeopleYet": "Noch keine Personen in dieser Familie.",
+  "layingOut": "Stammbaum wird angeordnet…",
+  "layoutFailed": "Stammbaum konnte nicht angeordnet werden.",
+  "canvasLabel": "Stammbaum-Zeichenfläche",
+  "canvasHint": "Klicke auf eine Person für Details, ziehe leeren Bereich zum Verschieben, scrolle zum Zoomen.",
+  "explainPickBanner": "Klicke im Stammbaum auf jemanden, um mit {{name}} zu vergleichen",
+  "explainPickCanvas": "Klicke auf eine Person, um mit {{name}} zu vergleichen.",
+  "search": {
+    "placeholder": "Personen suchen…",
+    "aria": "Personen suchen",
+    "clear": "Suche löschen"
+  },
+  "edit": {
+    "done": "Bearbeitung beenden",
+    "dropHint": "Auf eine Personenkarte ziehen, um zu verbinden"
+  },
+  "menu": {
+    "browseCards": "Als Karten ansehen",
+    "exportSvg": "Als SVG exportieren",
+    "exportPng": "Als PNG exportieren",
+    "downloadBackup": "Backup herunterladen",
+    "restoreBackup": "Backup wiederherstellen…"
+  },
+  "viewport": {
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "fitToScreen": "An Bildschirm anpassen",
+    "resetView": "Ansicht zurücksetzen",
+    "showAllBranches": "Alle Zweige anzeigen"
+  },
+  "inspector": {
+    "linkExisting": "Bestehende Personen verknüpfen",
+    "connectExisting": "Mit bestehender Person verbinden…",
+    "addRelative": "Neuen Verwandten hinzufügen",
+    "parent": "Elternteil",
+    "partner": "Partner",
+    "child": "Kind",
+    "sibling": "Geschwister",
+    "addParentFirst": "Zuerst einen Elternteil hinzufügen",
+    "dragHint": "Ziehe eine Person auf eine andere oder nutze Verbinden, um jemanden im Stammbaum zu suchen.",
+    "explainRelationship": "Beziehung erklären mit…",
+    "removeLink": "Verbindung zu {{name}} entfernen",
+    "removeConnection": "Verbindung entfernen",
+    "removeConnectionDescription": "Dies entfernt nur die Beziehungsverbindung.",
+    "remove": "Entfernen",
+    "disconnect": "Trennen"
+  },
+  "connect": {
+    "title": "Mit bestehender Person verbinden",
+    "startingFrom": "Ausgehend von {{name}}",
+    "searchPlaceholder": "Nach Name oder Ort suchen…",
+    "searchAria": "Personen zum Verbinden suchen",
+    "isLabel": "{{source}} ist…",
+    "dialogAria": "{{source}} mit {{target}} verbinden",
+    "connectHeader": "Verbinden",
+    "noValidConnection": "Keine gültige Verbindung zwischen diesen beiden Personen.",
+    "alreadyConnected": "Bereits verbunden",
+    "overwriteReplaceParent": "Elternteil ersetzen… ({{label}})",
+    "overwriteFixLink": "Verbindung korrigieren… ({{label}})",
+    "overwriteAddMissing": "Fehlende Verbindungen hinzufügen… ({{label}})"
+  },
+  "overwrite": {
+    "replaceParentTitle": "Eltern-Verbindung ersetzen",
+    "fixConflictTitle": "Widersprüchliche Verbindung korrigieren",
+    "completeSiblingTitle": "Geschwister-Verbindungen vervollständigen",
+    "replaceParentBody": "Diese Person hat bereits zwei Elternteile. Wähle, welche Eltern-Verbindung entfernt werden soll, bevor {{name}} als Elternteil hinzugefügt wird.",
+    "replaceParentLegend": "Zu ersetzende Eltern-Verbindung",
+    "removeLabel": "{{name}} entfernen",
+    "fixConflictBody": "{{description}}. Bestehende Verbindung entfernen und {{label}} erstellen?",
+    "completeSiblingBody": "Einige Geschwister-Eltern-Verbindungen existieren bereits. Nur die fehlenden Eltern-Verbindungen für {{name}} hinzufügen?"
+  },
+  "unsaved": {
+    "title": "Ungespeicherte Änderungen",
+    "badge": "Ungespeicherte Änderungen",
+    "onePerson": "1 Person hat ungespeicherte Änderungen",
+    "manyPeople": "{{count}} Personen haben ungespeicherte Änderungen",
+    "body": "Speichere deine Änderungen vor dem Verlassen oder verwerfe sie.",
+    "discardChanges": "Änderungen verwerfen"
+  },
+  "toast": {
+    "personAdded": "Person hinzugefügt",
+    "personDeleted": "Person gelöscht",
+    "connected": "Verbunden",
+    "connectedWith": "Verbunden: {{label}}",
+    "connectionRemoved": "Verbindung entfernt",
+    "connectionUpdated": "Verbindung aktualisiert",
+    "oneSaved": "1 Person gespeichert",
+    "manySaved": "{{count}} Personen gespeichert",
+    "addParent": "Elternteil hinzufügen",
+    "addPartner": "Partner hinzufügen",
+    "addChild": "Kind hinzufügen",
+    "addSibling": "Geschwister hinzufügen",
+    "connectPeople": "Personen verbinden",
+    "disconnect": "Trennen",
+    "changeConnectionType": "Verbindungstyp ändern"
+  },
+  "mutation": {
+    "operationFailed": "Vorgang fehlgeschlagen",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "removeFailed": "Entfernen fehlgeschlagen",
+    "photoUploadFailed": "Foto-Upload fehlgeschlagen",
+    "layoutFailed": "Stammbaum-Anordnung fehlgeschlagen",
+    "mergeFailed": "Zusammenführen fehlgeschlagen",
+    "restoreFailed": "Wiederherstellen fehlgeschlagen"
+  },
+  "explain": {
+    "title": "Beziehung erklären",
+    "between": "Beziehung zwischen {{anchor}} und {{target}}",
+    "searchPrompt": "Suche jemanden zum Vergleich mit {{anchor}} oder klicke im Stammbaum auf eine Person.",
+    "clickOrSearch": "Klicke im Stammbaum auf eine andere Person oder suche unten.",
+    "searchPlaceholder": "Nach Name oder Ort suchen…",
+    "searchAria": "Personen zum Vergleichen suchen",
+    "fromTo": "{{target}} ist {{label}} von {{anchor}}",
+    "alsoRelated": "Auch verwandt als {{labels}}",
+    "selectOnTree": "{{name}} im Stammbaum auswählen"
+  },
+  "backup": {
+    "title": "Backup wiederherstellen",
+    "description": "Lade ein JSON-Backup hoch, das aus dieser Familie exportiert wurde.",
+    "fileAria": "Backup-Datei",
+    "summary": "{{people}} Personen, {{connections}} Verbindungen",
+    "exportedAt": "Exportiert {{date}}",
+    "howApplied": "Wie soll es angewendet werden?",
+    "mergeTitle": "Zusammenführen",
+    "mergeDescription": "Bestehende Personen aktualisieren und den Rest hinzufügen.",
+    "replaceTitle": "Alles ersetzen",
+    "replaceDescription": "Zuerst alle aktuellen Personen und Verbindungen löschen. Dies kann nicht rückgängig gemacht werden.",
+    "mergeButton": "Backup zusammenführen",
+    "replaceButton": "Ersetzen und wiederherstellen",
+    "wrongFamily": "Dieses Backup gehört zu einer anderen Familie.",
+    "invalidFile": "Diese Datei konnte nicht als Backup gelesen werden."
+  },
+  "merge": {
+    "title": "Doppelte Personen zusammenführen",
+    "description": "Wähle den Eintrag, der behalten werden soll. Der andere wird entfernt und seine Verbindungen übernommen.",
+    "keepThis": "Diesen behalten"
+  },
+  "connection": {
+    "childOf": "Kind von {{name}}",
+    "parentOf": "Elternteil von {{name}}",
+    "marriedTo": "Verheiratet mit {{name}}",
+    "siblingOf": "Geschwister von {{name}}"
+  },
+  "relationship": {
+    "importedUnconfirmed": "Diese Verbindung stammt aus einem Import und wurde noch nicht bestätigt.",
+    "changeToMarriage": "In Ehe ändern",
+    "changeToParentChild": "In Elternteil und Kind ändern",
+    "removeThisConnection": "Diese Verbindung entfernen",
+    "editToChange": "Bearbeitung aktivieren, um diese Verbindung zu ändern.",
+    "removeBetween": "Verbindung zwischen {{name}} und dieser Person entfernen?"
+  }
+}

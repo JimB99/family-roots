@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { Dialog } from './ui/Dialog'
 
@@ -18,23 +19,26 @@ export function UnsavedChangesDialog({
   onDiscard,
   onSave,
 }: UnsavedChangesDialogProps) {
+  const { t } = useTranslation(['tree', 'common'])
   const label =
-    count === 1 ? '1 person has unsaved changes' : `${count} people have unsaved changes`
+    count === 1
+      ? t('unsaved.onePerson', { ns: 'tree' })
+      : t('unsaved.manyPeople', { ns: 'tree', count })
 
   return (
-    <Dialog open={open} title="Unsaved changes" description={label} onClose={onStay}>
+    <Dialog open={open} title={t('unsaved.title', { ns: 'tree' })} description={label} onClose={onStay}>
       <p className="text-sm text-[var(--text-secondary)]">
-        Save your edits before leaving, or discard them.
+        {t('unsaved.body', { ns: 'tree' })}
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
         <Button disabled={busy} onClick={onSave}>
-          {busy ? 'Saving…' : 'Save changes'}
+          {busy ? t('actions.saving', { ns: 'common' }) : t('actions.saveChanges', { ns: 'common' })}
         </Button>
         <Button variant="danger" disabled={busy} onClick={onDiscard}>
-          Discard changes
+          {t('unsaved.discardChanges', { ns: 'tree' })}
         </Button>
         <Button variant="secondary" disabled={busy} onClick={onStay}>
-          Keep editing
+          {t('actions.keepEditing', { ns: 'common' })}
         </Button>
       </div>
     </Dialog>

@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../theme/useTheme'
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme()
+  const { t } = useTranslation('common')
   const isDark = theme === 'dark'
 
   return (
@@ -10,8 +12,8 @@ export function ThemeToggle() {
       onClick={toggle}
       role="switch"
       aria-checked={isDark}
-      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+      title={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
       className="inline-flex items-center justify-center rounded-lg p-2 text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
     >
       {isDark ? (

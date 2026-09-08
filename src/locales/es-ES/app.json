@@ -1,0 +1,21 @@
+{
+  "title": "Roots Atlas",
+  "home": {
+    "heading": "Árboles familiares",
+    "subtitle": "Explora un árbol familiar o inicia sesión para crear el tuyo.",
+    "emptyTitle": "Aún no hay árboles familiares",
+    "emptyDescription": "Inicia sesión para crear el primer árbol familiar y empezar a añadir personas.",
+    "signInToCreate": "Inicia sesión para crear uno",
+    "viewTree": "Ver árbol"
+  },
+  "login": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "createAccount": "Crea tu cuenta",
+    "signInSubtitle": "Inicia sesión para editar tus árboles familiares.",
+    "signUpSubtitle": "Empieza a construir y compartir tu historia familiar.",
+    "firebaseHint": "Copia .env.example a .env.local y añade las claves de Firebase.",
+    "createAccountButton": "Crear cuenta",
+    "toggleToSignUp": "¿Necesitas una cuenta? Regístrate",
+    "toggleToSignIn": "¿Ya tienes cuenta? Inicia sesión"
+  }
+}

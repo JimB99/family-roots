@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -14,6 +15,7 @@ import {
 import { groupIssues, type IssueSeverity } from '../features/health/issue-presentation'
 import { peopleListHref } from '../lib/people-filter-params'
 import { personNavigationState, personPath } from '../lib/person-navigation'
+import { translateGraphIssueMessage } from '../i18n/translate-domain'
 import { displayName } from '../lib/tree'
 
 const severityTone: Record<IssueSeverity, 'danger' | 'warning' | 'neutral'> = {
@@ -22,13 +24,8 @@ const severityTone: Record<IssueSeverity, 'danger' | 'warning' | 'neutral'> = {
   info: 'neutral',
 }
 
-const severityLabel: Record<IssueSeverity, string> = {
-  error: 'Needs fixing',
-  warning: 'Worth checking',
-  info: 'Optional',
-}
-
 export function DataHealthPage() {
+  const { t } = useTranslation(['health', 'common'])
   const { slug = '' } = useParams()
   const { user } = useAuth()
   const { family, people, relationships, loading, isEditor } = useFamily(
@@ -43,7 +40,7 @@ export function DataHealthPage() {
     [family, people, relationships],
   )
 
-  const groups = useMemo(() => (report ? groupIssues(report.issues) : []), [report])
+  const groups = useMemo(() => (report ? groupIssues(report.issues, t) : []), [report, t])
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people])
   const healthReturnState = useMemo(
@@ -54,7 +51,7 @@ export function DataHealthPage() {
   if (loading) {
     return (
       <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading data health…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading', { ns: 'tree' })}</p>
       </Layout>
     )
   }
@@ -62,7 +59,7 @@ export function DataHealthPage() {
   if (!family || !report) {
     return (
       <Layout>
-        <p className="p-10 text-center">Family not found.</p>
+        <p className="p-10 text-center">{t('notFound.family', { ns: 'common' })}</p>
       </Layout>
     )
   }
@@ -71,9 +68,9 @@ export function DataHealthPage() {
     <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Data health</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title', { ns: 'health' })}</h1>
           <p className="mt-1 text-[var(--text-secondary)]">
-            Everything that might need a second look in {family.name}.
+            {t('subtitle', { ns: 'health', family: family.name })}
           </p>
         </div>
 
@@ -81,8 +78,8 @@ export function DataHealthPage() {
 
         {groups.length === 0 ? (
           <EmptyState
-            title="Everything looks healthy"
-            description="No missing links or conflicting dates were found."
+            title={t('healthyTitle', { ns: 'health' })}
+            description={t('healthyDescription', { ns: 'health' })}
           />
         ) : (
           <ul className="space-y-3">
@@ -104,7 +101,7 @@ export function DataHealthPage() {
                             {group.title}
                           </span>
                           <StatusBadge tone={severityTone[group.severity]}>
-                            {severityLabel[group.severity]}
+                            {t(`severity.${group.severity}`, { ns: 'health' })}
                           </StatusBadge>
                           {peopleListFilters ? (
                             <Link
@@ -112,7 +109,7 @@ export function DataHealthPage() {
                               onClick={(event) => event.stopPropagation()}
                               className="text-sm text-[var(--accent-strong)] hover:underline"
                             >
-                              Filter in People list
+                              {t('filterInPeople', { ns: 'health' })}
                             </Link>
                           ) : null}
                         </div>
@@ -148,7 +145,9 @@ export function DataHealthPage() {
                             key={`${group.code}-${index}`}
                             className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm"
                           >
-                            <span className="text-[var(--text-secondary)]">{issue.message}</span>
+                            <span className="text-[var(--text-secondary)]">
+                              {translateGraphIssueMessage(issue, t)}
+                            </span>
                             <span className="flex gap-2">
                               {issue.personIds?.map((id) => {
                                 const person = peopleById.get(id)
@@ -169,7 +168,10 @@ export function DataHealthPage() {
                         ))}
                         {group.issues.length > 50 && (
                           <li className="py-1.5 text-sm text-[var(--text-muted)]">
-                            and {group.issues.length - 50} more
+                            {t('counts.andMore', {
+                              ns: 'common',
+                              count: group.issues.length - 50,
+                            })}
                           </li>
                         )}
                       </ul>
@@ -182,7 +184,7 @@ export function DataHealthPage() {
         )}
 
         <Link to={`/families/${slug}`} className="inline-block text-sm text-[var(--accent-strong)] hover:underline">
-          ← Back to tree
+          ← {t('back.tree', { ns: 'common' })}
         </Link>
       </div>
     </Layout>

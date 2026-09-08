@@ -1,3 +1,4 @@
+import { formatMaidenNameLabel } from '../../../i18n/maiden-name-label'
 import { formatLifeSpan } from '../../../lib/dates'
 import type { Person } from '../../../types'
 
@@ -33,10 +34,10 @@ export function initialsFor(person: Person): string {
   return value || '?'
 }
 
-export function subtitleFor(person: Person): string | null {
-  const span = formatLifeSpan(person.birth, person.death, person.isLiving)
+export function subtitleFor(person: Person, locale?: string): string | null {
+  const span = formatLifeSpan(person.birth, person.death, person.isLiving, locale)
   if (span) return span
-  if (person.maidenName) return `née ${person.maidenName}`
+  if (person.maidenName) return formatMaidenNameLabel(person.maidenName, locale)
   return null
 }
 
@@ -45,12 +46,12 @@ export function isDeceased(person: Person): boolean {
   return person.isLiving === false || Boolean(person.death)
 }
 
-export function personNodeDisplayFromPerson(person: Person): PersonNodeDisplay {
+export function personNodeDisplayFromPerson(person: Person, locale?: string): PersonNodeDisplay {
   return {
     label: displayLabel(person),
     givenNames: person.givenNames?.trim() || 'Unknown',
     familyName: person.familyName?.trim() || null,
-    subtitle: subtitleFor(person),
+    subtitle: subtitleFor(person, locale),
     gender: person.gender,
     birthYear: birthYearOf(person),
     deathYear: deathYearOf(person),

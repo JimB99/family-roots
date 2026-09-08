@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog } from '../../components/ui/Dialog'
 import { Button } from '../../components/ui/Button'
 import { buildFamilyGraph } from '../../domain/family-graph'
@@ -7,6 +8,7 @@ import { executeCommandPlan } from '../../data/firestore/execute-command-plan'
 import { formatLifeSpan } from '../../lib/dates'
 import { displayName } from '../../lib/tree'
 import type { DuplicateCandidate } from '../../domain/duplicate-detection'
+import { translateDuplicateReason } from '../../i18n/translate-domain'
 import type { Person, PersonInput, Relationship } from '../../types'
 
 interface MergePeopleDialogProps {
@@ -34,6 +36,7 @@ export function MergePeopleDialog({
   onClose,
   onMerged,
 }: MergePeopleDialogProps) {
+  const { t } = useTranslation(['tree', 'common'])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -79,7 +82,7 @@ export function MergePeopleDialog({
       await onMerged()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
+      setError(err instanceof Error ? err.message : t('mutation.mergeFailed', { ns: 'tree' }))
     } finally {
       setBusy(false)
     }
@@ -95,13 +98,17 @@ export function MergePeopleDialog({
   return (
     <Dialog
       open={open}
-      title="Merge duplicate people"
-      description="Pick the record to keep. The other one is removed and its connections move across."
+      title={t('merge.title', { ns: 'tree' })}
+      description={t('merge.description', { ns: 'tree' })}
       onClose={onClose}
     >
       <div className="space-y-4 text-sm">
         <p className="rounded-lg bg-[var(--surface-sunken)] px-3 py-2 text-[var(--text-secondary)]">
-          {pair.candidate.reason}
+          {translateDuplicateReason(
+            pair.candidate.nameSimilarityPercent,
+            pair.candidate.birthYearsClose,
+            t,
+          )}
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -112,10 +119,14 @@ export function MergePeopleDialog({
             >
               <p className="font-medium text-[var(--text-primary)]">{displayName(person)}</p>
               <p className="mt-0.5 text-[var(--text-muted)]">
-                {formatLifeSpan(person.birth, person.death, person.isLiving) || 'Dates unknown'}
+                {formatLifeSpan(person.birth, person.death, person.isLiving) ||
+                  t('datesUnknown', { ns: 'common' })}
               </p>
               <p className="mt-0.5 text-[var(--text-muted)]">
-                {countLinks(relationships, person.id)} connections
+                {t('counts.connections', {
+                  ns: 'common',
+                  count: countLinks(relationships, person.id),
+                })}
               </p>
               <Button
                 variant="secondary"
@@ -124,7 +135,7 @@ export function MergePeopleDialog({
                 disabled={busy}
                 onClick={() => void merge(key)}
               >
-                Keep this one
+                {t('merge.keepThis', { ns: 'tree' })}
               </Button>
             </div>
           ))}

@@ -1,0 +1,80 @@
+{
+  "manageTitle": "Gestionar árboles familiares",
+  "signedInAs": "Sesión iniciada como {{email}}",
+  "signInToManage": "Inicia sesión para gestionar árboles familiares.",
+  "signInToManageFamily": "Inicia sesión para gestionar este árbol familiar.",
+  "notEditor": "Has iniciado sesión, pero no eres editor de este árbol familiar.",
+  "askInvite": "Pide al propietario que invite a {{email}}.",
+  "yourTrees": "Tus árboles",
+  "allPublished": "Todos los árboles publicados",
+  "create": {
+    "title": "Crear un árbol familiar nuevo",
+    "description": "Elige un nombre visible y una URL. Serás el propietario y podrás invitar editores después.",
+    "displayName": "Nombre visible",
+    "displayPlaceholder": "p. ej. La familia Miller",
+    "url": "URL",
+    "urlPlaceholder": "familia-miller",
+    "button": "Crear árbol familiar",
+    "invalidName": "Introduce un nombre de familia válido.",
+    "failed": "No se pudo crear el árbol familiar"
+  },
+  "family": {
+    "subtitle": "Gestiona personas, vínculos y acceso.",
+    "overview": "Resumen",
+    "viewHealth": "Ver salud de datos",
+    "stats": {
+      "people": "Personas",
+      "connections": "Vínculos",
+      "connectedGroups": "Grupos conectados",
+      "largestGroup": "Grupo mayor",
+      "largestGroupValue": "{{count}} personas",
+      "outsideMain": "Fuera del grupo principal",
+      "outsideMainValue": "{{count}} personas",
+      "uncertainLinks": "Vínculos dudosos"
+    },
+    "peopleCard": {
+      "title": "Personas",
+      "description": "Añade alguien nuevo a esta familia.",
+      "addPerson": "Añadir persona",
+      "closeForm": "Cerrar formulario"
+    },
+    "connectionCard": {
+      "title": "Añadir un vínculo",
+      "description": "Para la mayoría de ediciones es más rápido arrastrar una persona sobre otra en el árbol.",
+      "typeAria": "Tipo de vínculo",
+      "parentChild": "Progenitor → hijo/a",
+      "marriage": "Matrimonio",
+      "firstPersonAria": "Primera persona",
+      "secondPersonAria": "Segunda persona",
+      "partner": "Pareja",
+      "parent": "Progenitor",
+      "child": "Hijo/a",
+      "addButton": "Añadir vínculo",
+      "failed": "No se pudo añadir la relación"
+    },
+    "reviewCard": {
+      "title": "Vínculos importados por revisar",
+      "description": "Vínculos de una importación que aún no se han confirmado.",
+      "acceptAll": "Aceptar los {{count}}",
+      "nothing": "Nada que revisar.",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "link_one": "{{count}} vínculo",
+      "link_other": "{{count}} vínculos",
+      "confirm": "Confirmar",
+      "delete": "Eliminar",
+      "marriage": "Matrimonio",
+      "parentChild": "Progenitor → hijo/a"
+    }
+  },
+  "invites": {
+    "title": "Invitar a un colaborador",
+    "description": "Cuando cree una cuenta con este correo, se convertirá automáticamente en editor.",
+    "emailAria": "Correo electrónico a invitar",
+    "emailPlaceholder": "nombre@ejemplo.com",
+    "send": "Enviar invitación",
+    "success": "Invitado {{email}}. Tendrá acceso de edición en cuanto se registre con ese correo.",
+    "failed": "Error al invitar",
+    "pending": "Invitaciones pendientes"
+  }
+}

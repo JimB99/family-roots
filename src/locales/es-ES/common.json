@@ -1,0 +1,92 @@
+{
+  "appName": "Roots Atlas",
+  "skipToContent": "Saltar al contenido",
+  "nav": {
+    "tree": "Árbol",
+    "people": "Personas",
+    "health": "Salud",
+    "manage": "Gestionar"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "signedIn": "Sesión iniciada",
+    "email": "Correo electrónico",
+    "password": "Contraseña"
+  },
+  "actions": {
+    "save": "Guardar",
+    "saveChanges": "Guardar cambios",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "change": "Cambiar",
+    "loading": "Cargando…",
+    "pleaseWait": "Espera un momento…",
+    "view": "Ver",
+    "more": "Más",
+    "discard": "Descartar",
+    "keepEditing": "Seguir editando",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "connecting": "Conectando…",
+    "restoring": "Restaurando…",
+    "creating": "Creando…",
+    "accepting": "Aceptando…"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "theme": {
+    "switchToLight": "Cambiar a tema claro",
+    "switchToDark": "Cambiar a tema oscuro"
+  },
+  "counts": {
+    "people_one": "{{count}} persona",
+    "people_other": "{{count}} personas",
+    "peopleOf_one": "{{matched}} de {{total}} persona",
+    "peopleOf_other": "{{matched}} de {{total}} personas",
+    "unsaved_one": "{{count}} cambio sin guardar",
+    "unsaved_other": "{{count}} cambios sin guardar",
+    "connections_one": "{{count}} vínculo",
+    "connections_other": "{{count}} vínculos",
+    "relationships_one": "{{count}} relación conectada",
+    "relationships_other": "{{count}} relaciones conectadas",
+    "toReview_one": "{{count}} por revisar",
+    "toReview_other": "{{count}} por revisar",
+    "andMore_one": "y {{count}} más",
+    "andMore_other": "y {{count}} más",
+    "group": "Grupo {{index}} ({{size}})"
+  },
+  "notFound": {
+    "family": "Familia no encontrada",
+    "familyTree": "Árbol familiar no encontrado",
+    "familySlug": "La familia «{{slug}}» aún no existe.",
+    "person": "Persona no encontrada en esta familia."
+  },
+  "back": {
+    "tree": "Volver al árbol",
+    "people": "Volver a Personas",
+    "health": "Volver a Salud",
+    "manage": "Volver a gestión",
+    "allFamilies": "Todos los árboles familiares"
+  },
+  "empty": {
+    "noMatches": "Sin coincidencias."
+  },
+  "from": "Desde",
+  "to": "Hasta",
+  "unknown": "Desconocido",
+  "unknownParent": "Progenitor desconocido",
+  "datesUnknown": "Fechas desconocidas",
+  "deceased": "Fallecido/a",
+  "noneRecorded": "Ninguno registrado",
+  "closeMenu": "Cerrar menú",
+  "closeDialog": "Cerrar diálogo",
+  "closePanel": "Cerrar panel",
+  "preview": "Vista previa",
+  "details": "Detalles"
+}

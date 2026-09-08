@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { personInputFromPerson } from '../data/firestore/codecs'
 import type { PersonDraft } from '../features/tree/person-drafts'
 import { partialDateToInput, parsePartialDateInputResult } from '../lib/dates'
@@ -70,6 +71,7 @@ function FormSection({
 }
 
 export function PersonForm(props: PersonFormProps) {
+  const { t } = useTranslation(['person', 'common', 'tree'])
   const { familyId, compact = false } = props
   const initial = props.initial
 
@@ -153,7 +155,7 @@ export function PersonForm(props: PersonFormProps) {
       const base64 = await compressImageToBase64(file)
       update('photoBase64', base64)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Photo upload failed')
+      setError(err instanceof Error ? err.message : t('mutation.photoUploadFailed', { ns: 'tree' }))
     }
   }
 
@@ -173,7 +175,7 @@ export function PersonForm(props: PersonFormProps) {
         death: deathParsed.date,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : t('mutation.saveFailed', { ns: 'tree' }))
     } finally {
       setSaving(false)
     }
@@ -184,7 +186,7 @@ export function PersonForm(props: PersonFormProps) {
 
   const nameFields = (
     <>
-      <Field label="Given names">
+      <Field label={t('fields.givenNames', { ns: 'person' })}>
         <input
           className={inputClass}
           value={form.givenNames}
@@ -192,14 +194,14 @@ export function PersonForm(props: PersonFormProps) {
           required
         />
       </Field>
-      <Field label="Family name">
+      <Field label={t('fields.familyName', { ns: 'person' })}>
         <input
           className={inputClass}
           value={form.familyName ?? ''}
           onChange={(e) => update('familyName', e.target.value || null)}
         />
       </Field>
-      <Field label="Maiden name">
+      <Field label={t('fields.maidenName', { ns: 'person' })}>
         <input
           className={inputClass}
           value={form.maidenName ?? ''}
@@ -213,7 +215,10 @@ export function PersonForm(props: PersonFormProps) {
 
   const lifeFields = (
     <>
-      <Field label="Birth date" hint={compact ? undefined : 'Use 1956, 07.1956, or 16.07.1956'}>
+      <Field
+        label={t('fields.birthDate', { ns: 'person' })}
+        hint={compact ? undefined : t('form.hints.birthDate', { ns: 'person' })}
+      >
         <input
           className={inputClass}
           value={birthInput}
@@ -221,14 +226,17 @@ export function PersonForm(props: PersonFormProps) {
           placeholder="16.07.1956"
         />
       </Field>
-      <Field label="Birth place">
+      <Field label={t('fields.birthPlace', { ns: 'person' })}>
         <input
           className={inputClass}
           value={form.birthPlace ?? ''}
           onChange={(e) => update('birthPlace', e.target.value || null)}
         />
       </Field>
-      <Field label="Death date" hint={compact ? undefined : 'Leave empty if unknown'}>
+      <Field
+        label={t('fields.deathDate', { ns: 'person' })}
+        hint={compact ? undefined : t('form.hints.deathDate', { ns: 'person' })}
+      >
         <input
           className={inputClass}
           value={deathInput}
@@ -236,7 +244,7 @@ export function PersonForm(props: PersonFormProps) {
           placeholder="02.03.2014"
         />
       </Field>
-      <Field label="Death place">
+      <Field label={t('fields.deathPlace', { ns: 'person' })}>
         <input
           className={inputClass}
           value={form.deathPlace ?? ''}
@@ -248,7 +256,7 @@ export function PersonForm(props: PersonFormProps) {
   )
 
   const photoField = (
-    <Field label="Photo">
+    <Field label={t('fields.photo', { ns: 'person' })}>
       <input
         type="file"
         accept="image/*"
@@ -257,9 +265,9 @@ export function PersonForm(props: PersonFormProps) {
       />
       {form.photoBase64 && (
         <div className="mt-2.5 flex items-center gap-3">
-          <img src={form.photoBase64} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
+          <img src={form.photoBase64} alt={t('preview', { ns: 'common' })} className="h-20 w-20 rounded-xl object-cover" />
           <Button variant="ghost" size="sm" onClick={() => update('photoBase64', null)}>
-            Remove
+            {t('form.removePhoto', { ns: 'person' })}
           </Button>
         </div>
       )}
@@ -267,7 +275,7 @@ export function PersonForm(props: PersonFormProps) {
   )
 
   const notesField = (
-    <Field label="Notes">
+    <Field label={t('fields.notes', { ns: 'person' })}>
       <textarea
         className={`${inputClass} ${compact ? 'min-h-20' : 'min-h-28'}`}
         value={form.notes ?? ''}
@@ -289,16 +297,16 @@ export function PersonForm(props: PersonFormProps) {
 
       {compact ? (
         <>
-          <FormSection title="Name" compact>
+          <FormSection title={t('form.sections.name', { ns: 'person' })} compact>
             {nameFields}
           </FormSection>
-          <FormSection title="Gender" compact>
+          <FormSection title={t('form.sections.gender', { ns: 'person' })} compact>
             {genderControl}
           </FormSection>
-          <FormSection title="Life" compact>
+          <FormSection title={t('form.sections.life', { ns: 'person' })} compact>
             {lifeFields}
           </FormSection>
-          <FormSection title="More" compact>
+          <FormSection title={t('form.sections.more', { ns: 'person' })} compact>
             {photoField}
             {notesField}
           </FormSection>
@@ -307,7 +315,7 @@ export function PersonForm(props: PersonFormProps) {
         <>
           <div className={gridClass}>
             {nameFields}
-            <Field label="Gender">{genderControl}</Field>
+            <Field label={t('fields.gender', { ns: 'person' })}>{genderControl}</Field>
             {lifeFields}
           </div>
           {photoField}
@@ -319,17 +327,17 @@ export function PersonForm(props: PersonFormProps) {
         props.onRevert && (
           <div className="pt-1">
             <Button type="button" variant="secondary" size="sm" onClick={props.onRevert}>
-              Revert changes
+              {t('form.revertChanges', { ns: 'person' })}
             </Button>
           </div>
         )
       ) : (
         <div className="flex gap-2 pt-1">
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save person'}
+            {saving ? t('actions.saving', { ns: 'common' }) : t('form.savePerson', { ns: 'person' })}
           </Button>
           <Button type="button" variant="secondary" onClick={props.onCancel}>
-            Cancel
+            {t('actions.cancel', { ns: 'common' })}
           </Button>
         </div>
       )}

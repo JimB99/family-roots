@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog } from '../../components/ui/Dialog'
 import { Button } from '../../components/ui/Button'
 import { validateFamilyBackup, type FamilyBackup } from './family-backup-schema'
 import { restoreFamilyBackup, type RestoreMode } from './restore-family-backup'
+import { translateBackupError } from '../../i18n/translate-domain'
 
 interface RestoreFamilyDialogProps {
   open: boolean
@@ -19,6 +21,7 @@ export function RestoreFamilyDialog({
   onClose,
   onRestored,
 }: RestoreFamilyDialogProps) {
+  const { t, i18n } = useTranslation(['tree', 'common'])
   const [mode, setMode] = useState<RestoreMode>('merge')
   const [preview, setPreview] = useState<FamilyBackup | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,16 +36,16 @@ export function RestoreFamilyDialog({
       const parsed = JSON.parse(text) as unknown
       const result = validateFamilyBackup(parsed)
       if (!result.ok) {
-        setError(result.error)
+        setError(translateBackupError(result.error, t))
         return
       }
       if (result.backup.family.id !== familyId) {
-        setError('This backup belongs to a different family.')
+        setError(t('backup.wrongFamily', { ns: 'tree' }))
         return
       }
       setPreview(result.backup)
     } catch {
-      setError('That file could not be read as a backup.')
+      setError(t('backup.invalidFile', { ns: 'tree' }))
     }
   }
 
@@ -56,7 +59,7 @@ export function RestoreFamilyDialog({
       onClose()
       setPreview(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Restore failed')
+      setError(err instanceof Error ? err.message : t('mutation.restoreFailed', { ns: 'tree' }))
     } finally {
       setBusy(false)
     }
@@ -71,15 +74,15 @@ export function RestoreFamilyDialog({
   return (
     <Dialog
       open={open}
-      title="Restore a backup"
-      description="Upload a JSON backup exported from this family."
+      title={t('backup.title', { ns: 'tree' })}
+      description={t('backup.description', { ns: 'tree' })}
       onClose={close}
     >
       <div className="space-y-4 text-sm">
         <input
           type="file"
           accept="application/json"
-          aria-label="Backup file"
+          aria-label={t('backup.fileAria', { ns: 'tree' })}
           onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
           className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--surface-sunken)] file:px-3 file:py-1.5 file:text-sm file:text-[var(--text-primary)]"
         />
@@ -87,16 +90,25 @@ export function RestoreFamilyDialog({
         {preview && (
           <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-3">
             <p className="font-medium text-[var(--text-primary)]">
-              {preview.people.length} people, {preview.relationships.length} connections
+              {t('backup.summary', {
+                ns: 'tree',
+                people: preview.people.length,
+                connections: preview.relationships.length,
+              })}
             </p>
             <p className="mt-1 text-[var(--text-muted)]">
-              Exported {new Date(preview.exportedAt).toLocaleString()}
+              {t('backup.exportedAt', {
+                ns: 'tree',
+                date: new Date(preview.exportedAt).toLocaleString(i18n.language),
+              })}
             </p>
           </div>
         )}
 
         <fieldset className="space-y-2">
-          <legend className="font-medium text-[var(--text-primary)]">How should it be applied?</legend>
+          <legend className="font-medium text-[var(--text-primary)]">
+            {t('backup.howApplied', { ns: 'tree' })}
+          </legend>
           <label className="flex items-start gap-2.5">
             <input
               type="radio"
@@ -105,10 +117,8 @@ export function RestoreFamilyDialog({
               onChange={() => setMode('merge')}
             />
             <span>
-              <span className="block text-[var(--text-primary)]">Merge</span>
-              <span className="text-[var(--text-muted)]">
-                Update people that already exist and add the rest.
-              </span>
+              <span className="block text-[var(--text-primary)]">{t('backup.mergeTitle', { ns: 'tree' })}</span>
+              <span className="text-[var(--text-muted)]">{t('backup.mergeDescription', { ns: 'tree' })}</span>
             </span>
           </label>
           <label className="flex items-start gap-2.5">
@@ -119,10 +129,8 @@ export function RestoreFamilyDialog({
               onChange={() => setMode('replace')}
             />
             <span>
-              <span className="block text-[var(--text-primary)]">Replace everything</span>
-              <span className="text-[var(--text-muted)]">
-                Delete all current people and connections first. This cannot be undone.
-              </span>
+              <span className="block text-[var(--text-primary)]">{t('backup.replaceTitle', { ns: 'tree' })}</span>
+              <span className="text-[var(--text-muted)]">{t('backup.replaceDescription', { ns: 'tree' })}</span>
             </span>
           </label>
         </fieldset>
@@ -139,10 +147,14 @@ export function RestoreFamilyDialog({
             disabled={!preview || busy}
             onClick={() => void restore()}
           >
-            {busy ? 'Restoring…' : mode === 'replace' ? 'Replace and restore' : 'Merge backup'}
+            {busy
+              ? t('actions.restoring', { ns: 'common' })
+              : mode === 'replace'
+                ? t('backup.replaceButton', { ns: 'tree' })
+                : t('backup.mergeButton', { ns: 'tree' })}
           </Button>
           <Button variant="secondary" onClick={close}>
-            Cancel
+            {t('actions.cancel', { ns: 'common' })}
           </Button>
         </div>
       </div>

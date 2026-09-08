@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { Dialog } from './ui/Dialog'
 import { displayName } from '../lib/tree'
@@ -11,6 +12,7 @@ interface PersonDeleteButtonProps {
 }
 
 export function PersonDeleteButton({ person, relationshipCount, onDelete }: PersonDeleteButtonProps) {
+  const { t } = useTranslation(['person', 'common', 'tree'])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -20,25 +22,28 @@ export function PersonDeleteButton({ person, relationshipCount, onDelete }: Pers
       await onDelete()
       setConfirmOpen(false)
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Delete failed')
+      setDeleteError(err instanceof Error ? err.message : t('mutation.deleteFailed', { ns: 'tree' }))
     }
   }
 
   return (
     <>
       <Button variant="danger" className="w-full" size="sm" onClick={() => setConfirmOpen(true)}>
-        Delete person
+        {t('profile.deletePerson', { ns: 'person' })}
       </Button>
 
       <Dialog
         open={confirmOpen}
-        title="Delete person"
-        description="This cannot be undone."
+        title={t('profile.deleteTitle', { ns: 'person' })}
+        description={t('profile.deleteDescription', { ns: 'person' })}
         onClose={() => setConfirmOpen(false)}
       >
         <p className="text-sm text-[var(--text-secondary)]">
-          Delete {displayName(person)} and {relationshipCount} connected relationship
-          {relationshipCount === 1 ? '' : 's'}?
+          {t('profile.deleteConfirm', {
+            ns: 'person',
+            name: displayName(person),
+            count: relationshipCount,
+          })}
         </p>
         {deleteError && (
           <p className="mt-2 text-sm text-[var(--color-bloom-600)]" role="alert">
@@ -47,10 +52,10 @@ export function PersonDeleteButton({ person, relationshipCount, onDelete }: Pers
         )}
         <div className="mt-5 flex gap-2">
           <Button variant="danger" onClick={() => void handleDelete()}>
-            Delete person
+            {t('profile.deletePerson', { ns: 'person' })}
           </Button>
           <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
-            Cancel
+            {t('actions.cancel', { ns: 'common' })}
           </Button>
         </div>
       </Dialog>

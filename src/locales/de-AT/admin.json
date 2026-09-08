@@ -1,0 +1,80 @@
+{
+  "manageTitle": "Stammbäume verwalten",
+  "signedInAs": "Angemeldet als {{email}}",
+  "signInToManage": "Melde dich an, um Stammbäume zu verwalten.",
+  "signInToManageFamily": "Melde dich an, um diesen Stammbaum zu verwalten.",
+  "notEditor": "Du bist angemeldet, aber kein Bearbeiter für diesen Stammbaum.",
+  "askInvite": "Bitte den Inhaber, {{email}} einzuladen.",
+  "yourTrees": "Deine Stammbäume",
+  "allPublished": "Alle veröffentlichten Stammbäume",
+  "create": {
+    "title": "Neuen Stammbaum erstellen",
+    "description": "Wähle einen Anzeigenamen und eine URL. Du wirst Inhaber und kannst später Bearbeiter einladen.",
+    "displayName": "Anzeigename",
+    "displayPlaceholder": "z. B. Familie Miller",
+    "url": "URL",
+    "urlPlaceholder": "familie-miller",
+    "button": "Stammbaum erstellen",
+    "invalidName": "Bitte gib einen gültigen Familiennamen ein.",
+    "failed": "Stammbaum konnte nicht erstellt werden"
+  },
+  "family": {
+    "subtitle": "Personen, Verbindungen und Zugriff verwalten.",
+    "overview": "Übersicht",
+    "viewHealth": "Datenqualität ansehen",
+    "stats": {
+      "people": "Personen",
+      "connections": "Verbindungen",
+      "connectedGroups": "Verbundene Gruppen",
+      "largestGroup": "Größte Gruppe",
+      "largestGroupValue": "{{count}} Personen",
+      "outsideMain": "Außerhalb der Hauptgruppe",
+      "outsideMainValue": "{{count}} Personen",
+      "uncertainLinks": "Unsichere Verbindungen"
+    },
+    "peopleCard": {
+      "title": "Personen",
+      "description": "Füge jemanden Neuen zu dieser Familie hinzu.",
+      "addPerson": "Person hinzufügen",
+      "closeForm": "Formular schließen"
+    },
+    "connectionCard": {
+      "title": "Verbindung hinzufügen",
+      "description": "Für die meisten Bearbeitungen ist es schneller, eine Person im Stammbaum auf eine andere zu ziehen.",
+      "typeAria": "Verbindungstyp",
+      "parentChild": "Elternteil → Kind",
+      "marriage": "Ehe",
+      "firstPersonAria": "Erste Person",
+      "secondPersonAria": "Zweite Person",
+      "partner": "Partner",
+      "parent": "Elternteil",
+      "child": "Kind",
+      "addButton": "Verbindung hinzufügen",
+      "failed": "Beziehung konnte nicht hinzugefügt werden"
+    },
+    "reviewCard": {
+      "title": "Importierte Verbindungen zur Prüfung",
+      "description": "Verbindungen aus einem Import, die noch nicht bestätigt wurden.",
+      "acceptAll": "Alle {{count}} übernehmen",
+      "nothing": "Nichts zu prüfen.",
+      "show": "Anzeigen",
+      "hide": "Ausblenden",
+      "link_one": "{{count}} Verbindung",
+      "link_other": "{{count}} Verbindungen",
+      "confirm": "Bestätigen",
+      "delete": "Löschen",
+      "marriage": "Ehe",
+      "parentChild": "Elternteil → Kind"
+    }
+  },
+  "invites": {
+    "title": "Mitwirkenden einladen",
+    "description": "Wenn die Person ein Konto mit dieser E-Mail erstellt, wird sie automatisch Bearbeiter.",
+    "emailAria": "Einzuladende E-Mail-Adresse",
+    "emailPlaceholder": "name@beispiel.at",
+    "send": "Einladung senden",
+    "success": "{{email}} eingeladen. Bearbeitungszugriff sobald sich die Person mit dieser E-Mail registriert.",
+    "failed": "Einladung fehlgeschlagen",
+    "pending": "Ausstehende Einladungen"
+  }
+}

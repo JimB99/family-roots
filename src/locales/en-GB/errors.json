@@ -1,0 +1,58 @@
+{
+  "authFailed": "Authentication failed",
+  "auth": {
+    "invalidEmail": "Invalid email address.",
+    "userDisabled": "This account has been disabled.",
+    "userNotFound": "No account found with this email.",
+    "wrongPassword": "Incorrect password.",
+    "emailInUse": "An account already exists with this email.",
+    "weakPassword": "Password should be at least 6 characters.",
+    "tooManyRequests": "Too many attempts. Please try again later.",
+    "network": "Network error. Check your connection."
+  },
+  "domain": {
+    "SELF_RELATIONSHIP": "A person cannot relate to themselves",
+    "MISSING_PERSON": "Both relationship endpoints must exist",
+    "CROSS_FAMILY": "Relationship endpoints must belong to the same family",
+    "DUPLICATE_RELATIONSHIP": "An equivalent relationship already exists",
+    "CONFLICTING_DIRECTION": "Opposite parent-child direction already exists",
+    "ANCESTRY_CYCLE": "This parent-child link would create an ancestry cycle",
+    "BIOLOGICALLY_IMPLAUSIBLE_DATE": "Parent and child birth dates are implausible",
+    "INVALID_DATE": "Date precision unknown is not valid for storage",
+    "INVALID_DATE_YEAR": "Invalid year: {{year}}",
+    "INVALID_DATE_MONTH": "Invalid month: {{month}}",
+    "INVALID_DATE_DAY": "Invalid day: {{day}} for {{year}}-{{month}}",
+    "INVALID_DATE_FORMAT": "Unrecognized date format: {{value}}",
+    "INVALID_RELATIONSHIP_TYPE": "This connection is not allowed",
+    "CANNOT_OVERWRITE": "This connection cannot be overwritten",
+    "CHOOSE_PARENT_TO_REPLACE": "Choose an existing parent link to replace",
+    "ANCHOR_NOT_FOUND": "Anchor person not found",
+    "SIBLING_NO_PARENTS": "Cannot add sibling without known parents",
+    "RELATIONSHIP_NOT_FOUND": "Relationship not found",
+    "MERGE_TARGETS_MISSING": "Merge targets must exist",
+    "CANNOT_MOVE_FAMILY": "Cannot move relationship to another family"
+  },
+  "connection": {
+    "NO_PARENTS_FOR_SIBLING": "No parents recorded for this person yet",
+    "NOT_POSSIBLE": "Not possible for this pair",
+    "DUPLICATE_EXISTS": "An equivalent relationship already exists",
+    "TWO_PARENTS": "This person already has two parents",
+    "PARTIAL_SIBLING": "Some sibling parent links already exist",
+    "OPPOSITE_DIRECTION": "The opposite parent-child direction already exists"
+  },
+  "backup": {
+    "NOT_OBJECT": "Backup is not an object",
+    "UNSUPPORTED_VERSION": "Unsupported backup schema version",
+    "MISSING_SECTIONS": "Backup missing required sections",
+    "CROSS_FAMILY_PEOPLE": "Backup contains cross-family people",
+    "CROSS_FAMILY_RELATIONSHIPS": "Backup contains cross-family relationships"
+  },
+  "duplicate": {
+    "reason": "Names {{percent}}% similar{{birthSuffix}}",
+    "birthClose": ", birth years close"
+  },
+  "export": {
+    "rasterizeFailed": "Failed to rasterize tree",
+    "canvasUnavailable": "Canvas unavailable"
+  }
+}

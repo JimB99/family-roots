@@ -1,5 +1,6 @@
 import { formatLifeSpan } from '../lib/dates'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { PersonNavigationState } from '../lib/person-navigation'
 import { personPath } from '../lib/person-navigation'
 import { Button } from './ui/Button'
@@ -41,6 +42,7 @@ export function PersonCard({
   onEdit,
   returnState,
 }: PersonCardProps) {
+  const { t, i18n } = useTranslation(['person', 'common'])
   const ring = genderRing[person.gender]
 
   return (
@@ -78,15 +80,18 @@ export function PersonCard({
                   {displayName(person)}
                 </h1>
                 {person.maidenName && (
-                  <p className="mt-1 text-[var(--text-secondary)]">née {person.maidenName}</p>
+                  <p className="mt-1 text-[var(--text-secondary)]">
+                    {t('maidenNameLabel', { name: person.maidenName })}
+                  </p>
                 )}
                 <p className="mt-2 text-[var(--accent-strong)]">
-                  {formatLifeSpan(person.birth, person.death, person.isLiving) || 'Dates unknown'}
+                  {formatLifeSpan(person.birth, person.death, person.isLiving, i18n.language) ||
+                    t('datesUnknown', { ns: 'common' })}
                 </p>
               </div>
               {isEditor && onEdit && (
                 <Button size="sm" onClick={onEdit}>
-                  Edit
+                  {t('actions.edit', { ns: 'common' })}
                 </Button>
               )}
             </div>
@@ -99,9 +104,9 @@ export function PersonCard({
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <RelationList title="Parents" people={parents} slug={slug} returnState={returnState} />
-        <RelationList title="Partners" people={spouses} slug={slug} returnState={returnState} />
-        <RelationList title="Children" people={children} slug={slug} returnState={returnState} />
+        <RelationList title={t('relations.parents', { ns: 'person' })} people={parents} slug={slug} returnState={returnState} />
+        <RelationList title={t('relations.partners', { ns: 'person' })} people={spouses} slug={slug} returnState={returnState} />
+        <RelationList title={t('relations.children', { ns: 'person' })} people={children} slug={slug} returnState={returnState} />
       </div>
     </div>
   )
@@ -118,13 +123,14 @@ function RelationList({
   slug: string
   returnState?: PersonNavigationState
 }) {
+  const { t } = useTranslation('common')
   return (
     <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 text-left">
       <h2 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
         {title}
       </h2>
       {people.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">None recorded</p>
+        <p className="text-sm text-[var(--text-muted)]">{t('noneRecorded')}</p>
       ) : (
         <ul className="space-y-0.5">
           {people.map((p) => (

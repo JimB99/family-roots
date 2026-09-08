@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface SheetProps {
   open: boolean
@@ -8,6 +9,7 @@ interface SheetProps {
 }
 
 export function Sheet({ open, title, onClose, children }: SheetProps) {
+  const { t } = useTranslation('common')
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -26,7 +28,7 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        aria-label="Close panel"
+        aria-label={t('closePanel')}
         onClick={onClose}
       />
       <aside
@@ -42,7 +44,7 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close panel"
+            aria-label={t('closePanel')}
             className="rounded-lg p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
           >
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { formatLifeSpan } from '../lib/dates'
 import type { PersonNavigationState } from '../lib/person-navigation'
 import { personPath } from '../lib/person-navigation'
@@ -25,7 +26,8 @@ function initials(person: Person): string {
 }
 
 export function PersonTile({ person, slug, returnState }: PersonTileProps) {
-  const lifespan = formatLifeSpan(person.birth, person.death, person.isLiving)
+  const { t, i18n } = useTranslation(['person', 'common'])
+  const lifespan = formatLifeSpan(person.birth, person.death, person.isLiving, i18n.language)
   const ring = genderRing[person.gender]
 
   return (
@@ -60,10 +62,12 @@ export function PersonTile({ person, slug, returnState }: PersonTileProps) {
         <div className="min-w-0 self-center">
           <p className="truncate font-medium text-[var(--text-primary)]">{displayName(person)}</p>
           {person.maidenName && (
-            <p className="truncate text-xs text-[var(--text-muted)]">née {person.maidenName}</p>
+            <p className="truncate text-xs text-[var(--text-muted)]">
+              {t('maidenNameLabel', { name: person.maidenName })}
+            </p>
           )}
           <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">
-            {lifespan || 'Dates unknown'}
+            {lifespan || t('datesUnknown', { ns: 'common' })}
           </p>
         </div>
       </div>

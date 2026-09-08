@@ -1,11 +1,11 @@
 import type { Person } from '../types'
-import { displayName } from '../lib/tree'
 
 export interface DuplicateCandidate {
   personAId: string
   personBId: string
   score: number
-  reason: string
+  nameSimilarityPercent: number
+  birthYearsClose: boolean
 }
 
 function normalizeName(value: string): string {
@@ -13,8 +13,8 @@ function normalizeName(value: string): string {
 }
 
 function nameScore(a: Person, b: Person): number {
-  const nameA = normalizeName(displayName(a))
-  const nameB = normalizeName(displayName(b))
+  const nameA = normalizeName(`${a.givenNames} ${a.familyName ?? ''}`)
+  const nameB = normalizeName(`${b.givenNames} ${b.familyName ?? ''}`)
   if (nameA === nameB) return 1
   const partsA = nameA.split(' ')
   const partsB = nameB.split(' ')
@@ -45,7 +45,8 @@ export function findDuplicateCandidates(people: Person[], minScore = 0.75): Dupl
         personAId: a.id,
         personBId: b.id,
         score,
-        reason: `Names ${Math.round(name * 100)}% similar${birth > 0 ? `, birth years close` : ''}`,
+        nameSimilarityPercent: Math.round(name * 100),
+        birthYearsClose: birth > 0,
       })
     }
   }

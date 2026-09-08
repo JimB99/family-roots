@@ -1,4 +1,5 @@
 import { Mars, Venus, VenusAndMars } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { Gender } from '../types'
 
 const genderAccent: Record<Exclude<Gender, 'unknown'>, string> = {
@@ -7,34 +8,36 @@ const genderAccent: Record<Exclude<Gender, 'unknown'>, string> = {
   inter: 'var(--gender-inter)',
 }
 
-const options: {
-  value: Exclude<Gender, 'unknown'>
-  label: string
-  Icon: typeof Mars
-}[] = [
-  { value: 'male', label: 'Male', Icon: Mars },
-  { value: 'female', label: 'Female', Icon: Venus },
-  { value: 'inter', label: 'Inter', Icon: VenusAndMars },
-]
-
 interface GenderToggleProps {
   value: Gender
   onChange: (value: Gender) => void
 }
 
 export function GenderToggle({ value, onChange }: GenderToggleProps) {
+  const { t } = useTranslation('person')
+  const options: {
+    value: Exclude<Gender, 'unknown'>
+    labelKey: 'gender.male' | 'gender.female' | 'gender.inter'
+    Icon: typeof Mars
+  }[] = [
+    { value: 'male', labelKey: 'gender.male', Icon: Mars },
+    { value: 'female', labelKey: 'gender.female', Icon: Venus },
+    { value: 'inter', labelKey: 'gender.inter', Icon: VenusAndMars },
+  ]
+
   return (
-    <div className="flex gap-1.5" role="group" aria-label="Gender">
+    <div className="flex gap-1.5" role="group" aria-label={t('gender.ariaGroup')}>
       {options.map((option) => {
         const selected = value === option.value
         const { Icon } = option
+        const label = t(option.labelKey)
         return (
           <button
             key={option.value}
             type="button"
             aria-pressed={selected}
-            aria-label={option.label}
-            title={option.label}
+            aria-label={label}
+            title={label}
             onClick={() => onChange(selected ? 'unknown' : option.value)}
             className={`flex h-9 flex-1 items-center justify-center rounded-lg border transition ${
               selected
@@ -57,14 +60,17 @@ interface DeceasedToggleProps {
 }
 
 export function DeceasedToggle({ deceased, onChange }: DeceasedToggleProps) {
+  const { t } = useTranslation(['person', 'common'])
+  const label = t('deceased', { ns: 'common' })
+
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-[var(--text-secondary)]">Deceased</span>
+      <span className="text-sm text-[var(--text-secondary)]">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={deceased}
-        aria-label="Deceased"
+        aria-label={label}
         onClick={() => onChange(!deceased)}
         className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
           deceased ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'

@@ -1,10 +1,16 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FamilyGraph } from '../../../domain/types'
 import type {
   ConnectionKind,
   ConnectionOption,
   OverwriteChoice,
 } from '../../../domain/valid-connections'
+import { isDuplicateConnection } from '../../../domain/valid-connections'
+import {
+  translateConnectionLabel,
+  translateConnectionReason,
+} from '../../../i18n/translate-domain'
 import { OverwriteDialog } from './OverwriteDialog'
 
 const kindIcon: Record<ConnectionKind, string> = {
@@ -14,19 +20,15 @@ const kindIcon: Record<ConnectionKind, string> = {
   sibling: 'M5 6v8M15 6v8M5 10h10',
 }
 
-function isAlreadyConnected(option: ConnectionOption): boolean {
-  return !option.available && !option.overwrite && Boolean(option.reason?.match(/already exists/i))
-}
-
-function overwriteLabel(option: ConnectionOption): string {
-  if (!option.overwrite) return option.label
+function overwriteLabel(option: ConnectionOption, label: string, t: ReturnType<typeof useTranslation>['t']): string {
+  if (!option.overwrite) return label
   switch (option.overwrite.kind) {
     case 'replace_parent_link':
-      return `Replace a parent… (${option.label})`
+      return t('connect.overwriteReplaceParent', { ns: 'tree', label })
     case 'remove_conflicting_link':
-      return `Fix link… (${option.label})`
+      return t('connect.overwriteFixLink', { ns: 'tree', label })
     case 'complete_partial_sibling':
-      return `Add missing links… (${option.label})`
+      return t('connect.overwriteAddMissing', { ns: 'tree', label })
   }
 }
 
@@ -49,14 +51,25 @@ export function ConnectionOptionList({
   busy = false,
   onChoose,
   onOverwrite,
-  emptyMessage = 'No valid connection between these two people.',
+  emptyMessage,
 }: ConnectionOptionListProps) {
+  const { t } = useTranslation(['tree', 'common'])
   const [overwriteOption, setOverwriteOption] = useState<ConnectionOption | null>(null)
+
+  const labelFor = (option: ConnectionOption) =>
+    translateConnectionLabel(option.labelKey, option.labelParams, t)
+
+  const reasonFor = (option: ConnectionOption) => {
+    const code = option.reasonCode
+    return code ? translateConnectionReason(code, t) : null
+  }
 
   const available = options.filter((o) => o.available)
   const overwriteable = options.filter((o) => !o.available && o.overwrite)
-  const blocked = options.filter((o) => !o.available && !o.overwrite && !isAlreadyConnected(o))
-  const duplicates = options.filter((o) => isAlreadyConnected(o))
+  const blocked = options.filter((o) => !o.available && !o.overwrite && !isDuplicateConnection(o))
+  const duplicates = options.filter((o) => isDuplicateConnection(o))
+
+  const defaultEmpty = t('connect.noValidConnection', { ns: 'tree' })
 
   const handleOverwriteConfirm = (option: ConnectionOption, choice: OverwriteChoice) => {
     setOverwriteOption(null)
@@ -66,19 +79,21 @@ export function ConnectionOptionList({
   if (available.length === 0 && overwriteable.length === 0) {
     return (
       <>
-        <p className="px-3.5 py-3 text-sm text-[var(--text-secondary)]">{emptyMessage}</p>
+        <p className="px-3.5 py-3 text-sm text-[var(--text-secondary)]">
+          {emptyMessage ?? defaultEmpty}
+        </p>
         {(blocked.length > 0 || duplicates.length > 0) && (
           <ul className="border-t border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-3.5 py-2">
             {duplicates.map((option) => (
               <li key={option.kind} className="py-1 text-xs text-[var(--text-muted)]">
-                <span className="font-medium">{option.label}</span>
-                <span> — Already connected</span>
+                <span className="font-medium">{labelFor(option)}</span>
+                <span> — {t('connect.alreadyConnected', { ns: 'tree' })}</span>
               </li>
             ))}
             {blocked.map((option) => (
               <li key={option.kind} className="py-1 text-xs text-[var(--text-muted)]">
-                <span className="font-medium">{option.label}</span>
-                {option.reason && <span> — {option.reason}</span>}
+                <span className="font-medium">{labelFor(option)}</span>
+                {reasonFor(option) && <span> — {reasonFor(option)}</span>}
               </li>
             ))}
           </ul>
@@ -99,7 +114,7 @@ export function ConnectionOptionList({
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--accent-soft)] disabled:opacity-50"
             >
               <OptionIcon kind={option.kind} />
-              {option.label}
+              {labelFor(option)}
             </button>
           </li>
         ))}
@@ -112,7 +127,7 @@ export function ConnectionOptionList({
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-[var(--color-bloom-600)] transition hover:bg-[var(--surface-sunken)] disabled:opacity-50 dark:text-[var(--color-bloom-400)]"
             >
               <OptionIcon kind={option.kind} muted />
-              {overwriteLabel(option)}
+              {overwriteLabel(option, labelFor(option), t)}
             </button>
           </li>
         ))}
@@ -122,14 +137,14 @@ export function ConnectionOptionList({
         <ul className="border-t border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-3.5 py-2">
           {duplicates.map((option) => (
             <li key={option.kind} className="py-1 text-xs text-[var(--text-muted)]">
-              <span className="font-medium">{option.label}</span>
-              <span> — Already connected</span>
+              <span className="font-medium">{labelFor(option)}</span>
+              <span> — {t('connect.alreadyConnected', { ns: 'tree' })}</span>
             </li>
           ))}
           {blocked.map((option) => (
             <li key={option.kind} className="py-1 text-xs text-[var(--text-muted)]">
-              <span className="font-medium">{option.label}</span>
-              {option.reason && <span> — {option.reason}</span>}
+              <span className="font-medium">{labelFor(option)}</span>
+              {reasonFor(option) && <span> — {reasonFor(option)}</span>}
             </li>
           ))}
         </ul>

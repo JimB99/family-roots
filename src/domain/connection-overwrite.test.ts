@@ -98,7 +98,7 @@ describe('overwrite offers', () => {
 
     expect(option.available).toBe(false)
     expect(option.overwrite).toBeUndefined()
-    expect(option.reason).toMatch(/already exists/i)
+    expect(option.reasonCode).toBe('DUPLICATE_RELATIONSHIP')
   })
 
   it('does not offer overwrite for an ancestry cycle', () => {
@@ -110,7 +110,7 @@ describe('overwrite offers', () => {
 
     expect(option.available).toBe(false)
     expect(option.overwrite).toBeUndefined()
-    expect(option.reason).toMatch(/cycle/i)
+    expect(option.reasonCode).toBe('ANCESTRY_CYCLE')
   })
 
   it('does not offer overwrite for biologically implausible dates', () => {

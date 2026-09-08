@@ -1,6 +1,11 @@
 import { useEffect, useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FamilyGraph } from '../../../domain/types'
 import type { ConnectionOption, OverwriteChoice } from '../../../domain/valid-connections'
+import {
+  translateConnectionLabel,
+  translateConnectionReason,
+} from '../../../i18n/translate-domain'
 import { displayName } from '../../../lib/tree'
 import { Button } from '../../../components/ui/Button'
 import { Dialog } from '../../../components/ui/Dialog'
@@ -26,6 +31,7 @@ export function OverwriteDialog({
   onClose,
   onConfirm,
 }: OverwriteDialogProps) {
+  const { t } = useTranslation(['tree', 'common'])
   const groupId = useId()
   const offer = option?.overwrite
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
@@ -40,12 +46,14 @@ export function OverwriteDialog({
 
   if (!option || !offer) return null
 
+  const optionLabel = translateConnectionLabel(option.labelKey, option.labelParams, t)
+
   const title =
     offer.kind === 'replace_parent_link'
-      ? 'Replace a parent link'
+      ? t('overwrite.replaceParentTitle', { ns: 'tree' })
       : offer.kind === 'remove_conflicting_link'
-        ? 'Fix conflicting link'
-        : 'Complete sibling links'
+        ? t('overwrite.fixConflictTitle', { ns: 'tree' })
+        : t('overwrite.completeSiblingTitle', { ns: 'tree' })
 
   const description = `${sourceName} → ${targetName}`
 
@@ -62,19 +70,23 @@ export function OverwriteDialog({
     onConfirm(option, { kind: 'complete_partial_sibling' })
   }
 
+  const conflictDescription =
+    offer.kind === 'remove_conflicting_link'
+      ? translateConnectionReason(offer.descriptionCode as import('../../../domain/valid-connections').ConnectionBlockReason, t)
+      : ''
+
   return (
     <Dialog open={open} title={title} description={description} onClose={onClose}>
       {offer.kind === 'replace_parent_link' && (
         <div className="space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">
-            This person already has two parents. Choose which parent link to remove before adding{' '}
-            <span className="font-medium text-[var(--text-primary)]">{sourceName}</span> as a parent.
+            {t('overwrite.replaceParentBody', { ns: 'tree', name: sourceName })}
           </p>
           <fieldset className="space-y-2">
-            <legend className="sr-only">Parent link to replace</legend>
+            <legend className="sr-only">{t('overwrite.replaceParentLegend', { ns: 'tree' })}</legend>
             {offer.candidates.map((candidate) => {
               const parent = graph?.peopleById.get(candidate.parentId)
-              const label = parent ? displayName(parent) : 'Unknown parent'
+              const label = parent ? displayName(parent) : t('unknownParent', { ns: 'common' })
               return (
                 <label
                   key={candidate.relationshipId}
@@ -86,7 +98,7 @@ export function OverwriteDialog({
                     checked={selectedParentId === candidate.relationshipId}
                     onChange={() => setSelectedParentId(candidate.relationshipId)}
                   />
-                  <span>Remove {label}</span>
+                  <span>{t('overwrite.removeLabel', { ns: 'tree', name: label })}</span>
                 </label>
               )
             })}
@@ -96,24 +108,26 @@ export function OverwriteDialog({
 
       {offer.kind === 'remove_conflicting_link' && (
         <p className="text-sm text-[var(--text-secondary)]">
-          {offer.description}. Remove the existing link and create{' '}
-          <span className="font-medium text-[var(--text-primary)]">{option.label.toLowerCase()}</span>?
+          {t('overwrite.fixConflictBody', {
+            ns: 'tree',
+            description: conflictDescription,
+            label: optionLabel.toLowerCase(),
+          })}
         </p>
       )}
 
       {offer.kind === 'complete_partial_sibling' && (
         <p className="text-sm text-[var(--text-secondary)]">
-          Some sibling parent links already exist. Add only the missing parent links for{' '}
-          <span className="font-medium text-[var(--text-primary)]">{sourceName}</span>?
+          {t('overwrite.completeSiblingBody', { ns: 'tree', name: sourceName })}
         </p>
       )}
 
       <div className="mt-5 flex gap-2">
         <Button disabled={busy} onClick={handleConfirm}>
-          {busy ? 'Connecting…' : 'Confirm'}
+          {busy ? t('actions.connecting', { ns: 'common' }) : t('actions.confirm', { ns: 'common' })}
         </Button>
         <Button variant="secondary" disabled={busy} onClick={onClose}>
-          Cancel
+          {t('actions.cancel', { ns: 'common' })}
         </Button>
       </div>
     </Dialog>

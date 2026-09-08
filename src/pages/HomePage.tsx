@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -8,6 +9,7 @@ import { listFamilies } from '../lib/firestore'
 import type { Family } from '../types'
 
 export function HomePage() {
+  const { t } = useTranslation('app')
   const [families, setFamilies] = useState<Family[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -22,10 +24,8 @@ export function HomePage() {
       <div className="mx-auto w-full max-w-3xl px-4 py-14">
         <div className="text-center">
           <TreeMark className="mx-auto h-14 w-14 text-[var(--accent)]" />
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight">Family trees</h1>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            Browse a family tree, or sign in to build your own.
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">{t('home.heading')}</h1>
+          <p className="mt-2 text-[var(--text-secondary)]">{t('home.subtitle')}</p>
         </div>
 
         {loading ? (
@@ -38,14 +38,14 @@ export function HomePage() {
           </ul>
         ) : families.length === 0 ? (
           <EmptyState
-            title="No family trees yet"
-            description="Sign in to create the first family tree and start adding people."
+            title={t('home.emptyTitle')}
+            description={t('home.emptyDescription')}
             action={
               <Link
                 to="/admin"
                 className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-contrast)] transition hover:bg-[var(--accent-strong)]"
               >
-                Sign in to create one
+                {t('home.signInToCreate')}
               </Link>
             }
           />
@@ -63,7 +63,7 @@ export function HomePage() {
                       <h2 className="truncate text-lg font-medium text-[var(--text-primary)]">
                         {family.name}
                       </h2>
-                      <p className="mt-0.5 text-sm text-[var(--text-muted)]">View tree</p>
+                      <p className="mt-0.5 text-sm text-[var(--text-muted)]">{t('home.viewTree')}</p>
                     </div>
                   </div>
                 </Link>

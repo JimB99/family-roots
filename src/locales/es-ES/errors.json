@@ -1,0 +1,58 @@
+{
+  "authFailed": "Error de autenticación",
+  "auth": {
+    "invalidEmail": "Correo electrónico no válido.",
+    "userDisabled": "Esta cuenta ha sido deshabilitada.",
+    "userNotFound": "No hay ninguna cuenta con este correo.",
+    "wrongPassword": "Contraseña incorrecta.",
+    "emailInUse": "Ya existe una cuenta con este correo.",
+    "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+    "tooManyRequests": "Demasiados intentos. Inténtalo más tarde.",
+    "network": "Error de red. Comprueba tu conexión."
+  },
+  "domain": {
+    "SELF_RELATIONSHIP": "Una persona no puede relacionarse consigo misma",
+    "MISSING_PERSON": "Ambos extremos de la relación deben existir",
+    "CROSS_FAMILY": "Los extremos de la relación deben pertenecer a la misma familia",
+    "DUPLICATE_RELATIONSHIP": "Ya existe una relación equivalente",
+    "CONFLICTING_DIRECTION": "Ya existe la dirección opuesta de progenitor-hijo/a",
+    "ANCESTRY_CYCLE": "Este vínculo progenitor-hijo/a crearía un ciclo de ascendencia",
+    "BIOLOGICALLY_IMPLAUSIBLE_DATE": "Las fechas de nacimiento de progenitor e hijo/a son inverosímiles",
+    "INVALID_DATE": "La precisión de fecha desconocida no es válida para almacenar",
+    "INVALID_DATE_YEAR": "Año no válido: {{year}}",
+    "INVALID_DATE_MONTH": "Mes no válido: {{month}}",
+    "INVALID_DATE_DAY": "Día no válido: {{day}} para {{year}}-{{month}}",
+    "INVALID_DATE_FORMAT": "Formato de fecha no reconocido: {{value}}",
+    "INVALID_RELATIONSHIP_TYPE": "Este vínculo no está permitido",
+    "CANNOT_OVERWRITE": "Este vínculo no se puede sobrescribir",
+    "CHOOSE_PARENT_TO_REPLACE": "Elige un vínculo de progenitor existente para reemplazar",
+    "ANCHOR_NOT_FOUND": "Persona de referencia no encontrada",
+    "SIBLING_NO_PARENTS": "No se puede añadir hermano/a sin progenitores conocidos",
+    "RELATIONSHIP_NOT_FOUND": "Relación no encontrada",
+    "MERGE_TARGETS_MISSING": "Los objetivos de fusión deben existir",
+    "CANNOT_MOVE_FAMILY": "No se puede mover la relación a otra familia"
+  },
+  "connection": {
+    "NO_PARENTS_FOR_SIBLING": "Aún no hay progenitores registrados para esta persona",
+    "NOT_POSSIBLE": "No es posible para este par",
+    "DUPLICATE_EXISTS": "Ya existe una relación equivalente",
+    "TWO_PARENTS": "Esta persona ya tiene dos progenitores",
+    "PARTIAL_SIBLING": "Ya existen algunos vínculos de hermanos/as",
+    "OPPOSITE_DIRECTION": "Ya existe la dirección opuesta de progenitor-hijo/a"
+  },
+  "backup": {
+    "NOT_OBJECT": "La copia de seguridad no es un objeto",
+    "UNSUPPORTED_VERSION": "Versión de esquema de copia de seguridad no compatible",
+    "MISSING_SECTIONS": "Faltan secciones obligatorias en la copia de seguridad",
+    "CROSS_FAMILY_PEOPLE": "La copia de seguridad contiene personas de otra familia",
+    "CROSS_FAMILY_RELATIONSHIPS": "La copia de seguridad contiene relaciones de otra familia"
+  },
+  "duplicate": {
+    "reason": "Nombres {{percent}}% similares{{birthSuffix}}",
+    "birthClose": ", años de nacimiento cercanos"
+  },
+  "export": {
+    "rasterizeFailed": "No se pudo rasterizar el árbol",
+    "canvasUnavailable": "Lienzo no disponible"
+  }
+}

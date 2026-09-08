@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/Button'
 import { Sheet } from '../components/ui/Sheet'
@@ -48,6 +49,7 @@ import { displayName } from '../lib/tree'
 import type { PersonInput } from '../types'
 
 export function TreePage() {
+  const { t } = useTranslation(['tree', 'common', 'person'])
   const { slug = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -92,8 +94,11 @@ export function TreePage() {
   )
 
   const issueCount = useMemo(
-    () => (family ? actionableIssueCount(auditFamily(family.id, people, relationships).issues) : 0),
-    [family, people, relationships],
+    () =>
+      family
+        ? actionableIssueCount(auditFamily(family.id, people, relationships).issues, t)
+        : 0,
+    [family, people, relationships, t],
   )
 
   const canvasMatchedPersonIds = useMemo(
@@ -463,7 +468,7 @@ export function TreePage() {
   if (loading) {
     return (
       <Layout>
-        <p className="p-10 text-center text-[var(--text-secondary)]">Loading family tree…</p>
+        <p className="p-10 text-center text-[var(--text-secondary)]">{t('loading')}</p>
       </Layout>
     )
   }
@@ -472,12 +477,12 @@ export function TreePage() {
     return (
       <Layout>
         <div className="mx-auto max-w-xl p-10 text-center">
-          <h1 className="text-2xl font-semibold">Family not found</h1>
+          <h1 className="text-2xl font-semibold">{t('notFound.family', { ns: 'common' })}</h1>
           <p className="mt-2 text-[var(--text-secondary)]">
-            The family &quot;{slug}&quot; does not exist yet.
+            {t('notFound.familySlug', { ns: 'common', slug })}
           </p>
           <Link to="/" className="mt-5 inline-block text-[var(--accent-strong)] hover:underline">
-            Back to all families
+            {t('back.allFamilies', { ns: 'common' })}
           </Link>
         </div>
       </Layout>
@@ -556,8 +561,8 @@ export function TreePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search people…"
-              aria-label="Search people"
+              placeholder={t('search.placeholder', { ns: 'tree' })}
+              aria-label={t('search.aria', { ns: 'tree' })}
               className="w-52 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] py-1.5 pr-8 pl-8 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
             />
             <svg
@@ -575,7 +580,7 @@ export function TreePage() {
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                aria-label="Clear search"
+                aria-label={t('search.clear', { ns: 'tree' })}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               >
                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -606,15 +611,15 @@ export function TreePage() {
             )}
           </div>
 
-          <StatusBadge tone="neutral">{displayPeople.length} people</StatusBadge>
+          <StatusBadge tone="neutral">{t('counts.people', { ns: 'common', count: displayPeople.length })}</StatusBadge>
           {hasUnsaved && (
             <StatusBadge tone="warning">
-              {unsavedCount === 1 ? '1 unsaved change' : `${unsavedCount} unsaved changes`}
+              {t('counts.unsaved', { ns: 'common', count: unsavedCount })}
             </StatusBadge>
           )}
           {issueCount > 0 && (
             <Link to={`/families/${slug}/health`} className="rounded-full">
-              <StatusBadge tone="warning">{issueCount} to review</StatusBadge>
+              <StatusBadge tone="warning">{t('counts.toReview', { ns: 'common', count: issueCount })}</StatusBadge>
             </Link>
           )}
 
@@ -626,7 +631,7 @@ export function TreePage() {
                 disabled={savingDrafts || mutation.pending || history.busy}
                 onClick={() => void handleSaveAllDrafts()}
               >
-                {savingDrafts ? 'Saving…' : 'Save changes'}
+                {savingDrafts ? t('actions.saving', { ns: 'common' }) : t('actions.saveChanges', { ns: 'common' })}
               </Button>
             )}
 
@@ -637,8 +642,8 @@ export function TreePage() {
                   size="sm"
                   disabled={!history.canUndo || history.busy}
                   onClick={() => void history.undo()}
-                  aria-label="Undo"
-                  title="Undo"
+                  aria-label={t('actions.undo', { ns: 'common' })}
+                  title={t('actions.undo', { ns: 'common' })}
                 >
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <path
@@ -655,8 +660,8 @@ export function TreePage() {
                   size="sm"
                   disabled={!history.canRedo || history.busy}
                   onClick={() => void history.redo()}
-                  aria-label="Redo"
-                  title="Redo"
+                  aria-label={t('actions.redo', { ns: 'common' })}
+                  title={t('actions.redo', { ns: 'common' })}
                 >
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <path
@@ -673,7 +678,7 @@ export function TreePage() {
 
             <div className="relative">
               <Button variant="secondary" size="sm" onClick={() => setMenuOpen((v) => !v)}>
-                More
+                {t('actions.more', { ns: 'common' })}
                 <svg width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                   <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -683,20 +688,20 @@ export function TreePage() {
                   <button
                     type="button"
                     className="fixed inset-0 z-20 cursor-default"
-                    aria-label="Close menu"
+                    aria-label={t('closeMenu', { ns: 'common' })}
                     onClick={() => setMenuOpen(false)}
                   />
                   <div className="absolute top-full right-0 z-30 mt-1.5 w-52 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] py-1 shadow-xl">
                     {[
                       {
-                        label: 'Browse as cards',
+                        label: t('menu.browseCards', { ns: 'tree' }),
                         run: () => requestLeave(() => navigate(`/families/${slug}/people`)),
                       },
-                      { label: 'Export as SVG', run: () => void handleExport('svg') },
-                      { label: 'Export as PNG', run: () => void handleExport('png') },
-                      { label: 'Download backup', run: handleBackup },
+                      { label: t('menu.exportSvg', { ns: 'tree' }), run: () => void handleExport('svg') },
+                      { label: t('menu.exportPng', { ns: 'tree' }), run: () => void handleExport('png') },
+                      { label: t('menu.downloadBackup', { ns: 'tree' }), run: handleBackup },
                       ...(isEditor
-                        ? [{ label: 'Restore backup…', run: () => setRestoreOpen(true) }]
+                        ? [{ label: t('menu.restoreBackup', { ns: 'tree' }), run: () => setRestoreOpen(true) }]
                         : []),
                     ].map((item) => (
                       <button
@@ -725,7 +730,7 @@ export function TreePage() {
                     disabled={history.busy || savingDrafts}
                     onClick={() => requestLeave(discardEditSession)}
                   >
-                    Discard
+                    {t('actions.discard', { ns: 'common' })}
                   </Button>
                   <Button
                     variant="primary"
@@ -734,12 +739,12 @@ export function TreePage() {
                     aria-pressed={true}
                     onClick={() => requestLeave(exitEditMode)}
                   >
-                    Done editing
+                    {t('edit.done', { ns: 'tree' })}
                   </Button>
                 </>
               ) : (
                 <Button variant="secondary" size="sm" aria-pressed={false} onClick={() => setEditMode(true)}>
-                  Edit
+                  {t('actions.edit', { ns: 'common' })}
                 </Button>
               ))}
           </div>
@@ -780,7 +785,7 @@ export function TreePage() {
               onSelectionChange={handleSelectionChange}
               onOpenPerson={(id) => openPersonProfile(id)}
               onConnect={handleConnectRequest}
-              onConnectDropMiss={() => setConnectHint('Drop on a person card to connect')}
+              onConnectDropMiss={() => setConnectHint(t('edit.dropHint', { ns: 'tree' }))}
             />
           </div>
 
@@ -793,7 +798,7 @@ export function TreePage() {
       </div>
 
       <div className="lg:hidden">
-        <Sheet open={Boolean(inspectorContent)} title="Details" onClose={() => setSelection(null)}>
+        <Sheet open={Boolean(inspectorContent)} title={t('details', { ns: 'common' })} onClose={() => setSelection(null)}>
           {inspectorContent}
         </Sheet>
       </div>

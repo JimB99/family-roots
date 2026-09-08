@@ -9,7 +9,7 @@ export type OverwriteOffer =
       childId: string
       candidates: { relationshipId: string; parentId: string }[]
     }
-  | { kind: 'remove_conflicting_link'; relationshipId: string; description: string }
+  | { kind: 'remove_conflicting_link'; relationshipId: string; descriptionCode: string }
   | { kind: 'complete_partial_sibling'; skipRelationshipIds: string[] }
 
 export type OverwriteChoice =
