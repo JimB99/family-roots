@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PersonEditPanel } from '../../components/PersonEditPanel'
 import { PersonDeleteButton } from '../../components/PersonDeleteButton'
+import { PersonDetailsFields } from '../../components/PersonDetailsFields'
 import { displayName } from '../../lib/tree'
 import { formatLifeSpan, formatPartialDate } from '../../lib/dates'
 import type { PersonDraft } from './person-drafts'
@@ -73,9 +74,6 @@ export function PersonInspector({
           {!showInlineEdit && span && (
             <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{span}</p>
           )}
-          {!showInlineEdit && person.birthPlace && (
-            <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">{person.birthPlace}</p>
-          )}
         </div>
         <Button variant="ghost" size="sm" onClick={onClear}>
           Close
@@ -93,6 +91,12 @@ export function PersonInspector({
           onRevert={onRevertDraft}
           formRevision={formRevision}
         />
+      )}
+
+      {!showInlineEdit && (
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)]/40 p-3">
+          <PersonDetailsFields person={person} compact />
+        </div>
       )}
 
       <RelationSection

@@ -1,7 +1,7 @@
 import type { Person } from '../types'
 
 function haystackFor(person: Person): string {
-  return [person.givenNames, person.familyName, person.maidenName, person.birthPlace]
+  return [person.givenNames, person.familyName, person.maidenName, person.birthPlace, person.notes]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()

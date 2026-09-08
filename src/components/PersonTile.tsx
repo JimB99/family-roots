@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom'
 import { formatLifeSpan } from '../lib/dates'
+import type { PersonNavigationState } from '../lib/person-navigation'
+import { personPath } from '../lib/person-navigation'
 import { displayName } from '../lib/tree'
 import type { Person } from '../types'
 
 interface PersonTileProps {
   person: Person
   slug: string
+  returnState?: PersonNavigationState
 }
 
 const genderRing: Record<Person['gender'], string> = {
@@ -21,13 +24,14 @@ function initials(person: Person): string {
   return `${given}${family}`.toUpperCase() || '?'
 }
 
-export function PersonTile({ person, slug }: PersonTileProps) {
+export function PersonTile({ person, slug, returnState }: PersonTileProps) {
   const lifespan = formatLifeSpan(person.birth, person.death, person.isLiving)
   const ring = genderRing[person.gender]
 
   return (
     <Link
-      to={`/families/${slug}/person/${person.id}`}
+      to={personPath(slug, person.id)}
+      state={returnState}
       className="block rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-md"
     >
       <div className="flex gap-3">

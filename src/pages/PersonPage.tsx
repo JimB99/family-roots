@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { PersonCard } from '../components/PersonCard'
 import { PersonEditPanel } from '../components/PersonEditPanel'
@@ -7,11 +7,13 @@ import { deletePersonWithRelationships, saveValidatedPerson } from '../data/fire
 import { getPersonById } from '../data/firestore/person-repository'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { readPersonReturn, type PersonNavigationState } from '../lib/person-navigation'
 import type { Person, PersonInput } from '../types'
 
 export function PersonPage() {
   const { slug = '', personId = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { family, people, relationships, loading, isEditor, reload } = useFamily(
     slug,
@@ -21,6 +23,19 @@ export function PersonPage() {
   const [editing, setEditing] = useState(false)
   const [person, setPerson] = useState<Person | null>(null)
   const [personLoading, setPersonLoading] = useState(true)
+
+  const personReturn = useMemo(() => readPersonReturn(slug, location.state), [slug, location.state])
+  const returnState = useMemo<PersonNavigationState | undefined>(() => {
+    if (!location.state || typeof location.state !== 'object') return undefined
+    const state = location.state as Partial<PersonNavigationState>
+    if (
+      typeof state.returnTo === 'string' &&
+      (state.from === 'tree' || state.from === 'people' || state.from === 'health')
+    ) {
+      return { returnTo: state.returnTo, from: state.from }
+    }
+    return undefined
+  }, [location.state])
 
   useEffect(() => {
     void (async () => {
@@ -78,7 +93,7 @@ export function PersonPage() {
   const handleDelete = async () => {
     if (!person || !family) return
     await deletePersonWithRelationships(family.id, person.id)
-    navigate(`/families/${slug}`)
+    navigate(personReturn.returnTo)
   }
 
   if (loading || personLoading) {
@@ -95,10 +110,10 @@ export function PersonPage() {
         <div className="p-10 text-center">
           <p>Person not found in this family.</p>
           <Link
-            to={`/families/${slug}`}
+            to={personReturn.returnTo}
             className="mt-3 inline-block text-[var(--accent-strong)] hover:underline"
           >
-            Back to tree
+            {personReturn.label}
           </Link>
         </div>
       </Layout>
@@ -110,10 +125,10 @@ export function PersonPage() {
       <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-4 px-4 py-2.5">
           <Link
-            to={`/families/${slug}`}
+            to={personReturn.returnTo}
             className="text-sm text-[var(--accent-strong)] hover:underline"
           >
-            ← Back to tree
+            ← {personReturn.label}
           </Link>
         </div>
       </div>
@@ -140,6 +155,7 @@ export function PersonPage() {
           slug={slug}
           isEditor={isEditor}
           onEdit={() => setEditing(true)}
+          returnState={returnState}
         />
       )}
     </Layout>

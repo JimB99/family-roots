@@ -43,6 +43,7 @@ import { ExplainRelationshipDialog } from '../features/tree/relation/ExplainRela
 import { TreeWorkspace, type TreeSelection } from '../features/tree/TreeWorkspace'
 import { usePersonDrafts } from '../features/tree/use-person-drafts'
 import { matchedPersonIdsForQuery, filterPeopleByQuery } from '../lib/person-search'
+import { personNavigationState, personPath } from '../lib/person-navigation'
 import { displayName } from '../lib/tree'
 import type { PersonInput } from '../types'
 
@@ -203,6 +204,20 @@ export function TreePage() {
       setUnsavedPromptOpen(true)
     },
     [hasUnsaved],
+  )
+
+  const treeReturnState = useMemo(
+    () => personNavigationState(`/families/${slug}`, 'tree'),
+    [slug],
+  )
+
+  const openPersonProfile = useCallback(
+    (personId: string) => {
+      requestLeave(() =>
+        navigate(personPath(slug, personId), { state: treeReturnState }),
+      )
+    },
+    [navigate, requestLeave, slug, treeReturnState],
   )
 
   const handleStayEditing = useCallback(() => {
@@ -497,10 +512,7 @@ export function TreePage() {
       onDisconnectRelationship={(relationshipId) =>
         handleDisconnectRelationship(relationshipId, false)
       }
-      onOpenProfile={() =>
-        selectedPerson &&
-        requestLeave(() => navigate(`/families/${slug}/person/${selectedPerson.id}`))
-      }
+      onOpenProfile={() => selectedPerson && openPersonProfile(selectedPerson.id)}
       onSelectPerson={selectPerson}
       onExplainRelationship={() => {
         if (!selectedPersonId) return
@@ -766,9 +778,7 @@ export function TreePage() {
               }}
               onExplainPickSearch={() => setExplainSearchOpen(true)}
               onSelectionChange={handleSelectionChange}
-              onOpenPerson={(id) =>
-                requestLeave(() => navigate(`/families/${slug}/person/${id}`))
-              }
+              onOpenPerson={(id) => openPersonProfile(id)}
               onConnect={handleConnectRequest}
               onConnectDropMiss={() => setConnectHint('Drop on a person card to connect')}
             />

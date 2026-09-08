@@ -64,6 +64,56 @@ const PRESENTATION: Record<string, IssuePresentation> = {
     severity: 'info',
     explanation: 'Optional, but recording it makes the tree easier to read at a glance.',
   },
+  MISSING_GIVEN_NAMES: {
+    title: 'Given names missing',
+    severity: 'warning',
+    explanation: 'Add given names so this person can be identified in lists and on the tree.',
+  },
+  MISSING_FAMILY_NAME: {
+    title: 'Family name missing',
+    severity: 'warning',
+    explanation: 'Add a family name (last name) to complete this record.',
+  },
+  MISSING_MAIDEN_NAME: {
+    title: 'Maiden name missing',
+    severity: 'info',
+    explanation: 'Optional, but useful when tracing maternal lines.',
+  },
+  MISSING_BIRTH_DATE: {
+    title: 'Birth date missing',
+    severity: 'warning',
+    explanation: 'Add a birth year or full date to help place this person in time.',
+  },
+  MISSING_DEATH_DATE: {
+    title: 'Death date missing',
+    severity: 'warning',
+    explanation: 'This person is marked deceased but has no death date.',
+  },
+  MISSING_BIRTH_PLACE: {
+    title: 'Birth place missing',
+    severity: 'info',
+    explanation: 'Optional location detail for this person.',
+  },
+  MISSING_DEATH_PLACE: {
+    title: 'Death place missing',
+    severity: 'info',
+    explanation: 'Optional location detail for this person.',
+  },
+  MISSING_LIVING_STATUS: {
+    title: 'Living status missing',
+    severity: 'info',
+    explanation: 'Record whether this person is living or deceased.',
+  },
+  MISSING_PHOTO: {
+    title: 'Photo missing',
+    severity: 'info',
+    explanation: 'Optional portrait for this person.',
+  },
+  MISSING_NOTES: {
+    title: 'Notes missing',
+    severity: 'info',
+    explanation: 'Optional free-text notes for this person.',
+  },
 }
 
 const FALLBACK: IssuePresentation = {

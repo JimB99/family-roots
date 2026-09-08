@@ -1,6 +1,9 @@
-import { formatLifeSpan, formatPartialDate } from '../lib/dates'
+import { formatLifeSpan } from '../lib/dates'
 import { Link } from 'react-router-dom'
+import type { PersonNavigationState } from '../lib/person-navigation'
+import { personPath } from '../lib/person-navigation'
 import { Button } from './ui/Button'
+import { PersonDetailsFields } from './PersonDetailsFields'
 import { displayName } from '../lib/tree'
 import type { Person } from '../types'
 
@@ -12,6 +15,7 @@ interface PersonCardProps {
   slug: string
   isEditor?: boolean
   onEdit?: () => void
+  returnState?: PersonNavigationState
 }
 
 const genderRing: Record<Person['gender'], string> = {
@@ -35,6 +39,7 @@ export function PersonCard({
   slug,
   isEditor,
   onEdit,
+  returnState,
 }: PersonCardProps) {
   const ring = genderRing[person.gender]
 
@@ -86,45 +91,33 @@ export function PersonCard({
               )}
             </div>
 
-            <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-[var(--text-muted)]">Birth</dt>
-                <dd className="mt-0.5">{formatPartialDate(person.birth, '') || '—'}</dd>
-                {person.birthPlace && (
-                  <dd className="text-[var(--text-secondary)]">{person.birthPlace}</dd>
-                )}
-              </div>
-              <div>
-                <dt className="text-[var(--text-muted)]">Death</dt>
-                <dd className="mt-0.5">
-                  {formatPartialDate(person.death, '') || (person.isLiving ? 'Living' : '—')}
-                </dd>
-                {person.deathPlace && (
-                  <dd className="text-[var(--text-secondary)]">{person.deathPlace}</dd>
-                )}
-              </div>
-            </dl>
-
-            {person.notes && (
-              <div className="mt-6">
-                <h2 className="mb-2 text-sm font-medium text-[var(--text-muted)]">Notes</h2>
-                <p className="whitespace-pre-wrap text-[var(--text-primary)]">{person.notes}</p>
-              </div>
-            )}
+            <div className="mt-6">
+              <PersonDetailsFields person={person} />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <RelationList title="Parents" people={parents} slug={slug} />
-        <RelationList title="Partners" people={spouses} slug={slug} />
-        <RelationList title="Children" people={children} slug={slug} />
+        <RelationList title="Parents" people={parents} slug={slug} returnState={returnState} />
+        <RelationList title="Partners" people={spouses} slug={slug} returnState={returnState} />
+        <RelationList title="Children" people={children} slug={slug} returnState={returnState} />
       </div>
     </div>
   )
 }
 
-function RelationList({ title, people, slug }: { title: string; people: Person[]; slug: string }) {
+function RelationList({
+  title,
+  people,
+  slug,
+  returnState,
+}: {
+  title: string
+  people: Person[]
+  slug: string
+  returnState?: PersonNavigationState
+}) {
   return (
     <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-4 text-left">
       <h2 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
@@ -137,7 +130,8 @@ function RelationList({ title, people, slug }: { title: string; people: Person[]
           {people.map((p) => (
             <li key={p.id}>
               <Link
-                to={`/families/${slug}/person/${p.id}`}
+                to={personPath(slug, p.id)}
+                state={returnState}
                 className="block truncate rounded-md px-2 py-1.5 text-sm text-[var(--text-primary)] transition hover:bg-[var(--surface-sunken)]"
               >
                 {displayName(p)}

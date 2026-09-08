@@ -3,7 +3,7 @@ import { personInputFromPerson } from '../data/firestore/codecs'
 import type { PersonDraft } from '../features/tree/person-drafts'
 import { partialDateToInput, parsePartialDateInputResult } from '../lib/dates'
 import { compressImageToBase64 } from '../lib/photos'
-import { DeceasedToggle, GenderToggle, isPersonDeceased } from './PersonFormControls'
+import { DeceasedToggle, GenderToggle, isPersonDeceased, shouldMarkDeceasedFromDeathInfo } from './PersonFormControls'
 import { Button } from './ui/Button'
 import { Field, inputClass } from './ui/Field'
 import type { Gender, Person, PersonInput } from '../types'
@@ -106,6 +106,14 @@ export function PersonForm(props: PersonFormProps) {
     })
   }
 
+  const applyFormPatch = (patch: Partial<PersonInput>, nextBirth = birthInput, nextDeath = deathInput) => {
+    setForm((prev) => {
+      const next = { ...prev, ...patch }
+      if (isDraftMode(props)) emitDraft(next, nextBirth, nextDeath)
+      return next
+    })
+  }
+
   const updateBirthInput = (value: string) => {
     setBirthInput(value)
     if (isDraftMode(props)) emitDraft(form, value, deathInput)
@@ -113,7 +121,19 @@ export function PersonForm(props: PersonFormProps) {
 
   const updateDeathInput = (value: string) => {
     setDeathInput(value)
+    if (shouldMarkDeceasedFromDeathInfo(value, form.deathPlace)) {
+      applyFormPatch({ isLiving: false }, birthInput, value)
+      return
+    }
     if (isDraftMode(props)) emitDraft(form, birthInput, value)
+  }
+
+  const updateDeathPlace = (value: string | null) => {
+    if (shouldMarkDeceasedFromDeathInfo(deathInput, value)) {
+      applyFormPatch({ deathPlace: value, isLiving: false })
+      return
+    }
+    update('deathPlace', value)
   }
 
   const setDeceased = (deceased: boolean) => {
@@ -220,7 +240,7 @@ export function PersonForm(props: PersonFormProps) {
         <input
           className={inputClass}
           value={form.deathPlace ?? ''}
-          onChange={(e) => update('deathPlace', e.target.value || null)}
+          onChange={(e) => updateDeathPlace(e.target.value || null)}
         />
       </Field>
       <DeceasedToggle deceased={deceased} onChange={setDeceased} />

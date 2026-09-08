@@ -1,3 +1,4 @@
+import { auditPersonCompleteness } from '../domain/audit-person-completeness'
 import { buildFamilyGraph } from '../domain/family-graph'
 import type { FamilyGraph, GraphIssue } from '../domain/types'
 
@@ -10,7 +11,7 @@ export interface DataHealthReport {
 }
 
 export function auditFamilyGraph(graph: FamilyGraph): DataHealthReport {
-  const issues = [...graph.issues]
+  const issues = [...graph.issues, ...auditPersonCompleteness([...graph.peopleById.values()])]
   const uncertainLinkCount = [...graph.relationshipsById.values()].filter(
     (r) => r.confidence === 'imported' || r.confidence === 'low',
   ).length

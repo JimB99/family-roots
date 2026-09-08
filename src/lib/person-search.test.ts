@@ -25,6 +25,14 @@ describe('person-search', () => {
     expect(matchedPersonIdsForQuery(people, 'barcelona')?.has('3')).toBe(true)
   })
 
+  it('matches notes text', () => {
+    const withNotes = [
+      ...people,
+      person('4', 'Notes', { notes: 'Family reunion 1998' }),
+    ]
+    expect(matchedPersonIdsForQuery(withNotes, 'reunion')?.has('4')).toBe(true)
+  })
+
   it('filterPeopleByQuery respects limit', () => {
     const all = filterPeopleByQuery(people, 'a', 10)
     expect(all.length).toBeGreaterThan(1)

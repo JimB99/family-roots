@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Layout } from '../components/Layout'
-import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import { auditFamily } from '../domain/audit-family'
-import { findDuplicateCandidates } from '../domain/duplicate-detection'
+import {
+  filtersForCompletenessIssueCode,
+  HealthCompletenessPanel,
+} from '../features/health/HealthCompletenessPanel'
 import { groupIssues, type IssueSeverity } from '../features/health/issue-presentation'
+import { peopleListHref } from '../lib/people-filter-params'
+import { personNavigationState, personPath } from '../lib/person-navigation'
 import { displayName } from '../lib/tree'
-import { MergePeopleDialog } from '../features/merge/MergePeopleDialog'
-import type { DuplicateCandidate } from '../domain/duplicate-detection'
 
 const severityTone: Record<IssueSeverity, 'danger' | 'warning' | 'neutral'> = {
   error: 'danger',
@@ -29,12 +31,11 @@ const severityLabel: Record<IssueSeverity, string> = {
 export function DataHealthPage() {
   const { slug = '' } = useParams()
   const { user } = useAuth()
-  const { family, people, relationships, loading, isEditor, reload } = useFamily(
+  const { family, people, relationships, loading, isEditor } = useFamily(
     slug,
     user?.email ?? null,
     user?.uid ?? null,
   )
-  const [mergeCandidate, setMergeCandidate] = useState<DuplicateCandidate | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const report = useMemo(
@@ -44,12 +45,11 @@ export function DataHealthPage() {
 
   const groups = useMemo(() => (report ? groupIssues(report.issues) : []), [report])
 
-  const duplicateCandidates = useMemo(
-    () => (family ? findDuplicateCandidates(people) : []),
-    [family, people],
-  )
-
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people])
+  const healthReturnState = useMemo(
+    () => personNavigationState(`/families/${slug}/health`, 'health'),
+    [slug],
+  )
 
   if (loading) {
     return (
@@ -77,46 +77,18 @@ export function DataHealthPage() {
           </p>
         </div>
 
-        {isEditor && duplicateCandidates.length > 0 && (
-          <Card
-            title="Possible duplicate people"
-            description="These pairs look like the same person recorded twice."
-          >
-            <ul className="space-y-2">
-              {duplicateCandidates.slice(0, 20).map((candidate) => {
-                const a = peopleById.get(candidate.personAId)
-                const b = peopleById.get(candidate.personBId)
-                if (!a || !b) return null
-                return (
-                  <li
-                    key={`${candidate.personAId}-${candidate.personBId}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] p-3 text-sm"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        {displayName(a)} &amp; {displayName(b)}
-                      </p>
-                      <p className="mt-0.5 text-[var(--text-muted)]">{candidate.reason}</p>
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={() => setMergeCandidate(candidate)}>
-                      Review
-                    </Button>
-                  </li>
-                )
-              })}
-            </ul>
-          </Card>
-        )}
+        <HealthCompletenessPanel slug={slug} people={people} />
 
         {groups.length === 0 ? (
           <EmptyState
             title="Everything looks healthy"
-            description="No missing links, duplicates or conflicting dates were found."
+            description="No missing links or conflicting dates were found."
           />
         ) : (
           <ul className="space-y-3">
             {groups.map((group) => {
               const open = expanded === group.code
+              const peopleListFilters = filtersForCompletenessIssueCode(group.code)
               return (
                 <li key={group.code}>
                   <Card className="p-0">
@@ -134,6 +106,15 @@ export function DataHealthPage() {
                           <StatusBadge tone={severityTone[group.severity]}>
                             {severityLabel[group.severity]}
                           </StatusBadge>
+                          {peopleListFilters ? (
+                            <Link
+                              to={peopleListHref(slug, peopleListFilters)}
+                              onClick={(event) => event.stopPropagation()}
+                              className="text-sm text-[var(--accent-strong)] hover:underline"
+                            >
+                              Filter in People list
+                            </Link>
+                          ) : null}
                         </div>
                         <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
                           {group.explanation}
@@ -175,7 +156,8 @@ export function DataHealthPage() {
                                 return (
                                   <Link
                                     key={id}
-                                    to={`/families/${slug}/person/${id}`}
+                                    to={personPath(slug, id)}
+                                    state={healthReturnState}
                                     className="text-[var(--accent-strong)] hover:underline"
                                   >
                                     {displayName(person)}
@@ -203,17 +185,6 @@ export function DataHealthPage() {
           ← Back to tree
         </Link>
       </div>
-
-      <MergePeopleDialog
-        open={Boolean(mergeCandidate)}
-        candidate={mergeCandidate}
-        people={people}
-        relationships={relationships}
-        familyId={family.id}
-        userId={user?.uid ?? null}
-        onClose={() => setMergeCandidate(null)}
-        onMerged={reload}
-      />
     </Layout>
   )
 }

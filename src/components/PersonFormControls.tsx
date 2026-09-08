@@ -83,3 +83,10 @@ export function DeceasedToggle({ deceased, onChange }: DeceasedToggleProps) {
 export function isPersonDeceased(isLiving: boolean | null): boolean {
   return isLiving === false
 }
+
+export function shouldMarkDeceasedFromDeathInfo(
+  deathInput: string,
+  deathPlace: string | null | undefined,
+): boolean {
+  return Boolean(deathInput.trim() || deathPlace?.trim())
+}

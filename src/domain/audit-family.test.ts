@@ -45,6 +45,13 @@ describe('auditFamily', () => {
     const b = person('b', 'B')
     const graph = buildFamilyGraph(TEST_FAMILY_ID, [a, b], [spouse('a', 'b')])
     const fromGraph = auditFamily(TEST_FAMILY_ID, [a, b], [spouse('a', 'b')])
-    expect(fromGraph.issues.length).toBe(graph.issues.length)
+    expect(fromGraph.issues.length).toBeGreaterThanOrEqual(graph.issues.length)
+  })
+
+  it('includes completeness issues in audit report', () => {
+    const incomplete = person('p1', 'Ada', { familyName: null, birth: null })
+    const report = auditFamily(TEST_FAMILY_ID, [incomplete], [])
+    expect(report.issues.some((issue) => issue.code === 'MISSING_FAMILY_NAME')).toBe(true)
+    expect(report.issues.some((issue) => issue.code === 'MISSING_BIRTH_DATE')).toBe(true)
   })
 })

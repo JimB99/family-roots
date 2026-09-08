@@ -23,8 +23,25 @@ export interface DomainError {
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: DomainError }
 
+export type CompletenessIssueCode =
+  | 'MISSING_GIVEN_NAMES'
+  | 'MISSING_FAMILY_NAME'
+  | 'MISSING_MAIDEN_NAME'
+  | 'MISSING_BIRTH_DATE'
+  | 'MISSING_DEATH_DATE'
+  | 'MISSING_BIRTH_PLACE'
+  | 'MISSING_DEATH_PLACE'
+  | 'MISSING_LIVING_STATUS'
+  | 'MISSING_PHOTO'
+  | 'MISSING_NOTES'
+
 export interface GraphIssue {
-  code: DomainErrorCode | 'DISCONNECTED_PERSON' | 'UNKNOWN_GENDER' | 'GENERATION_CONFLICT'
+  code:
+    | DomainErrorCode
+    | 'DISCONNECTED_PERSON'
+    | 'UNKNOWN_GENDER'
+    | 'GENERATION_CONFLICT'
+    | CompletenessIssueCode
   message: string
   personIds?: PersonId[]
   relationshipId?: RelationshipId

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { PeopleToolbar } from '../components/PeopleToolbar'
 import { PersonTile } from '../components/PersonTile'
 import { EmptyState } from '../components/ui/EmptyState'
+import { filterPeople, type PeopleFilters } from '../domain/person-filters'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
+import { filtersToSearchParams, searchParamsToFilters } from '../lib/people-filter-params'
+import { personNavigationState } from '../lib/person-navigation'
 import {
   computeGenerations,
   getConnectedComponents,
@@ -26,6 +29,8 @@ function getColumnCount() {
 
 export function PeoplePage() {
   const { slug = '' } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   const { user } = useAuth()
   const { family, people, relationships, loading, isEditor } = useFamily(
     slug,
@@ -33,7 +38,16 @@ export function PeoplePage() {
     user?.uid ?? null,
   )
 
-  const [query, setQuery] = useState('')
+  const filters = useMemo(() => searchParamsToFilters(searchParams), [searchParams])
+  const setFilters = (next: PeopleFilters) => {
+    setSearchParams(filtersToSearchParams(next), { replace: true })
+  }
+
+  const personReturnState = useMemo(
+    () => personNavigationState(`${location.pathname}${location.search}`, 'people'),
+    [location.pathname, location.search],
+  )
+
   const [sortKey, setSortKey] = useState<PeopleSortKey>('name-asc')
   const [branchFilter, setBranchFilter] = useState('all')
   const [generation, setGeneration] = useState<number | 'all'>('all')
@@ -75,19 +89,10 @@ export function PeoplePage() {
       list = list.filter((p) => generations.get(p.id) === generation)
     }
 
-    const q = query.trim().toLowerCase()
-    if (q) {
-      list = list.filter((p) => {
-        const haystack = [p.givenNames, p.familyName, p.maidenName]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        return haystack.includes(q)
-      })
-    }
+    list = filterPeople(list, filters)
 
     return sortPeople(list, sortKey)
-  }, [people, branchFilter, components, generation, generations, query, sortKey])
+  }, [people, branchFilter, components, generation, generations, filters, sortKey])
 
   const parentRef = useRef<HTMLDivElement>(null)
   const [columns, setColumns] = useState(1)
@@ -130,8 +135,8 @@ export function PeoplePage() {
     <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
       <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
         <PeopleToolbar
-          query={query}
-          onQueryChange={setQuery}
+          filters={filters}
+          onFiltersChange={setFilters}
           sortKey={sortKey}
           onSortChange={setSortKey}
           branchFilter={branchFilter}
@@ -170,7 +175,12 @@ export function PeoplePage() {
                     }}
                   >
                     {rowPeople.map((person) => (
-                      <PersonTile key={person.id} person={person} slug={slug} />
+                      <PersonTile
+                        key={person.id}
+                        person={person}
+                        slug={slug}
+                        returnState={personReturnState}
+                      />
                     ))}
                   </div>
                 )
