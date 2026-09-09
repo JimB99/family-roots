@@ -16,9 +16,14 @@ service cloud.firestore {
         && request.auth.uid in resource.data.get('editorUids', []);
     }
 
+    function authEmailLower() {
+      return request.auth != null && request.auth.token.email is string
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
     function isClaimingInvite(familyId) {
-      return request.auth != null
-        && request.auth.token.email.lower() in family(familyId).get('pendingInviteEmails', []);
+      return authEmailLower() in family(familyId).get('pendingInviteEmails', []);
     }
 
     function validRelationshipType(t) {
@@ -30,52 +35,109 @@ service cloud.firestore {
     }
 
     function familyFieldsUnchanged() {
-      return request.resource.data.name == resource.data.name
-        && request.resource.data.slug == resource.data.slug
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.viewKey == resource.data.viewKey;
+      return request.resource.data.get('name', '') == resource.data.get('name', '')
+        && request.resource.data.get('slug', '') == resource.data.get('slug', '')
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.get('viewKey', '') == resource.data.get('viewKey', '');
     }
 
     function pendingInviteKeys(data) {
-      return data.pendingInvites == null ? [] : data.pendingInvites.keys();
+      let invites = data.get('pendingInvites', {});
+      return invites == null ? [] : invites.keys();
     }
 
-    function removedInviteToken() {
+    function exactlyOneInviteRemoved() {
       let oldKeys = pendingInviteKeys(resource.data);
       let newKeys = pendingInviteKeys(request.resource.data);
-      return oldKeys.hasAll(newKeys)
-        && oldKeys.size() == newKeys.size() + 1
-        ? oldKeys.toSet().difference(newKeys.toSet()).toList()[0]
-        : null;
+      return oldKeys.hasAll(newKeys) && oldKeys.size() == newKeys.size() + 1;
     }
 
-    function removedInviteMatchesEmail(token) {
-      let invite = resource.data.pendingInvites[token];
-      return invite.type == 'open'
-        || (invite.type == 'email'
-          && invite.email == request.auth.token.email.lower());
+    function inviteAtIsOpen(invites, token) {
+      let invite = invites.get(token, {'type': ''});
+      return invite is map && invite.get('type', '') == 'open';
     }
+
+    function pendingInvitesKeysUnchanged() {
+      let oldKeys = pendingInviteKeys(resource.data);
+      let newKeys = pendingInviteKeys(request.resource.data);
+      return oldKeys.hasAll(newKeys) && newKeys.hasAll(oldKeys);
+    }
+
+    function inviteIsEmailForAuth(invite) {
+      return invite is map
+        && invite.get('type', '') == 'email'
+        && invite.get('email', '') == authEmailLower();
+    }
+
+    function hasOpenInvite(data) {
+      let invites = data.get('pendingInvites', {});
+      let keys = pendingInviteKeys(data);
+      return (keys.size() > 0 && inviteAtIsOpen(invites, keys[0]))
+        || (keys.size() > 1 && inviteAtIsOpen(invites, keys[1]))
+        || (keys.size() > 2 && inviteAtIsOpen(invites, keys[2]))
+        || (keys.size() > 3 && inviteAtIsOpen(invites, keys[3]))
+        || (keys.size() > 4 && inviteAtIsOpen(invites, keys[4]));
+    }
+
+    function removedEmailInviteAt(oldInvites, newInvites, oldKeys, index) {
+      let token = oldKeys[index];
+      return !newInvites.keys().hasAny([token])
+        && inviteIsEmailForAuth(oldInvites.get(token, {'type': ''}));
+    }
+
+    function removedEmailInviteMatchesAuth() {
+      let oldInvites = resource.data.get('pendingInvites', {});
+      let newInvites = request.resource.data.get('pendingInvites', {});
+      let oldKeys = pendingInviteKeys(resource.data);
+      return removedEmailInviteAt(oldInvites, newInvites, oldKeys, 0)
+        || (oldKeys.size() > 1 && removedEmailInviteAt(oldInvites, newInvites, oldKeys, 1))
+        || (oldKeys.size() > 2 && removedEmailInviteAt(oldInvites, newInvites, oldKeys, 2))
+        || (oldKeys.size() > 3 && removedEmailInviteAt(oldInvites, newInvites, oldKeys, 3))
+        || (oldKeys.size() > 4 && removedEmailInviteAt(oldInvites, newInvites, oldKeys, 4));
+    }
+
+    function openInviteClaimFieldsUnchanged() {
+      return request.resource.data.get('name', '') == resource.data.get('name', '')
+        && request.resource.data.get('slug', '') == resource.data.get('slug', '')
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.get('viewKey', '') == resource.data.get('viewKey', '')
+        && request.resource.data.get('pendingInviteEmails', [])
+          == resource.data.get('pendingInviteEmails', []);
+    }
+
 
     function isValidInviteClaim(familyId) {
       return isClaimingInvite(familyId)
-        && request.auth.uid in request.resource.data.editorUids
-        && request.resource.data.editorUids.size() == resource.data.editorUids.size() + 1
+        && request.auth.uid in request.resource.data.get('editorUids', [])
+        && request.resource.data.get('editorUids', []).size()
+          == resource.data.get('editorUids', []).size() + 1
         && request.resource.data.get('pendingInviteEmails', []).size()
           == resource.data.get('pendingInviteEmails', []).size() - 1
-        && request.resource.data.pendingInvites == resource.data.pendingInvites
+        && pendingInviteKeys(request.resource.data) == pendingInviteKeys(resource.data)
         && familyFieldsUnchanged();
     }
 
     function isValidInviteTokenClaim(familyId) {
-      let token = removedInviteToken();
       return request.auth != null
-        && token != null
-        && request.auth.uid in request.resource.data.editorUids
-        && request.resource.data.editorUids.size() == resource.data.editorUids.size() + 1
+        && exactlyOneInviteRemoved()
+        && request.auth.uid in request.resource.data.get('editorUids', [])
+        && request.resource.data.get('editorUids', []).size()
+          == resource.data.get('editorUids', []).size() + 1
         && request.resource.data.get('pendingInviteEmails', [])
           == resource.data.get('pendingInviteEmails', [])
-        && removedInviteMatchesEmail(token)
+        && removedEmailInviteMatchesAuth()
         && familyFieldsUnchanged();
+    }
+
+    function isValidOpenInviteReuseClaim(familyId) {
+      return request.auth != null
+        && request.auth.uid in request.resource.data.get('editorUids', [])
+        && !(request.auth.uid in resource.data.get('editorUids', []))
+        && request.resource.data.get('editorUids', []).size()
+          == resource.data.get('editorUids', []).size() + 1
+        && openInviteClaimFieldsUnchanged()
+        && pendingInvitesKeysUnchanged()
+        && hasOpenInvite(resource.data);
     }
 
     match /families/{familyId} {
@@ -91,7 +153,8 @@ service cloud.firestore {
         && request.resource.data.pendingInvites.keys().size() == 0;
       allow update: if isEditor(familyId)
         || isValidInviteClaim(familyId)
-        || isValidInviteTokenClaim(familyId);
+        || isValidInviteTokenClaim(familyId)
+        || isValidOpenInviteReuseClaim(familyId);
       allow delete: if isEditor(familyId);
     }
 

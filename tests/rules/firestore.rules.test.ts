@@ -7,8 +7,27 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, deleteDoc, where } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import {
+  arrayUnion,
+  collection,
+  deleteField,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
+import {
+  RULES_FIXTURE_EMAIL_TOKEN,
+  RULES_FIXTURE_FAMILY_ID,
+  RULES_FIXTURE_INVITE_EMAIL,
+  RULES_FIXTURE_OWNER_UID,
+  rulesFixtureFamilyDoc,
+} from '../../src/test/fixtures/rules-invite-family'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 const PROJECT_ID = 'family-roots-rules-test'
 const EDITOR_UID = 'editor-uid'
@@ -110,11 +129,12 @@ describe('firestore.rules', () => {
     )
   })
 
-  it('denies non-editor family list even with array-contains query', async () => {
+  it('returns no families for non-editor array-contains query', async () => {
     const db = testEnv.authenticatedContext(OTHER_UID).firestore()
-    await assertFails(
-      getDocs(query(collection(db, 'families'), where('editorUids', 'array-contains', OTHER_UID))),
+    const snapshot = await getDocs(
+      query(collection(db, 'families'), where('editorUids', 'array-contains', OTHER_UID)),
     )
+    expect(snapshot.docs).toHaveLength(0)
   })
 
   it('allows user to read and write their own userEdits index', async () => {
@@ -204,7 +224,7 @@ describe('firestore.rules', () => {
     )
   })
 
-  it('allows open invite token claim', async () => {
+  it('allows open invite claim without removing the token', async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore()
       await setDoc(doc(db, 'families', FAMILY_ID), {
@@ -218,13 +238,71 @@ describe('firestore.rules', () => {
     const db = testEnv.authenticatedContext('invitee-uid', { email: 'anyone@example.com' }).firestore()
     await assertSucceeds(
       updateDoc(doc(db, 'families', FAMILY_ID), {
-        name: 'Demo',
-        slug: FAMILY_ID,
-        createdAt: { seconds: 1, nanoseconds: 0 },
-        viewKey: VIEW_KEY,
-        pendingInviteEmails: [],
+        editorUids: [EDITOR_UID, 'invitee-uid'],
+        updatedAt: { seconds: 2, nanoseconds: 0 },
+      }),
+    )
+  })
+
+  it('allows multiple users to claim the same open invite', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await setDoc(doc(db, 'families', FAMILY_ID), {
+        ...familyDoc(),
+        editorUids: [EDITOR_UID, 'invitee-a'],
+        pendingInvites: {
+          'open-token': { type: 'open' },
+        },
+      })
+    })
+
+    const db = testEnv.authenticatedContext('invitee-b', { email: 'b@example.com' }).firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'families', FAMILY_ID), {
+        editorUids: [EDITOR_UID, 'invitee-a', 'invitee-b'],
+        updatedAt: { seconds: 2, nanoseconds: 0 },
+      }),
+    )
+  })
+
+  it('allows open invite claim when pendingInvites has stale null entries', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await setDoc(doc(db, 'families', FAMILY_ID), {
+        ...familyDoc(),
+        pendingInvites: {
+          'revoked-token': null,
+          'open-token': { type: 'open' },
+        },
+      })
+    })
+
+    const db = testEnv.authenticatedContext('invitee-uid', { email: 'anyone@example.com' }).firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'families', FAMILY_ID), {
+        editorUids: [EDITOR_UID, 'invitee-uid'],
+        updatedAt: { seconds: 2, nanoseconds: 0 },
+      }),
+    )
+  })
+
+  it('denies open invite claim that removes the token', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await setDoc(doc(db, 'families', FAMILY_ID), {
+        ...familyDoc(),
+        pendingInvites: {
+          'open-token': { type: 'open' },
+        },
+      })
+    })
+
+    const db = testEnv.authenticatedContext('invitee-uid', { email: 'anyone@example.com' }).firestore()
+    await assertFails(
+      updateDoc(doc(db, 'families', FAMILY_ID), {
         pendingInvites: {},
         editorUids: [EDITOR_UID, 'invitee-uid'],
+        updatedAt: { seconds: 2, nanoseconds: 0 },
       }),
     )
   })
@@ -243,13 +321,8 @@ describe('firestore.rules', () => {
     const db = testEnv.authenticatedContext('invitee-uid', { email: 'invitee@example.com' }).firestore()
     await assertSucceeds(
       updateDoc(doc(db, 'families', FAMILY_ID), {
-        name: 'Demo',
-        slug: FAMILY_ID,
-        createdAt: { seconds: 1, nanoseconds: 0 },
-        viewKey: VIEW_KEY,
-        pendingInviteEmails: [],
-        pendingInvites: {},
-        editorUids: [EDITOR_UID, 'invitee-uid'],
+        'pendingInvites.email-token': deleteField(),
+        editorUids: arrayUnion('invitee-uid'),
       }),
     )
   })
@@ -268,13 +341,39 @@ describe('firestore.rules', () => {
     const db = testEnv.authenticatedContext('invitee-uid', { email: 'other@example.com' }).firestore()
     await assertFails(
       updateDoc(doc(db, 'families', FAMILY_ID), {
-        name: 'Demo',
-        slug: FAMILY_ID,
-        createdAt: { seconds: 1, nanoseconds: 0 },
-        viewKey: VIEW_KEY,
-        pendingInviteEmails: [],
-        pendingInvites: {},
-        editorUids: [EDITOR_UID, 'invitee-uid'],
+        'pendingInvites.email-token': deleteField(),
+        editorUids: arrayUnion('invitee-uid'),
+      }),
+    )
+  })
+
+  it('allows open invite claim on fixture family with mixed invite map', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await setDoc(doc(db, 'families', RULES_FIXTURE_FAMILY_ID), rulesFixtureFamilyDoc())
+    })
+
+    const db = testEnv.authenticatedContext('test-invitee-uid', { email: 'other@example.com' }).firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'families', RULES_FIXTURE_FAMILY_ID), {
+        editorUids: [RULES_FIXTURE_OWNER_UID, 'test-invitee-uid'],
+        updatedAt: { seconds: 1_700_000_200, nanoseconds: 0 },
+      }),
+    )
+  })
+
+  it('allows email invite claim on fixture family with mixed invite map', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      await setDoc(doc(db, 'families', RULES_FIXTURE_FAMILY_ID), rulesFixtureFamilyDoc())
+    })
+
+    const db = testEnv.authenticatedContext('email-invitee-uid', { email: RULES_FIXTURE_INVITE_EMAIL }).firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'families', RULES_FIXTURE_FAMILY_ID), {
+        [`pendingInvites.${RULES_FIXTURE_EMAIL_TOKEN}`]: deleteField(),
+        editorUids: [RULES_FIXTURE_OWNER_UID, 'email-invitee-uid'],
+        updatedAt: { seconds: 1_700_000_200, nanoseconds: 0 },
       }),
     )
   })
@@ -293,13 +392,8 @@ describe('firestore.rules', () => {
     const db = testEnv.authenticatedContext('invitee-uid', { email: 'anyone@example.com' }).firestore()
     await assertFails(
       updateDoc(doc(db, 'families', FAMILY_ID), {
-        name: 'Demo',
-        slug: FAMILY_ID,
-        createdAt: { seconds: 1, nanoseconds: 0 },
         viewKey: 'rotated-key',
-        pendingInviteEmails: [],
-        pendingInvites: {},
-        editorUids: [EDITOR_UID, 'invitee-uid'],
+        editorUids: arrayUnion('invitee-uid'),
       }),
     )
   })

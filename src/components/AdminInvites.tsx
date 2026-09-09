@@ -115,6 +115,7 @@ export function AdminInvites({ family, onUpdated }: AdminInvitesProps) {
     setBusy(true)
     setMessage(null)
     setFailed(false)
+    setCreatedLink(null)
     try {
       await revokeInvite(family.id, token)
       onUpdated()

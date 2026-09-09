@@ -2,6 +2,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -150,7 +151,7 @@ export async function createInvite(
 
 export async function revokeInvite(familyId: string, token: string): Promise<void> {
   await updateDoc(doc(db, 'families', familyId), {
-    [`pendingInvites.${token}`]: null,
+    [`pendingInvites.${token}`]: deleteField(),
     updatedAt: serverTimestamp(),
   })
 }
@@ -175,19 +176,30 @@ export async function claimInviteToken(
   const invite = family.pendingInvites[token]
   if (!invite) throw new Error('Invite not found')
   if (family.editorUids.includes(uid)) {
-    await revokeInvite(familyId, token)
     return
   }
 
-  const pendingInvites = { ...family.pendingInvites }
-  delete pendingInvites[token]
-
-  await updateDoc(doc(db, 'families', familyId), {
-    pendingInvites,
+  const update: Record<string, unknown> = {
     editorUids: [...family.editorUids, uid],
     updatedAt: serverTimestamp(),
-  })
-  await syncUserFamilyIndex(uid, family.slug)
+  }
+  if (invite.type === 'email') {
+    update[`pendingInvites.${token}`] = deleteField()
+  }
+
+  try {
+    await updateDoc(doc(db, 'families', familyId), update)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    throw new Error(`Failed to add editor to family: ${message}`)
+  }
+
+  try {
+    await syncUserFamilyIndex(uid, family.slug)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    throw new Error(`Failed to sync editor families index: ${message}`)
+  }
 }
 
 export async function regenerateViewKey(familyId: string): Promise<string> {
