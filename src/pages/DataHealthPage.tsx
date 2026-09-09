@@ -6,7 +6,6 @@ import { ViewAccessGate } from '../components/ViewAccessGate'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import { useViewAccess } from '../hooks/useViewAccess'
 import { auditFamily } from '../domain/audit-family'
@@ -29,12 +28,7 @@ const severityTone: Record<IssueSeverity, 'danger' | 'warning' | 'neutral'> = {
 export function DataHealthPage() {
   const { t } = useTranslation(['health', 'common'])
   const { slug = '' } = useParams()
-  const { user } = useAuth()
-  const { family, people, relationships, loading, isEditor } = useFamily(
-    slug,
-    user?.email ?? null,
-    user?.uid ?? null,
-  )
+  const { family, people, relationships, loading, isEditor } = useFamily()
   const { canView } = useViewAccess(family, isEditor)
   const [expanded, setExpanded] = useState<string | null>(null)
 

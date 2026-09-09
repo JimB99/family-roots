@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from '../components/Layout'
@@ -6,7 +6,6 @@ import { ViewAccessGate } from '../components/ViewAccessGate'
 import { PersonCard } from '../components/PersonCard'
 import { PersonEditPanel } from '../components/PersonEditPanel'
 import { deletePersonWithRelationships, saveValidatedPerson } from '../data/firestore/family-mutations'
-import { getPersonById } from '../data/firestore/person-repository'
 import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import { useViewAccess } from '../hooks/useViewAccess'
@@ -19,15 +18,14 @@ export function PersonPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const { family, people, relationships, loading, isEditor, reload } = useFamily(
-    slug,
-    user?.email ?? null,
-    user?.uid ?? null,
-  )
+  const { family, people, relationships, loading, isEditor } = useFamily()
   const { canView } = useViewAccess(family, isEditor)
   const [editing, setEditing] = useState(false)
-  const [person, setPerson] = useState<Person | null>(null)
-  const [personLoading, setPersonLoading] = useState(true)
+
+  const person = useMemo(
+    () => people.find((candidate) => candidate.id === personId) ?? null,
+    [people, personId],
+  )
 
   const personReturn = useMemo(() => readPersonReturn(slug, location.state), [slug, location.state])
   const returnState = useMemo<PersonNavigationState | undefined>(() => {
@@ -41,15 +39,6 @@ export function PersonPage() {
     }
     return undefined
   }, [location.state])
-
-  useEffect(() => {
-    void (async () => {
-      setPersonLoading(true)
-      const p = await getPersonById(personId)
-      setPerson(p)
-      setPersonLoading(false)
-    })()
-  }, [personId])
 
   const related = useMemo(() => {
     if (!person) return { parents: [], children: [], spouses: [] as Person[] }
@@ -90,18 +79,15 @@ export function PersonPage() {
   const handleSave = async (input: PersonInput) => {
     await saveValidatedPerson(person?.id ?? null, input, user?.uid ?? null)
     setEditing(false)
-    await reload()
-    const refreshed = await getPersonById(personId)
-    setPerson(refreshed)
   }
 
   const handleDelete = async () => {
     if (!person || !family) return
-    await deletePersonWithRelationships(family.id, person.id)
+    await deletePersonWithRelationships(family.id, person.id, { person, relationships })
     navigate(personReturn.returnTo)
   }
 
-  if (loading || personLoading) {
+  if (loading) {
     return (
       <ViewAccessGate slug={slug} canView={false} loading familyName={family?.name}>
         {null}

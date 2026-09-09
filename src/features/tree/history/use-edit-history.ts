@@ -1,9 +1,15 @@
 import { useCallback, useRef, useState } from 'react'
 import type { CommandPlan } from '../../../domain/types'
-import { executeCommandPlan } from '../../../data/firestore/execute-command-plan'
+import {
+  executeCommandPlan,
+  type ExecuteCommandPlanOptions,
+} from '../../../data/firestore/execute-command-plan'
 import { EditHistory } from './edit-history'
 
-export function useEditHistory(userId: string | null, onApplied: () => Promise<void>) {
+export function useEditHistory(
+  userId: string | null,
+  commandOptions?: ExecuteCommandPlanOptions,
+) {
   const historyRef = useRef(new EditHistory())
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
@@ -31,13 +37,12 @@ export function useEditHistory(userId: string | null, onApplied: () => Promise<v
     async (plan: CommandPlan) => {
       setBusy(true)
       try {
-        await executeCommandPlan(plan, userId)
-        await onApplied()
+        await executeCommandPlan(plan, userId, commandOptions)
       } finally {
         setBusy(false)
       }
     },
-    [userId, onApplied],
+    [userId, commandOptions],
   )
 
   const undo = useCallback(async () => {
@@ -63,14 +68,13 @@ export function useEditHistory(userId: string | null, onApplied: () => Promise<v
     setBusy(true)
     try {
       for (const entry of entries) {
-        await executeCommandPlan(entry.undo, userId)
+        await executeCommandPlan(entry.undo, userId, commandOptions)
       }
-      await onApplied()
     } finally {
       setBusy(false)
       syncFlags()
     }
-  }, [onApplied, syncFlags, userId])
+  }, [commandOptions, syncFlags, userId])
 
   return { canUndo, canRedo, busy, push, undo, redo, clear, discard }
 }

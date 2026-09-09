@@ -8,7 +8,6 @@ import { PeopleToolbar } from '../components/PeopleToolbar'
 import { PersonTile } from '../components/PersonTile'
 import { EmptyState } from '../components/ui/EmptyState'
 import { filterPeople, type PeopleFilters } from '../domain/person-filters'
-import { useAuth } from '../hooks/useAuth'
 import { useFamily } from '../hooks/useFamily'
 import { useViewAccess } from '../hooks/useViewAccess'
 import { filtersToSearchParams, searchParamsToFilters } from '../lib/people-filter-params'
@@ -35,12 +34,7 @@ export function PeoplePage() {
   const { slug = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
-  const { user } = useAuth()
-  const { family, people, relationships, loading, isEditor } = useFamily(
-    slug,
-    user?.email ?? null,
-    user?.uid ?? null,
-  )
+  const { family, people, relationships, loading, isEditor } = useFamily()
   const { canView } = useViewAccess(family, isEditor)
 
   const filters = useMemo(() => searchParamsToFilters(searchParams), [searchParams])

@@ -1,7 +1,7 @@
-import { useFamilyQuery } from '../data/use-family-query'
+import { useFamilyContext } from '../data/FamilyProvider'
 
-export function useFamily(slug: string, userEmail?: string | null, userId?: string | null) {
-  const query = useFamilyQuery(slug, userEmail, userId)
+export function useFamily() {
+  const query = useFamilyContext()
   return {
     family: query.family,
     people: query.people,

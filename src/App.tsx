@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-
 import { JoinPage } from './pages/JoinPage'
 import { AdminHomePage } from './pages/AdminHomePage'
 import { FamilyAdminPage } from './pages/FamilyAdminPage'
+import { FamilyLayout } from './pages/FamilyLayout'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { PeoplePage } from './pages/PeoplePage'
@@ -17,12 +18,18 @@ function SearchRedirect() {
 const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
   { path: '/families/:slug/join/:token', element: <JoinPage /> },
-  { path: '/families/:slug/health', element: <DataHealthPage /> },
-  { path: '/families/:slug', element: <TreePage /> },
-  { path: '/families/:slug/people', element: <PeoplePage /> },
-  { path: '/families/:slug/search', element: <SearchRedirect /> },
-  { path: '/families/:slug/person/:personId', element: <PersonPage /> },
-  { path: '/families/:slug/admin', element: <FamilyAdminPage /> },
+  {
+    path: '/families/:slug',
+    element: <FamilyLayout />,
+    children: [
+      { index: true, element: <TreePage /> },
+      { path: 'health', element: <DataHealthPage /> },
+      { path: 'people', element: <PeoplePage /> },
+      { path: 'search', element: <SearchRedirect /> },
+      { path: 'person/:personId', element: <PersonPage /> },
+      { path: 'admin', element: <FamilyAdminPage /> },
+    ],
+  },
   { path: '/login', element: <LoginPage /> },
   { path: '/admin', element: <AdminHomePage /> },
   { path: '*', element: <Navigate to="/" replace /> },

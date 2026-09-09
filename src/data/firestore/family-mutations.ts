@@ -1,6 +1,6 @@
 import { buildFamilyGraph } from '../../domain/family-graph'
 import { validateRelationshipDraft } from '../../domain/validate-relationship'
-import type { PersonInput, Relationship } from '../../types'
+import type { Person, PersonInput, Relationship } from '../../types'
 import { validatePersonInput } from '../../domain/commands'
 import { createPerson, deletePersonCascade, getPersonById, updatePerson } from './person-repository'
 import { createRelationship, deleteRelationshipById, listRelationshipsForFamily, replaceRelationshipAtomic } from './relationship-repository'
@@ -38,15 +38,21 @@ export async function createValidatedRelationship(
   })
 }
 
+export interface DeletePersonOptions {
+  person?: Person
+  relationships?: Relationship[]
+}
+
 export async function deletePersonWithRelationships(
   familyId: string,
   personId: string,
+  options?: DeletePersonOptions,
 ): Promise<void> {
-  const person = await getPersonById(personId)
+  const person = options?.person ?? await getPersonById(personId)
   if (!person || person.familyId !== familyId) {
     throw new Error('Person not found in family')
   }
-  const relationships = await listRelationshipsForFamily(familyId)
+  const relationships = options?.relationships ?? await listRelationshipsForFamily(familyId)
   const incident = relationships.filter(
     (r) => r.personAId === personId || r.personBId === personId,
   )

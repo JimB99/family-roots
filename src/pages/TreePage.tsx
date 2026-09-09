@@ -55,11 +55,7 @@ export function TreePage() {
   const { slug = '' } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { family, people, relationships, loading, error, isEditor, reload } = useFamily(
-    slug,
-    user?.email ?? null,
-    user?.uid ?? null,
-  )
+  const { family, people, relationships, loading, error, isEditor } = useFamily()
   const { canView } = useViewAccess(family, isEditor)
   const mutation = useFamilyMutation()
   const personDrafts = usePersonDrafts(people)
@@ -86,7 +82,8 @@ export function TreePage() {
 
   const deferredSearch = useDeferredValue(search)
   const deferredDisplayPeople = useDeferredValue(displayPeople)
-  const history = useEditHistory(user?.uid ?? null, reload)
+  const editHistoryOptions = useMemo(() => ({ relationships }), [relationships])
+  const history = useEditHistory(user?.uid ?? null, editHistoryOptions)
   const canEdit = editMode && isEditor
 
   const blocker = useBlocker(hasUnsaved)
@@ -181,13 +178,11 @@ export function TreePage() {
 
     if (failures.length > 0) {
       for (const id of savedIds) removePerson(id)
-      await reload()
       throw new Error(failures.join(' · '))
     }
 
     discardAll()
-    await reload()
-  }, [user, drafts, people, discardAll, removePerson, reload])
+  }, [user, drafts, people, discardAll, removePerson])
 
   const handleSaveAllDrafts = useCallback(async () => {
     setSavingDrafts(true)
@@ -328,9 +323,7 @@ export function TreePage() {
     }
 
     const result = await mutation.run('Person added', async () => {
-      const created = await executeCommandPlan(forward, user.uid)
-      await reload()
-      return created
+      return executeCommandPlan(forward, user.uid, { relationships })
     })
 
     if (result?.createdPersonIds[0]) {
@@ -360,8 +353,10 @@ export function TreePage() {
     if (!family || !selectedPerson || !user) return
     const personId = selectedPerson.id
     const deleted = await mutation.run('Person deleted', async () => {
-      await deletePersonWithRelationships(family.id, personId)
-      await reload()
+      await deletePersonWithRelationships(family.id, personId, {
+        person: selectedPerson,
+        relationships,
+      })
     })
     if (deleted === null) throw new Error('Delete failed')
     removePerson(personId)
@@ -390,16 +385,14 @@ export function TreePage() {
       const label = source && target ? `${displayName(source)} → ${displayName(target)}` : 'Connected'
 
       const result = await mutation.run(`Connected: ${label}`, async () => {
-        const created = await executeCommandPlan(plan, user.uid)
-        await reload()
-        return created
+        return executeCommandPlan(plan, user.uid, { relationships })
       })
 
       if (result) {
         history.push('Connect people', planDeleteRelationships(result.createdRelationshipIds), plan)
       }
     },
-    [family, user, graph, displayPeople, mutation, reload, history],
+    [family, user, graph, displayPeople, mutation, relationships, history],
   )
 
   const handleDisconnectRelationship = useCallback(
@@ -410,13 +403,12 @@ export function TreePage() {
       const forward = planDisconnectRelationship(relationshipId)
       const snapshot = { ...rel }
       await mutation.run('Connection removed', async () => {
-        await executeCommandPlan(forward, user.uid)
+        await executeCommandPlan(forward, user.uid, { relationships })
         history.push('Disconnect', planReconnectRelationship(snapshot), forward)
-        await reload()
         if (clearSelection) setSelection(null)
       })
     },
-    [user, graph, mutation, history, reload],
+    [user, graph, mutation, history, relationships],
   )
 
   const handleDisconnect = async () => {
@@ -433,9 +425,7 @@ export function TreePage() {
     }
     const snapshot = { ...selectedRelationship }
     const result = await mutation.run('Connection updated', async () => {
-      const created = await executeCommandPlan(forward, user.uid)
-      await reload()
-      return created
+      return executeCommandPlan(forward, user.uid, { relationships })
     })
     if (result?.createdRelationshipIds[0]) {
       history.push(
@@ -812,7 +802,7 @@ export function TreePage() {
         familyId={family.id}
         userId={user?.uid ?? null}
         onClose={() => setRestoreOpen(false)}
-        onRestored={reload}
+        onRestored={async () => {}}
       />
 
       <ConnectPersonDialog

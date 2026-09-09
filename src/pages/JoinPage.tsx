@@ -7,18 +7,19 @@ import { Card } from '../components/ui/Card'
 import { findPendingInvite, validatePendingInvite } from '../domain/family-access'
 import { claimInviteToken } from '../data/firestore/family-repository'
 import { useAuth } from '../hooks/useAuth'
-import { useFamily } from '../hooks/useFamily'
+import { useFamilyDocQuery } from '../data/use-family-query'
 
 export function JoinPage() {
   const { t } = useTranslation(['access', 'common', 'admin'])
   const { slug = '', token = '' } = useParams()
   const navigate = useNavigate()
   const { user, loading: authLoading, signOut } = useAuth()
-  const { family, loading, reload, isEditor } = useFamily(
+  const { family, status, isEditor } = useFamilyDocQuery(
     slug,
     user?.email ?? null,
     user?.uid ?? null,
   )
+  const loading = status === 'loading'
   const [claiming, setClaiming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,15 +33,14 @@ export function JoinPage() {
     setClaiming(true)
     setError(null)
     void claimInviteToken(family.id, token, user.uid)
-      .then(async () => {
-        await reload()
+      .then(() => {
         navigate(`/families/${slug}`, { replace: true })
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : t('join.failed', { ns: 'access' }))
       })
       .finally(() => setClaiming(false))
-  }, [user, family, invite, claiming, isEditor, token, slug, navigate, reload, t])
+  }, [user, family, invite, claiming, isEditor, token, slug, navigate, t])
 
   if (loading || authLoading) {
     return (

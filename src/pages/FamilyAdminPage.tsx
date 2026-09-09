@@ -27,11 +27,7 @@ export function FamilyAdminPage() {
   const { t } = useTranslation(['admin', 'common'])
   const { slug = '' } = useParams()
   const { user, loading: authLoading } = useAuth()
-  const { family, people, relationships, loading, isEditor, reload } = useFamily(
-    slug,
-    user?.email ?? null,
-    user?.uid ?? null,
-  )
+  const { family, people, relationships, loading, isEditor } = useFamily()
   const [showPersonForm, setShowPersonForm] = useState(false)
   const [review, setReview] = useState<Relationship[]>([])
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -45,8 +41,8 @@ export function FamilyAdminPage() {
 
   useEffect(() => {
     if (!family?.id || !isEditor || family.viewKey) return
-    void ensureViewKey(family.id).then(() => reload())
-  }, [family?.id, family?.viewKey, isEditor, reload])
+    void ensureViewKey(family.id)
+  }, [family?.id, family?.viewKey, isEditor])
 
   useEffect(() => {
     if (!family) return
@@ -110,7 +106,6 @@ export function FamilyAdminPage() {
   const addPerson = async (input: PersonInput) => {
     await savePerson(null, input, user.uid)
     setShowPersonForm(false)
-    await reload()
   }
 
   const addRelationship = async (event: React.FormEvent) => {
@@ -131,7 +126,6 @@ export function FamilyAdminPage() {
         importMeta: null,
       })
       setRelForm({ type: relForm.type, personAId: '', personBId: '' })
-      await reload()
     } catch (err) {
       setRelError(err instanceof Error ? err.message : t('family.connectionCard.failed', { ns: 'admin' }))
     }
@@ -189,7 +183,7 @@ export function FamilyAdminPage() {
           </dl>
         </Card>
 
-        <AdminInvites family={family} onUpdated={() => void reload()} />
+        <AdminInvites family={family} onUpdated={() => {}} />
 
         <Card
           title={t('family.peopleCard.title', { ns: 'admin' })}
@@ -296,7 +290,6 @@ export function FamilyAdminPage() {
                 onClick={() => {
                   setConfirmingAll(true)
                   void confirmAllRelationships(family.id)
-                    .then(() => reload())
                     .then(() => listLowConfidenceRelationships(family.id))
                     .then(setReview)
                     .finally(() => setConfirmingAll(false))
@@ -340,14 +333,14 @@ export function FamilyAdminPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => void confirmRelationship(rel.id).then(reload)}
+                            onClick={() => void confirmRelationship(rel.id)}
                           >
                             {t('family.reviewCard.confirm', { ns: 'admin' })}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => void deleteRelationship(rel.id).then(reload)}
+                            onClick={() => void deleteRelationship(rel.id)}
                           >
                             {t('family.reviewCard.delete', { ns: 'admin' })}
                           </Button>

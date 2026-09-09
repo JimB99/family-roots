@@ -36,9 +36,14 @@ function relationshipPayload(
   }
 }
 
+export interface ExecuteCommandPlanOptions {
+  relationships?: Relationship[]
+}
+
 export async function executeCommandPlan(
   plan: CommandPlan,
   userId: string | null,
+  options?: ExecuteCommandPlanOptions,
 ): Promise<ExecuteResult> {
   if (plan.errors.length > 0) {
     throw new Error(plan.errors[0].message)
@@ -55,7 +60,7 @@ export async function executeCommandPlan(
     if (del.collection !== 'people') continue
     const person = await getPersonById(del.id)
     if (!person) continue
-    const rels = await listRelationshipsForFamily(person.familyId)
+    const rels = options?.relationships ?? await listRelationshipsForFamily(person.familyId)
     const incident = rels
       .filter((r) => r.personAId === del.id || r.personBId === del.id)
       .map((r) => r.id)
