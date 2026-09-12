@@ -187,20 +187,20 @@ describe('shouldPackMultiUnionChildrenAsSiblings', () => {
 
   it('returns true for half-sibling hub even when a child has nested descendants', () => {
     const people = [
-      person('carmen', 'Carmen'),
-      person('markus', 'Markus'),
+      person('clara', 'Clara'),
+      person('alex', 'Alex'),
       person('nadja', 'Nadja', { birth: { year: 1990, precision: 'year' } }),
       person('viktoria', 'Viktoria', { birth: { year: 1991, precision: 'year' } }),
       person('benjamin', 'Benjamin', { birth: { year: 1995, precision: 'year' } }),
       person('gc', 'GC'),
     ]
     const relationships = [
-      spouse('carmen', 'markus'),
-      parentChild('carmen', 'nadja'),
-      parentChild('markus', 'nadja'),
-      parentChild('markus', 'viktoria'),
-      parentChild('carmen', 'benjamin'),
-      parentChild('markus', 'benjamin'),
+      spouse('clara', 'alex'),
+      parentChild('clara', 'nadja'),
+      parentChild('alex', 'nadja'),
+      parentChild('alex', 'viktoria'),
+      parentChild('clara', 'benjamin'),
+      parentChild('alex', 'benjamin'),
       parentChild('viktoria', 'gc'),
     ]
     const model = projectFamilyGraph(buildFamilyGraph(TEST_FAMILY_ID, people, relationships))
@@ -208,7 +208,7 @@ describe('shouldPackMultiUnionChildrenAsSiblings', () => {
       model.edges,
       new Map(model.nodes.map((node) => [node.id, node.kind])),
     )
-    const members = ['person:carmen', 'person:markus']
+    const members = ['person:clara', 'person:alex']
     const childIds = ['person:nadja', 'person:viktoria', 'person:benjamin']
     expect(
       shouldPackMultiUnionChildrenAsSiblings(members, childIds, structure, {

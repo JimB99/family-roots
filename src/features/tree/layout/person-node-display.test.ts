@@ -10,9 +10,9 @@ import {
 
 describe('personNodeDisplay', () => {
   it('builds label and initials from names', () => {
-    const p = person('p1', 'María', { familyName: 'Aguilar' })
-    expect(displayLabel(p)).toBe('María Aguilar')
-    expect(initialsFor(p)).toBe('MA')
+    const p = person('p1', 'María', { familyName: 'Rivera' })
+    expect(displayLabel(p)).toBe('María Rivera')
+    expect(initialsFor(p)).toBe('MR')
   })
 
   it('uses Unknown for empty given name in display fields', () => {

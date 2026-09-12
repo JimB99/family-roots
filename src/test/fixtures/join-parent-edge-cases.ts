@@ -1,5 +1,5 @@
 /**
- * Join-parent edge case catalog — approved via join-parent-edge-cases canvas (Jim confirmed).
+ * Join-parent edge case catalog — approved via join-parent-edge-cases canvas review.
  *
  * Each case has a frozen golden layout in `join-parent-edge-cases.golden.ts`.
  * Reference builder: `join-parent-contract-reference.ts`.

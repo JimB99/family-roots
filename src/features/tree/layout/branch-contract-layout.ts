@@ -70,7 +70,7 @@ function columnCtx(ctx: LayoutContext) {
   }
 }
 
-/** True when join-parent defers forest finalize and uses spreadColumnsAfterJoin (Aguilar cross-marriage). */
+/** True when join-parent defers forest finalize and uses spreadColumnsAfterJoin (bride-anchored cross-marriage). */
 export function needsDeferredJoinHorizontalPack(
   nodes: PositionedNode[],
   structure: FamilyStructure,

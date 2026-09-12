@@ -1,5 +1,5 @@
 /**
- * Bride-anchored cross-marriage (JDC-style) with a Markus/Viktoria half-sibling hub below a gen-1 sibling.
+ * Bride-anchored cross-marriage (JDC-style) with a half-sibling hub below a gen-1 sibling.
  * Exercises the deferred join horizontal pack path + half-sibling child row.
  */
 import type { Person, Relationship } from '../../types'
@@ -58,8 +58,8 @@ relationships.push(spouse('a3', 'b3'))
 
 people.push(
   p('a2sp', 'A2 Sp', 1968),
-  p('carmen', 'Carmen', 1995),
-  p('markus', 'Markus', 1962),
+  p('clara', 'Clara', 1995),
+  p('alex', 'Alex', 1962),
   p('nadja', 'Nadja', 1990),
   p('steven', 'Steven', 1991),
   p('viktoria', 'Viktoria', 1991),
@@ -70,17 +70,17 @@ people.push(
 
 relationships.push(
   spouse('a2', 'a2sp'),
-  parentChild('a2', 'carmen'),
-  parentChild('a2sp', 'carmen'),
-  spouse('carmen', 'markus'),
+  parentChild('a2', 'clara'),
+  parentChild('a2sp', 'clara'),
+  spouse('clara', 'alex'),
   spouse('nadja', 'steven'),
   spouse('viktoria', 'christian'),
   spouse('benjamin', 'sarah'),
-  parentChild('carmen', 'nadja'),
-  parentChild('markus', 'nadja'),
-  parentChild('markus', 'viktoria'),
-  parentChild('carmen', 'benjamin'),
-  parentChild('markus', 'benjamin'),
+  parentChild('clara', 'nadja'),
+  parentChild('alex', 'nadja'),
+  parentChild('alex', 'viktoria'),
+  parentChild('clara', 'benjamin'),
+  parentChild('alex', 'benjamin'),
 )
 
 export const JOIN_HALF_SIBLING_HUB_PEOPLE: Person[] = people

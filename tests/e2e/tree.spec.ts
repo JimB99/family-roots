@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test.describe('family tree', () => {
-  test('aguilar tree renders the canvas after load', async ({ page }) => {
+  test('family tree renders the canvas after load', async ({ page }) => {
     await page.goto('/families/aguilar')
     const canvas = page.getByRole('application', { name: /Family tree canvas/i })
     await expect(canvas).toBeVisible({ timeout: 60_000 })

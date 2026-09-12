@@ -3,7 +3,7 @@
  *
  * ## Stewardship policy — read before changing this file
  *
- * These values are the approved placement contract (Jim confirmed via join-parent-edge-cases canvas).
+ * These values are the approved placement contract (via join-parent-edge-cases canvas review).
  * Generated from `buildJoinParentScenario()` + `normalizeJoinParentLayout()`.
  *
  * If a test comparing layout output to this golden fails:

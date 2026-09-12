@@ -26,7 +26,7 @@ function Probe() {
 describe('FamilyProvider', () => {
   it('subscribes once per slug and shares state with children', () => {
     useFamilySubscription.mockReturnValue({
-      family: { id: 'aguilar', name: 'Aguilar', slug: 'aguilar' },
+      family: { id: 'rivera', name: 'Rivera', slug: 'rivera' },
       people: [{ id: 'p1' }],
       relationships: [],
       status: 'ready',
@@ -36,7 +36,7 @@ describe('FamilyProvider', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/families/aguilar']}>
+      <MemoryRouter initialEntries={['/families/rivera']}>
         <Routes>
           <Route path="/families/:slug" element={<FamilyProvider />}>
             <Route index element={<Probe />} />
@@ -46,11 +46,11 @@ describe('FamilyProvider', () => {
     )
 
     expect(useFamilySubscription).toHaveBeenCalledWith(
-      'aguilar',
+      'rivera',
       'editor@example.com',
       'u1',
     )
-    expect(screen.getByTestId('family')).toHaveTextContent('Aguilar')
+    expect(screen.getByTestId('family')).toHaveTextContent('Rivera')
     expect(screen.getByTestId('people')).toHaveTextContent('1')
   })
 })

@@ -1,6 +1,6 @@
 /**
- * Export Aguilar real-family layout pipeline canvas from a family backup JSON.
- * Usage: npm run export:aguilar-canvas [path-to-backup.json]
+ * Export large regression-family layout pipeline canvas from anonymized backup JSON.
+ * Usage: npm run export:regression-family-canvas [path-to-backup.json]
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -17,23 +17,15 @@ import { projectFamilyGraph } from '../src/features/tree/layout/project-family-g
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(__dirname, '..')
 const templatesDir = join(__dirname, 'canvas-templates')
-const cursorCanvasesDir = join(
-  process.env.USERPROFILE ?? process.env.HOME ?? '',
-  '.cursor/projects/c-Users-JimBuisman-Desktop-Private/canvases',
-)
-
-const defaultPaths = [
-  join(repoRoot, 'test-data/aguilar-backup.json'),
-  'c:/Users/JimBuisman/Downloads/aguilar-backup.json',
-]
+const defaultBackupPath = join(repoRoot, 'test-data/regression-family-backup.json')
+const cursorCanvasesDir =
+  process.env.CURSOR_CANVASES_DIR ?? join(repoRoot, 'canvases')
 
 function resolveBackupPath(argPath) {
   if (argPath && existsSync(argPath)) return resolve(argPath)
-  for (const candidate of defaultPaths) {
-    if (existsSync(candidate)) return candidate
-  }
+  if (existsSync(defaultBackupPath)) return defaultBackupPath
   throw new Error(
-    'Aguilar backup not found. Pass path as argument or place at test-data/aguilar-backup.json',
+    'Regression family backup not found. Pass path as argument or place at test-data/regression-family-backup.json',
   )
 }
 
@@ -76,9 +68,9 @@ console.log(formatContractLayoutTrace(trace))
 
 const payload = {
   meta: {
-    code: 'AGU-PIPE',
-    title: 'Aguilar layout pipeline — real family backup',
-    scenarioCode: 'Aguilar',
+    code: 'REG-PIPE',
+    title: 'Regression family layout pipeline — large anonymized backup',
+    scenarioCode: 'RegressionFamily',
     stepCount: trace.stages.length,
     pipelinePath: trace.deferJoinHorizontalPack ? 'join' : 'column',
     nodeCount: persons.length,
@@ -88,4 +80,4 @@ const payload = {
   displayEdges: displayEdgesFromRelationships(backup.relationships),
 }
 
-writeCanvasFromTemplate('aguilar-layout-pipeline.canvas.tsx', payload, cursorCanvasesDir)
+writeCanvasFromTemplate('regression-family-layout-pipeline.canvas.tsx', payload, cursorCanvasesDir)

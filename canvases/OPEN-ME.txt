@@ -40,7 +40,7 @@ Do this IN YOUR PRIVATE CURSOR (this window, Private workspace):
 
       w3g-layout-pipeline.canvas.tsx
       jdc-layout-pipeline.canvas.tsx
-      aguilar-layout-pipeline.canvas.tsx
+      regression-family-layout-pipeline.canvas.tsx
 
       (This is the most reliable method.)
 
@@ -60,7 +60,9 @@ Do this IN YOUR PRIVATE CURSOR (this window, Private workspace):
 
 Canvas files live at:
 
-  %USERPROFILE%\.cursor\projects\c-Users-JimBuisman-Desktop-Private\canvases\
+  family-roots/canvases/   (default export target)
+
+  Or set CURSOR_CANVASES_DIR to your Cursor workspace canvases folder.
 
 
 
@@ -68,10 +70,10 @@ Refresh after layout engine changes:
 
   cd family-roots && npm run export:layout-canvas
 
-Aguilar real-tree pipeline (from backup JSON):
+Large regression-family pipeline (from anonymized backup JSON):
 
-  cd family-roots && npm run export:aguilar-canvas
-  (defaults to test-data/aguilar-backup.json or Downloads/aguilar-backup.json)
+  cd family-roots && npm run export:regression-family-canvas
+  (defaults to test-data/regression-family-backup.json)
 
 
 
@@ -87,7 +89,7 @@ Files:
 
   jdc-layout-pipeline.canvas.tsx               JDC stepper — join-parent pipeline (a3|b3)
 
-  aguilar-layout-pipeline.canvas.tsx           Aguilar real tree stepper (Markus/Carmen highlighted)
+  regression-family-layout-pipeline.canvas.tsx Large tree stepper (half-sibling hub highlighted)
 
   layout-scenario-gallery.canvas.tsx           all layout test scenarios
 

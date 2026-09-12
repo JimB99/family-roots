@@ -146,7 +146,7 @@ function normalizeComponent(nodes: PositionedNode[]): PositionedNode[] {
 
 /**
  * Run the full branch-contract layout pipeline on one component and snapshot after each phase.
- * Uses join-parent spread when bride-anchored cross-marriage applies (Aguilar); otherwise column finalize.
+ * Uses join-parent spread when bride-anchored cross-marriage applies; otherwise column finalize.
  */
 export function traceLayoutComponentContractPipeline(
   persons: LayoutNode[],

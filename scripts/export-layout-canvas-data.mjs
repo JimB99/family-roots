@@ -42,10 +42,7 @@ import { PERSON_H, ROW_GAP } from '../src/features/tree/layout/layout-spacing.ts
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(__dirname, '..')
-const cursorCanvasesDir = join(
-  process.env.USERPROFILE ?? process.env.HOME ?? '',
-  '.cursor/projects/c-Users-JimBuisman-Desktop-Private/canvases',
-)
+const cursorCanvasesDir = process.env.CURSOR_CANVASES_DIR ?? join(repoRoot, 'canvases')
 const templatesDir = join(__dirname, 'canvas-templates')
 const outPath = join(cursorCanvasesDir, 'layout-scenario-engine-data.json')
 const ROW_STEP = PERSON_H + ROW_GAP

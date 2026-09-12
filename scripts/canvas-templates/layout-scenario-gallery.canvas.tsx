@@ -239,7 +239,7 @@ export default function LayoutScenarioGalleryCanvas() {
       </Stack>
 
       <Callout tone="info" title="Open this canvas">
-        Open from %USERPROFILE%\.cursor\projects\c-Users-JimBuisman-Desktop-Private\canvases\. Refresh data with npm run
+        Open from family-roots/canvases/ (or set CURSOR_CANVASES_DIR). Refresh data with npm run
         export:layout-canvas in family-roots.
       </Callout>
 

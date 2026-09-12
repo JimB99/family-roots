@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { validateFamilyBackup } from '../src/features/backup/family-backup-schema.ts'
 import { buildFamilyGraph } from '../src/domain/family-graph.ts'
 import { projectFamilyGraph } from '../src/features/tree/layout/project-family-graph.ts'
 import { computeTreeLayout } from '../src/features/tree/layout/compute-tree-layout.ts'
 
-const path = process.argv[2] ?? 'c:/Users/JimBuisman/Downloads/aguilar-backup.json'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const defaultPath = join(__dirname, '..', 'test-data/regression-family-backup.json')
+const path = process.argv[2] ?? defaultPath
 const raw = JSON.parse(readFileSync(path, 'utf8'))
 const v = validateFamilyBackup(raw)
 if (!v.ok) {

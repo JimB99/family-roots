@@ -3,7 +3,7 @@ import { person } from '../test/fixtures/family'
 import { filterPeopleByQuery, matchedPersonIdsForQuery } from './person-search'
 
 const people = [
-  person('1', 'María', { familyName: 'Aguilar', maidenName: 'López', birthPlace: 'Madrid' }),
+  person('1', 'María', { familyName: 'Rivera', maidenName: 'López', birthPlace: 'Madrid' }),
   person('2', 'John', { familyName: 'Smith' }),
   person('3', 'José', { familyName: 'García', birthPlace: 'Barcelona' }),
 ]

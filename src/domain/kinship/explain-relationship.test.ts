@@ -118,7 +118,7 @@ describe('explainRelationship', () => {
       KINSHIP_AUNT_SPOUSE_PEOPLE,
       KINSHIP_AUNT_SPOUSE_RELATIONSHIPS,
     )
-    const result = explainRelationship(g, 'jim', 'peter')
+    const result = explainRelationship(g, 'jay', 'peter')
     expect(result.fromTo).toEqual({
       category: 'in_law',
       via: { category: 'collateral_aunt_uncle', generationsUp: 1 },
@@ -128,9 +128,9 @@ describe('explainRelationship', () => {
       via: { category: 'collateral_niece_nephew', generationsDown: 1 },
     })
     expect(formatKinshipLabel(result.fromTo, targetGender(g, 'peter'))).toBe('uncle-in-law')
-    expect(formatKinshipLabel(result.toFrom, targetGender(g, 'jim'))).toBe('nephew-in-law')
+    expect(formatKinshipLabel(result.toFrom, targetGender(g, 'jay'))).toBe('nephew-in-law')
     expect(formatKinshipLabel(result.fromTo, targetGender(g, 'peter'))).not.toBe(
-      formatKinshipLabel(result.toFrom, targetGender(g, 'jim')),
+      formatKinshipLabel(result.toFrom, targetGender(g, 'jay')),
     )
   })
 

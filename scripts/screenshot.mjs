@@ -2,12 +2,13 @@ import { chromium } from 'playwright'
 
 const BASE = process.env.SHOT_BASE ?? 'http://localhost:4173'
 const OUT = process.env.SHOT_OUT ?? 'shots'
+const FAMILY_SLUG = process.env.FAMILY_SLUG ?? 'aguilar'
 
 const targets = [
-  { name: 'tree-light', path: '/families/aguilar', theme: 'light', wait: 7000 },
-  { name: 'tree-dark', path: '/families/aguilar', theme: 'dark', wait: 7000, zoom: 4 },
-  { name: 'tree-mid-light', path: '/families/aguilar', theme: 'light', wait: 7000, zoom: 4 },
-  { name: 'people-dark', path: '/families/aguilar/people', theme: 'dark', wait: 6000 },
+  { name: 'tree-light', path: `/families/${FAMILY_SLUG}`, theme: 'light', wait: 7000 },
+  { name: 'tree-dark', path: `/families/${FAMILY_SLUG}`, theme: 'dark', wait: 7000, zoom: 4 },
+  { name: 'tree-mid-light', path: `/families/${FAMILY_SLUG}`, theme: 'light', wait: 7000, zoom: 4 },
+  { name: 'people-dark', path: `/families/${FAMILY_SLUG}/people`, theme: 'dark', wait: 6000 },
 ]
 
 const browser = await chromium.launch()

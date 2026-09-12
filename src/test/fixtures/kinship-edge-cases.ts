@@ -69,13 +69,13 @@ export const KINSHIP_AUNT_SPOUSE_PEOPLE: Person[] = [
   person('gp', 'Grandpa', { gender: 'male' }),
   person('parent', 'Parent', { gender: 'female' }),
   person('aunt', 'Aunt', { gender: 'female' }),
-  person('jim', 'Jim', { gender: 'male' }),
+  person('jay', 'Jay', { gender: 'male' }),
   person('peter', 'Peter', { gender: 'male' }),
 ]
 
 export const KINSHIP_AUNT_SPOUSE_RELATIONSHIPS: Relationship[] = [
   parentChild('gp', 'parent'),
   parentChild('gp', 'aunt'),
-  parentChild('parent', 'jim'),
+  parentChild('parent', 'jay'),
   spouse('aunt', 'peter'),
 ]

@@ -15,7 +15,7 @@ const person: Person = {
   id: 'p1',
   familyId: 'f1',
   givenNames: 'Anna',
-  familyName: 'Aguilar',
+  familyName: 'Rivera',
   maidenName: null,
   gender: 'female',
   birth: { year: 1956, month: 7, day: 16, precision: 'day' },
@@ -56,7 +56,7 @@ describe('person-drafts', () => {
     draft.input.givenNames = 'Ana'
     const merged = mergeAllDrafts([person], new Map([['p1', draft]]))
     expect(merged[0].givenNames).toBe('Ana')
-    expect(merged[0].familyName).toBe('Aguilar')
+    expect(merged[0].familyName).toBe('Rivera')
   })
 
   it('parsePersonDraft validates date strings', () => {

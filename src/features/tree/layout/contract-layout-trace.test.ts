@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { validateFamilyBackup } from '../../../features/backup/family-backup-schema'
 import { buildFamilyGraph } from '../../../domain/family-graph'
@@ -9,32 +9,22 @@ import { formatContractLayoutTrace, traceLayoutComponentContractPipeline } from 
 import { computeTreeLayout } from './compute-tree-layout'
 import { projectFamilyGraph } from './project-family-graph'
 
+const REGRESSION_BACKUP_PATH = join(process.cwd(), 'test-data/regression-family-backup.json')
+
 const VIKTORIA_ID = 'c2rhuEFVsjPMOFcbG9lB'
-const MARKUS_ID = 'ARdnZDZVUlWu14bHVeHX'
+const NADJA_ID = 'fq5BYflcV2GP4hve6H5i'
+const BENJAMIN_ID = 'BOjDu3te5oDQOekeyzvR'
 
-const backupCandidates = [
-  join(process.cwd(), 'test-data/aguilar-backup.json'),
-  'c:/Users/JimBuisman/Downloads/aguilar-backup.json',
-]
-
-function loadAguilarBackup() {
-  const path = backupCandidates.find((candidate) => existsSync(candidate))
-  if (!path) return null
-  const raw = JSON.parse(readFileSync(path, 'utf8'))
+function loadRegressionFamilyBackup() {
+  const raw = JSON.parse(readFileSync(REGRESSION_BACKUP_PATH, 'utf8'))
   const validated = validateFamilyBackup(raw)
   if (!validated.ok) throw new Error(validated.error)
-  return { backup: validated.backup, path }
+  return validated.backup
 }
 
-describe('contract layout pipeline trace (Aguilar)', () => {
-  it('traces the real Aguilar backup when available', async () => {
-    const loaded = loadAguilarBackup()
-    if (!loaded) {
-      expect(true).toBe(true)
-      return
-    }
-
-    const { backup } = loaded
+describe('contract layout pipeline trace (regression family)', () => {
+  it('traces the large regression family backup', async () => {
+    const backup = loadRegressionFamilyBackup()
     const graph = buildFamilyGraph(backup.family.id, backup.people, backup.relationships)
     const model = projectFamilyGraph(graph)
     const structure = structureFromModel(model)
@@ -66,14 +56,10 @@ describe('contract layout pipeline trace (Aguilar)', () => {
       if (!found) throw new Error(`missing ${id}`)
       return found
     }
-    const nadja = layout.nodes.find((entry) => entry.givenNames === 'Nadja' && entry.personId !== MARKUS_ID)
-    const benjamin = layout.nodes.find(
-      (entry) => entry.givenNames === 'Benjamin' && entry.personId !== MARKUS_ID,
-    )
-    if (nadja && benjamin) {
-      expect(node(VIKTORIA_ID).x).toBeGreaterThan(nadja.x)
-      expect(node(VIKTORIA_ID).x).toBeLessThan(benjamin.x)
-    }
+    const nadja = node(NADJA_ID)
+    const benjamin = node(BENJAMIN_ID)
+    expect(node(VIKTORIA_ID).x).toBeGreaterThan(nadja.x)
+    expect(node(VIKTORIA_ID).x).toBeLessThan(benjamin.x)
 
     const joinPack = trace.stages.find((stage) => stage.step === 'joinPackDescendants')
     const joinParent = trace.stages.find((stage) => stage.step === 'joinParentPlacement')

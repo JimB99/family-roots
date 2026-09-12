@@ -61,8 +61,8 @@ interface PipelinePayload {
 __PIPELINE__
 
 const ZOOM_STEPS = [0.04, 0.06, 0.08, 0.1, 0.15, 0.25, 0.4, 0.6, 0.85, 1, 1.25] as const;
-const SCROLL_ID = "aguilar-pipeline-scroll";
-/** Markus, Carmen, Viktoria + Christian on the half-sibling child row. */
+const SCROLL_ID = "regression-family-pipeline-scroll";
+/** Half-sibling hub pair and adjacent child-row nodes. */
 const HIGHLIGHT_IDS = new Set([
   "ARdnZDZVUlWu14bHVeHX",
   "8sr6Q6g7YfGOZw04NCWJ",
@@ -193,7 +193,7 @@ function StageDiagram({
   displayEdges: DisplayEdge[];
   theme: ReturnType<typeof useHostTheme>;
 }) {
-  const [zoom, setZoom] = useCanvasState(`aguilar-pipe-zoom-${stage.step}`, 0.08);
+  const [zoom, setZoom] = useCanvasState(`regression-family-pipe-zoom-${stage.step}`, 0.08);
 
   const fitWidth = () => {
     const el = document.getElementById(SCROLL_ID);
@@ -240,10 +240,10 @@ function StageDiagram({
   );
 }
 
-export default function AguilarLayoutPipelineCanvas() {
+export default function RegressionFamilyLayoutPipelineCanvas() {
   const theme = useHostTheme();
   const payload = PIPELINE as PipelinePayload;
-  const [stepIndex, setStepIndex] = useCanvasState("aguilar-pipe-step", 0);
+  const [stepIndex, setStepIndex] = useCanvasState("regression-family-pipe-step", 0);
   const index = Math.max(0, Math.min(payload.stages.length - 1, Number(stepIndex) || 0));
   const stage = payload.stages[index]!;
 
@@ -252,8 +252,8 @@ export default function AguilarLayoutPipelineCanvas() {
       <Stack gap={6}>
         <H1>[{payload.meta.code}] {payload.meta.title}</H1>
         <Text tone="secondary">
-          Real Aguilar backup ({payload.meta.nodeCount ?? payload.stages[0]?.nodes.length} people) —
-          pipeline path: {payload.meta.pipelinePath ?? "?"}. Orange: Markus &amp; Carmen. Step through
+          Large anonymized regression backup ({payload.meta.nodeCount ?? payload.stages[0]?.nodes.length} people) —
+          pipeline path: {payload.meta.pipelinePath ?? "?"}. Orange: highlighted half-sibling hub. Step through
           join-parent spread beside cross-marriage branches.
         </Text>
       </Stack>
