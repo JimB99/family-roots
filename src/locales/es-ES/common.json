@@ -5,7 +5,10 @@
     "tree": "Árbol",
     "people": "Personas",
     "health": "Salud",
-    "manage": "Gestionar"
+    "manage": "Gestionar",
+    "main": "Navegación principal",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
   },
   "auth": {
     "signIn": "Iniciar sesión",

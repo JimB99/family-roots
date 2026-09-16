@@ -7,6 +7,11 @@
   "layoutFailed": "No se pudo organizar el árbol.",
   "canvasLabel": "Lienzo del árbol familiar",
   "canvasHint": "Haz clic en una persona para ver detalles, arrastra el espacio vacío para desplazarte y usa la rueda para zoom.",
+  "canvasHintTouch": "Toca una persona para resaltar su línea, arrastra para desplazarte y pellizca para zoom.",
+  "selection": {
+    "details": "Detalles",
+    "clear": "Borrar selección"
+  },
   "explainPickBanner": "Haz clic en alguien del árbol para comparar con {{name}}",
   "explainPickCanvas": "Haz clic en una persona para comparar con {{name}}.",
   "search": {

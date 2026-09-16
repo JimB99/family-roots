@@ -14,6 +14,8 @@
     "allGroups": "Todos los grupos",
     "progenitorAria": "Ancestro usado para numerar generaciones",
     "moreFilters": "Más filtros",
+    "showFilters": "Buscar y filtrar",
+    "hideFilters": "Ocultar búsqueda y filtros",
     "birthYear": "Año de nacimiento",
     "deathYear": "Año de defunción",
     "birthYearFrom": "Nacimiento desde",

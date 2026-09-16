@@ -63,7 +63,6 @@ interface PersonNodeProps {
   interactive: boolean
   compact: boolean
   onSelect: (personId: string) => void
-  onOpen: (personId: string) => void
   onPointerDown: (personId: string, event: React.PointerEvent) => void
 }
 
@@ -76,7 +75,6 @@ function PersonNodeImpl({
   interactive,
   compact,
   onSelect,
-  onOpen,
   onPointerDown,
 }: PersonNodeProps) {
   const personId = node.personId!
@@ -158,7 +156,7 @@ function PersonNodeImpl({
       opacity={dimmed ? 0.28 : dragging ? 0.45 : 1}
       style={{ cursor: interactive ? 'grab' : 'pointer' }}
       role="button"
-      tabIndex={0}
+      tabIndex={-1}
       aria-label={`${node.label}${node.subtitle ? `, ${node.subtitle}` : ''}`}
       aria-pressed={selected}
       onPointerDown={(e) => onPointerDown(personId, e)}
@@ -166,18 +164,10 @@ function PersonNodeImpl({
         e.stopPropagation()
         onSelect(personId)
       }}
-      onDoubleClick={(e) => {
-        e.stopPropagation()
-        onOpen(personId)
-      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onSelect(personId)
-        }
-        if (e.key === 'o' || e.key === 'O') {
-          e.preventDefault()
-          onOpen(personId)
         }
       }}
     >
@@ -483,6 +473,7 @@ function UnionNodeImpl({
       }
     >
       {label && <title>{label}</title>}
+      <circle cx={cx} cy={cy} r={22} fill="transparent" />
       <circle cx={cx} cy={cy} r={fold?.collapsed ? 16 : 12} fill="transparent" />
       <circle cx={cx} cy={cy} r={fold?.collapsed ? 11 : 7} fill="var(--surface-page)" />
       <circle
@@ -553,6 +544,7 @@ function UnionDotImpl({
       }
     >
       {label && <title>{label}</title>}
+      <circle cx={cx} cy={cy} r={22} fill="transparent" />
       <circle cx={cx} cy={cy} r={fold?.collapsed ? 14 : 8} fill="transparent" />
       <circle
         cx={cx}

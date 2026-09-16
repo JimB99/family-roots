@@ -43,6 +43,7 @@ import { parsePersonDraft, livingDraftEntries } from '../features/tree/person-dr
 import { TreeInspectorPanel } from '../features/tree/TreeInspectorPanel'
 import { ConnectPersonDialog } from '../features/tree/connect/ConnectPersonDialog'
 import { ExplainRelationshipDialog } from '../features/tree/relation/ExplainRelationshipDialog'
+import { TreeSelectionBar } from '../features/tree/TreeSelectionBar'
 import { TreeWorkspace, type TreeSelection } from '../features/tree/TreeWorkspace'
 import { usePersonDrafts } from '../features/tree/use-person-drafts'
 import { matchedPersonIdsForQuery, filterPeopleByQuery } from '../lib/person-search'
@@ -78,6 +79,7 @@ export function TreePage() {
   } | null>(null)
   const [explainSearchOpen, setExplainSearchOpen] = useState(false)
   const [connectHint, setConnectHint] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const pendingActionRef = useRef<(() => void) | null>(null)
 
   const deferredSearch = useDeferredValue(search)
@@ -266,6 +268,10 @@ export function TreePage() {
   const handleSelectionChange = useCallback((next: TreeSelection) => {
     setSelection(next)
   }, [])
+
+  useEffect(() => {
+    if (!selection) setDetailsOpen(false)
+  }, [selection])
 
   const selectPerson = useCallback((personId: string) => {
     setSelection({ kind: 'person', personId })
@@ -549,15 +555,15 @@ export function TreePage() {
         onSave={() => void handleSaveAndProceed()}
       />
 
-      <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-3 py-2">
-          <div className="relative">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="grid shrink-0 gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-3 py-2 md:flex md:flex-wrap md:items-center md:gap-2">
+          <div className="relative w-full md:w-52">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('search.placeholder', { ns: 'tree' })}
               aria-label={t('search.aria', { ns: 'tree' })}
-              className="w-52 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] py-1.5 pr-8 pl-8 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] py-1.5 pr-8 pl-8 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
             />
             <svg
               width="15"
@@ -605,19 +611,22 @@ export function TreePage() {
             )}
           </div>
 
-          <StatusBadge tone="neutral">{t('counts.people', { ns: 'common', count: displayPeople.length })}</StatusBadge>
-          {hasUnsaved && (
-            <StatusBadge tone="warning">
-              {t('counts.unsaved', { ns: 'common', count: unsavedCount })}
-            </StatusBadge>
-          )}
-          {issueCount > 0 && (
-            <Link to={`/families/${slug}/health`} className="rounded-full">
-              <StatusBadge tone="warning">{t('counts.toReview', { ns: 'common', count: issueCount })}</StatusBadge>
-            </Link>
-          )}
+          <div className="flex items-center justify-between gap-2 md:contents">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge tone="neutral">{t('counts.people', { ns: 'common', count: displayPeople.length })}</StatusBadge>
+              {hasUnsaved && (
+                <StatusBadge tone="warning">
+                  {t('counts.unsaved', { ns: 'common', count: unsavedCount })}
+                </StatusBadge>
+              )}
+              {issueCount > 0 && (
+                <Link to={`/families/${slug}/health`} className="rounded-full">
+                  <StatusBadge tone="warning">{t('counts.toReview', { ns: 'common', count: issueCount })}</StatusBadge>
+                </Link>
+              )}
+            </div>
 
-          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2 md:ml-auto">
             {canEdit && hasUnsaved && (
               <Button
                 variant="primary"
@@ -741,6 +750,7 @@ export function TreePage() {
                   {t('actions.edit', { ns: 'common' })}
                 </Button>
               ))}
+            </div>
           </div>
         </div>
 
@@ -777,10 +787,20 @@ export function TreePage() {
               }}
               onExplainPickSearch={() => setExplainSearchOpen(true)}
               onSelectionChange={handleSelectionChange}
-              onOpenPerson={(id) => openPersonProfile(id)}
               onConnect={handleConnectRequest}
               onConnectDropMiss={() => setConnectHint(t('edit.dropHint', { ns: 'tree' }))}
             />
+            {selectedPersonDisplay && selection?.kind === 'person' && (
+              <div className="lg:hidden">
+                <TreeSelectionBar
+                  person={selectedPersonDisplay}
+                  hidden={explainPickActive}
+                  onOpenDetails={() => setDetailsOpen(true)}
+                  onOpenProfile={() => openPersonProfile(selectedPersonDisplay.id)}
+                  onClear={() => setSelection(null)}
+                />
+              </div>
+            )}
           </div>
 
           {inspectorContent && (
@@ -792,7 +812,11 @@ export function TreePage() {
       </div>
 
       <div className="lg:hidden">
-        <Sheet open={Boolean(inspectorContent)} title={t('details', { ns: 'common' })} onClose={() => setSelection(null)}>
+        <Sheet
+          open={detailsOpen && Boolean(inspectorContent)}
+          title={t('details', { ns: 'common' })}
+          onClose={() => setDetailsOpen(false)}
+        >
           {inspectorContent}
         </Sheet>
       </div>

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { FieldPresenceFilter, PeopleFilters } from '../domain/person-filters'
 import type { PersonCompletenessField } from '../domain/person-completeness'
+import { countActivePeopleToolbarFilters } from '../lib/people-toolbar-filters'
 import type { ConnectedComponent, PeopleSortKey } from '../lib/tree'
 import { displayName } from '../lib/tree'
 import type { Person } from '../types'
@@ -20,6 +21,7 @@ interface PeopleToolbarProps {
   generation: number | 'all'
   onGenerationChange: (value: number | 'all') => void
   generationOptions: number[]
+  defaultProgenitor: string
 }
 
 const selectClass =
@@ -109,15 +111,66 @@ export function PeopleToolbar({
   generation,
   onGenerationChange,
   generationOptions,
+  defaultProgenitor,
 }: PeopleToolbarProps) {
   const { t } = useTranslation(['people', 'common'])
   const [showMoreFilters, setShowMoreFilters] = useState(false)
+  const activeFilterCount = useMemo(
+    () =>
+      countActivePeopleToolbarFilters(
+        filters,
+        sortKey,
+        branchFilter,
+        generation,
+        progenitorId,
+        defaultProgenitor,
+      ),
+    [filters, sortKey, branchFilter, generation, progenitorId, defaultProgenitor],
+  )
+  const [mobileExpanded, setMobileExpanded] = useState(() => activeFilterCount > 0)
   const notesPresence = filters.notesPresence
 
   return (
-    <div className="space-y-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-3">
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[200px] flex-1">
+    <div className="shrink-0 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-3">
+      <div className="flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileExpanded((open) => !open)}
+          aria-expanded={mobileExpanded}
+          className="flex min-h-11 flex-1 items-center justify-between gap-2 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--surface-sunken)]"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="shrink-0 text-[var(--text-muted)]">
+              <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <span className="truncate">
+              {mobileExpanded
+                ? t('toolbar.hideFilters', { ns: 'people' })
+                : t('toolbar.showFilters', { ns: 'people' })}
+            </span>
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--accent-strong)]">
+                {activeFilterCount}
+              </span>
+            )}
+          </span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            className={`shrink-0 text-[var(--text-muted)] transition ${mobileExpanded ? 'rotate-180' : ''}`}
+          >
+            <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div className={`space-y-3 ${mobileExpanded ? 'mt-3 block' : 'hidden'} md:mt-0 md:block`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative w-full sm:min-w-[200px] sm:flex-1">
           <input
             value={filters.text ?? ''}
             onChange={(e) => onFiltersChange({ ...filters, text: e.target.value || undefined })}
@@ -141,7 +194,7 @@ export function PeopleToolbar({
           value={sortKey}
           onChange={(e) => onSortChange(e.target.value as PeopleSortKey)}
           aria-label={t('toolbar.sortAria', { ns: 'people' })}
-          className={selectClass}
+          className={`${selectClass} w-full sm:w-auto`}
         >
           <option value="name-asc">{t('toolbar.sortNameAsc', { ns: 'people' })}</option>
           <option value="birth-year-asc">{t('toolbar.sortBirthAsc', { ns: 'people' })}</option>
@@ -151,7 +204,7 @@ export function PeopleToolbar({
           value={branchFilter}
           onChange={(e) => onBranchFilterChange(e.target.value)}
           aria-label={t('toolbar.branchAria', { ns: 'people' })}
-          className={`${selectClass} max-w-xs`}
+          className={`${selectClass} w-full max-w-xs sm:w-auto`}
         >
           <option value="all">{t('toolbar.allGroups', { ns: 'people' })}</option>
           {components.map((component, index) => (
@@ -163,7 +216,7 @@ export function PeopleToolbar({
         <select
           value={progenitorId}
           onChange={(e) => onProgenitorChange(e.target.value)}
-          className={`${selectClass} max-w-xs`}
+          className={`${selectClass} w-full max-w-xs sm:w-auto`}
           aria-label={t('toolbar.progenitorAria', { ns: 'people' })}
           title={t('toolbar.progenitorAria', { ns: 'people' })}
         >
@@ -354,7 +407,7 @@ export function PeopleToolbar({
       )}
 
       {generationOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
           <button
             type="button"
             onClick={() => onGenerationChange('all')}
@@ -376,6 +429,7 @@ export function PeopleToolbar({
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

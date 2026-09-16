@@ -133,7 +133,7 @@ export function PeoplePage() {
   return (
     <ViewAccessGate familyName={family.name} slug={slug} canView={canView}>
       <Layout familyName={family.name} slug={slug} isEditor={isEditor} adminHref={`/families/${slug}/admin`}>
-      <div className="flex h-[calc(100svh-3.25rem)] min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <PeopleToolbar
           filters={filters}
           onFiltersChange={setFilters}
@@ -148,6 +148,7 @@ export function PeoplePage() {
           generation={generation}
           onGenerationChange={setGeneration}
           generationOptions={generationOptions}
+          defaultProgenitor={defaultProgenitor ?? ''}
         />
 
         <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-2 text-sm text-[var(--text-secondary)]">

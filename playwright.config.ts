@@ -13,7 +13,10 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
+  ],
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort --host 127.0.0.1`,
     url: baseURL,

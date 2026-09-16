@@ -29,6 +29,9 @@ import { EMPTY_LAYOUT } from './layout/compute-tree-layout'
 import { layoutModelStructureKey } from './layout/layout-structure-key'
 import { projectFamilyGraph } from './layout/project-family-graph'
 import type { PositionedNode } from './layout/layout-model'
+import { useCoarsePointer } from '../../hooks/use-coarse-pointer'
+import { isWorldPointInViewport, shouldStartDrag } from './viewport/pointer-gesture'
+import { usePinchZoom } from './viewport/use-pinch-zoom'
 import { useTreeViewport } from './viewport/use-tree-viewport'
 
 export type TreeSelection =
@@ -57,7 +60,6 @@ interface TreeWorkspaceProps {
   onExplainPickCancel?: () => void
   onExplainPickSearch?: () => void
   onSelectionChange: (selection: TreeSelection) => void
-  onOpenPerson: (personId: string) => void
   onConnect: (
     sourceId: string,
     targetId: string,
@@ -92,7 +94,6 @@ export const TreeWorkspace = memo(function TreeWorkspace({
   onExplainPickCancel,
   onExplainPickSearch,
   onSelectionChange,
-  onOpenPerson,
   onConnect,
   onConnectDropMiss,
 }: TreeWorkspaceProps) {
@@ -111,6 +112,8 @@ export const TreeWorkspace = memo(function TreeWorkspace({
 
   const dragRef = useRef<DragState | null>(null)
   const fittedForRef = useRef<string | null>(null)
+  const pinchingRef = useRef(false)
+  const coarsePointer = useCoarsePointer()
 
   const graph = useMemo(
     () => buildFamilyGraph(familyId, layoutPeople, relationships),
@@ -236,13 +239,31 @@ export const TreeWorkspace = memo(function TreeWorkspace({
     const container = containerRef.current
     const anchor = anchorsRef.current.get(`person:${focusPersonId}`)
     if (!container || !anchor) return
-    focusOn(
-      { x: anchor.cx, y: anchor.cy },
+    const world = { x: anchor.cx, y: anchor.cy }
+    const inView = isWorldPointInViewport(
+      world,
+      viewportRef.current,
       container.clientWidth,
       container.clientHeight,
-      Math.max(viewportRef.current.scale, 0.75),
     )
-  }, [focusPersonId, focusOn, viewportRef, structuralLayout])
+    if (coarsePointer && inView) return
+    const minScale = coarsePointer ? 0.45 : 0.75
+    focusOn(
+      world,
+      container.clientWidth,
+      container.clientHeight,
+      Math.max(viewportRef.current.scale, minScale),
+    )
+  }, [focusPersonId, focusOn, viewportRef, structuralLayout, coarsePointer])
+
+  usePinchZoom(containerRef, {
+    enabled: layout.nodes.length > 0,
+    onZoomAt: zoomAtPoint,
+    onCommit: commit,
+    onPinchActiveChange: (active) => {
+      pinchingRef.current = active
+    },
+  })
 
   const toWorld = useCallback(
     (clientX: number, clientY: number) => {
@@ -345,40 +366,47 @@ export const TreeWorkspace = memo(function TreeWorkspace({
     }
   }, [commit])
 
-  const startPan = useCallback(
-    (event: React.PointerEvent) => {
-      const origin = { x: event.clientX, y: event.clientY }
-      const container = containerRef.current
-      container?.setPointerCapture(event.pointerId)
-      container?.style.setProperty('cursor', 'grabbing')
-
-      const onMove = (moveEvent: PointerEvent) => {
-        pan(moveEvent.clientX - origin.x, moveEvent.clientY - origin.y)
-        origin.x = moveEvent.clientX
-        origin.y = moveEvent.clientY
-      }
-      const onUp = () => {
-        container?.style.removeProperty('cursor')
-        commit()
-        window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
-        window.removeEventListener('pointercancel', onUp)
-      }
-      window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
-      window.addEventListener('pointercancel', onUp)
-    },
-    [pan, commit],
-  )
-
   const onCanvasPointerDown = useCallback(
     (event: React.PointerEvent) => {
       if (event.button !== 0) return
       setMenu(null)
-      onSelectionChange(null)
-      startPan(event)
+      const container = containerRef.current
+      if (!container) return
+      container.setPointerCapture(event.pointerId)
+      const origin = { x: event.clientX, y: event.clientY }
+      let moved = false
+      container.style.setProperty('cursor', 'grabbing')
+
+      const onMove = (moveEvent: PointerEvent) => {
+        if (pinchingRef.current) return
+        const dx = moveEvent.clientX - origin.x
+        const dy = moveEvent.clientY - origin.y
+        if (!moved && !shouldStartDrag(dx, dy, DRAG_THRESHOLD)) return
+        if (!moved) moved = true
+        pan(moveEvent.clientX - origin.x, moveEvent.clientY - origin.y)
+        origin.x = moveEvent.clientX
+        origin.y = moveEvent.clientY
+      }
+
+      const onUp = (upEvent: PointerEvent) => {
+        container.style.removeProperty('cursor')
+        try {
+          container.releasePointerCapture(upEvent.pointerId)
+        } catch {
+          // capture may already be released
+        }
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        if (!moved) onSelectionChange(null)
+        else commit()
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
     },
-    [onSelectionChange, startPan],
+    [onSelectionChange, pan, commit],
   )
 
   const moveGhost = useCallback((worldX: number, worldY: number) => {
@@ -402,8 +430,46 @@ export const TreeWorkspace = memo(function TreeWorkspace({
 
       if (!editMode) {
         event.stopPropagation()
-        onSelectionChange({ kind: 'person', personId })
-        startPan(event)
+        const container = containerRef.current
+        if (!container) return
+        container.setPointerCapture(event.pointerId)
+        const startScreen = { x: event.clientX, y: event.clientY }
+        let moved = false
+        let last = { x: event.clientX, y: event.clientY }
+
+        const onMove = (moveEvent: PointerEvent) => {
+          if (pinchingRef.current) return
+          const dx = moveEvent.clientX - startScreen.x
+          const dy = moveEvent.clientY - startScreen.y
+          if (!moved && !shouldStartDrag(dx, dy, DRAG_THRESHOLD)) return
+          if (!moved) {
+            moved = true
+            container.style.setProperty('cursor', 'grabbing')
+          }
+          pan(moveEvent.clientX - last.x, moveEvent.clientY - last.y)
+          last = { x: moveEvent.clientX, y: moveEvent.clientY }
+        }
+
+        const cleanup = (upEvent: PointerEvent) => {
+          window.removeEventListener('pointermove', onMove)
+          window.removeEventListener('pointerup', cleanup)
+          window.removeEventListener('pointercancel', cleanup)
+          container.style.removeProperty('cursor')
+          try {
+            container.releasePointerCapture(upEvent.pointerId)
+          } catch {
+            // capture may already be released
+          }
+          if (!moved) {
+            onSelectionChange({ kind: 'person', personId })
+            return
+          }
+          commit()
+        }
+
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', cleanup)
+        window.addEventListener('pointercancel', cleanup)
         return
       }
 
@@ -414,15 +480,16 @@ export const TreeWorkspace = memo(function TreeWorkspace({
 
       event.stopPropagation()
       const nodeId = `person:${personId}`
-      const captureTarget = event.currentTarget as Element
-      captureTarget.setPointerCapture(event.pointerId)
+      const container = containerRef.current
+      if (!container) return
+      container.setPointerCapture(event.pointerId)
       dragRef.current = {
         sourceId: personId,
         sourceNodeId: nodeId,
         pointerId: event.pointerId,
         startScreen: { x: event.clientX, y: event.clientY },
         moved: false,
-        captureTarget,
+        captureTarget: container,
       }
 
       const onMove = (moveEvent: PointerEvent) => {
@@ -431,7 +498,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
 
         const dx = moveEvent.clientX - drag.startScreen.x
         const dy = moveEvent.clientY - drag.startScreen.y
-        if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+        if (!drag.moved && !shouldStartDrag(dx, dy, DRAG_THRESHOLD)) return
 
         if (!drag.moved) {
           drag.moved = true
@@ -502,7 +569,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onCancel)
     },
-    [editMode, explainPickAnchorId, graph, displayPeopleById, moveGhost, dropTargetAt, onConnectDropMiss, onExplainPickTarget, onSelectionChange, toWorld, startPan],
+    [editMode, explainPickAnchorId, graph, displayPeopleById, moveGhost, dropTargetAt, onConnectDropMiss, onExplainPickTarget, onSelectionChange, toWorld, pan, commit],
   )
 
   const onKeyDown = useCallback(
@@ -648,7 +715,11 @@ export const TreeWorkspace = memo(function TreeWorkspace({
     : ''
 
   const controlClass =
-    'flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)]/90 text-[var(--text-secondary)] shadow-sm backdrop-blur transition hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]'
+    'flex h-11 w-11 lg:h-9 lg:w-9 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-raised)]/90 text-[var(--text-secondary)] shadow-sm backdrop-blur transition hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]'
+
+  const canvasHint = coarsePointer
+    ? t('canvasHintTouch', { ns: 'tree' })
+    : t('canvasHint', { ns: 'tree' })
 
   if (layoutPeople.length === 0) {
     return (
@@ -682,7 +753,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
       aria-label={
         explainPickAnchorId
           ? `${t('canvasLabel', { ns: 'tree' })} ${t('explainPickCanvas', { ns: 'tree', name: explainPickAnchorName ?? t('unknown', { ns: 'common' }) })}`
-          : `${t('canvasLabel', { ns: 'tree' })} ${t('canvasHint', { ns: 'tree' })}`
+          : `${t('canvasLabel', { ns: 'tree' })} ${canvasHint}`
       }
     >
       {explainPickAnchorId && explainPickAnchorName && (
@@ -713,7 +784,7 @@ export const TreeWorkspace = memo(function TreeWorkspace({
           )}
         </div>
       )}
-      <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+      <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-col gap-1.5 pb-[env(safe-area-inset-bottom)]">
         <div
           className="pointer-events-auto flex gap-1.5"
           onPointerDown={(event) => event.stopPropagation()}
@@ -922,7 +993,6 @@ export const TreeWorkspace = memo(function TreeWorkspace({
                   interactive={editMode}
                   compact={compact}
                   onSelect={handleSelectPerson}
-                  onOpen={onOpenPerson}
                   onPointerDown={onPersonPointerDown}
                 />
               )

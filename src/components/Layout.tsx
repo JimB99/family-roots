@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
+import { MobileNavMenu } from './MobileNavMenu'
 import { LanguageSwitcher } from './ui/LanguageSwitcher'
 import { ThemeToggle } from './ui/ThemeToggle'
 import { TreeMark } from './ui/TreeMark'
@@ -38,8 +39,8 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
         {t('skipToContent')}
       </a>
       <header className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
             <Link
               to="/"
               className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-[var(--text-primary)]"
@@ -49,10 +50,13 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
             </Link>
             {familyName && slug && (
               <>
-                <span aria-hidden="true" className="text-[var(--border-strong)]">
+                <span aria-hidden="true" className="hidden text-[var(--border-strong)] md:inline">
                   /
                 </span>
-                <nav className="flex min-w-0 items-center gap-1">
+                <p className="min-w-0 truncate text-sm font-medium text-[var(--text-primary)] md:hidden">
+                  {familyName}
+                </p>
+                <nav className="hidden min-w-0 items-center gap-1 md:flex">
                   <span className="hidden max-w-[16ch] truncate font-medium text-[var(--text-primary)] md:inline">
                     {familyName}
                   </span>
@@ -71,34 +75,44 @@ export function Layout({ children, familyName, slug, isEditor, adminHref = '/adm
           </div>
           <div className="flex shrink-0 items-center gap-1.5 text-sm">
             {isEditor && (
-              <Link to={adminHref} className={navLinkClass({ isActive: false })}>
+              <Link to={adminHref} className={`${navLinkClass({ isActive: false })} hidden md:inline-flex`}>
                 {t('nav.manage')}
               </Link>
             )}
-            <LanguageSwitcher />
-            <ThemeToggle />
-            {loading ? (
-              <span className="w-16" aria-hidden />
-            ) : user ? (
-              <>
-                <span
-                  className="hidden text-[var(--text-muted)] sm:inline"
-                  title={user.email ?? undefined}
-                >
-                  {user.email ? truncateEmail(user.email) : t('auth.signedIn')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="rounded-lg px-2.5 py-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
-                >
-                  {t('auth.signOut')}
-                </button>
-              </>
-            ) : (
-              <Link to="/login" className={navLinkClass({ isActive: false })}>
-                {t('auth.signIn')}
-              </Link>
+            <div className="hidden items-center gap-1.5 md:flex">
+              <LanguageSwitcher />
+              <ThemeToggle />
+              {loading ? (
+                <span className="w-16" aria-hidden />
+              ) : user ? (
+                <>
+                  <span
+                    className="hidden text-[var(--text-muted)] sm:inline"
+                    title={user.email ?? undefined}
+                  >
+                    {user.email ? truncateEmail(user.email) : t('auth.signedIn')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void signOut()}
+                    className="rounded-lg px-2.5 py-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
+                  >
+                    {t('auth.signOut')}
+                  </button>
+                </>
+              ) : (
+                <Link to="/login" className={navLinkClass({ isActive: false })}>
+                  {t('auth.signIn')}
+                </Link>
+              )}
+            </div>
+            {familyName && slug && (
+              <MobileNavMenu
+                familyName={familyName}
+                slug={slug}
+                isEditor={isEditor}
+                adminHref={adminHref}
+              />
             )}
           </div>
         </div>

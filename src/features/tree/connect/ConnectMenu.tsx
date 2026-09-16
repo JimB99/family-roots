@@ -60,6 +60,10 @@ export function ConnectMenu({
 
   const hasActions = state.options.some((o) => o.available || o.overwrite)
 
+  const menuWidth = Math.min(288, window.innerWidth - 16)
+  const left = Math.min(Math.max(8, state.x - menuWidth / 2), window.innerWidth - menuWidth - 8)
+  const top = Math.min(state.y + 12, window.innerHeight - 240)
+
   return (
     <div
       ref={ref}
@@ -68,10 +72,10 @@ export function ConnectMenu({
         source: state.sourceName,
         target: state.targetName,
       })}
-      className="absolute z-30 w-72 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] shadow-2xl"
+      className="absolute z-30 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] shadow-2xl"
       style={{
-        left: Math.max(8, state.x - 144),
-        top: state.y + 12,
+        left,
+        top,
       }}
       onPointerDown={(event) => event.stopPropagation()}
     >

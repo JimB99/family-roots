@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 interface SheetProps {
@@ -23,8 +24,8 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-stretch sm:justify-end">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -59,6 +60,7 @@ export function Sheet({ open, title, onClose, children }: SheetProps) {
         </div>
         <div className="p-4">{children}</div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   )
 }

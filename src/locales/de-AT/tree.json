@@ -7,6 +7,11 @@
   "layoutFailed": "Stammbaum konnte nicht angeordnet werden.",
   "canvasLabel": "Stammbaum-Zeichenfläche",
   "canvasHint": "Klicke auf eine Person für Details, ziehe leeren Bereich zum Verschieben, scrolle zum Zoomen.",
+  "canvasHintTouch": "Tippe auf eine Person für ihre Linie, ziehe zum Verschieben, zoome mit zwei Fingern.",
+  "selection": {
+    "details": "Details",
+    "clear": "Auswahl löschen"
+  },
   "explainPickBanner": "Klicke im Stammbaum auf jemanden, um mit {{name}} zu vergleichen",
   "explainPickCanvas": "Klicke auf eine Person, um mit {{name}} zu vergleichen.",
   "search": {

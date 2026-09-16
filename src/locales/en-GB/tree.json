@@ -7,6 +7,11 @@
   "layoutFailed": "Could not lay out tree.",
   "canvasLabel": "Family tree canvas",
   "canvasHint": "Click a person for details, drag empty space to pan, scroll to zoom.",
+  "canvasHintTouch": "Tap a person to highlight their line, drag to pan, pinch to zoom.",
+  "selection": {
+    "details": "Details",
+    "clear": "Clear selection"
+  },
   "explainPickBanner": "Click someone on the tree to compare with {{name}}",
   "explainPickCanvas": "Click a person to compare with {{name}}.",
   "search": {
